@@ -73,6 +73,5 @@
   --sombra-lg: 0 18px 48px rgba(0, 0, 0, 0.55);
 
   /* — medidas — */
-  --largura-barra: 300px;
-  --altura-controles: 68px;
+  --largura-da-gaveta-padrao: 300px;
 }
