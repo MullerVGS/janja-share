@@ -1,0 +1,120 @@
+.chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e2);
+  padding: var(--e4) var(--e4) var(--e2);
+}
+
+.titulo {
+  font-size: var(--texto-base);
+  margin: 0;
+}
+
+.efemero {
+  font-size: var(--texto-xs);
+  color: var(--texto-fraquissimo);
+}
+
+.lista {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  padding: var(--e2) var(--e4);
+  scrollbar-width: thin;
+}
+
+.vazio {
+  margin: 0;
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-sm);
+}
+
+.mensagem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.linhaDoAutor {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e2);
+}
+
+.autor {
+  font-size: var(--texto-sm);
+  font-weight: 700;
+  color: var(--lilas);
+}
+
+.propria .autor {
+  color: var(--menta);
+}
+
+.hora {
+  font-size: var(--texto-xs);
+  color: var(--texto-fraquissimo);
+}
+
+.texto {
+  margin: 0;
+  font-size: var(--texto-md);
+  line-height: 1.45;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.falha {
+  margin: 0;
+  padding: 0 var(--e4) var(--e2);
+  font-size: var(--texto-sm);
+  color: var(--coral);
+}
+
+.formulario {
+  display: flex;
+  gap: var(--e2);
+  padding: var(--e3) var(--e4) var(--e4);
+  border-top: 1px solid var(--linha);
+}
+
+.entrada {
+  flex: 1;
+  min-width: 0;
+  background: var(--fundo-2);
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio-pilula);
+  padding: var(--e2) var(--e3);
+}
+
+.entrada:focus-visible {
+  border-color: var(--menta);
+  outline: none;
+}
+
+.enviar {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--raio-pilula);
+  padding: var(--e2) var(--e4);
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  background: var(--menta);
+  color: #06241f;
+}
+
+.enviar:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

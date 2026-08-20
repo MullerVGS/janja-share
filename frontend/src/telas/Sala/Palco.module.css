@@ -1,0 +1,146 @@
+.palco {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  padding: var(--e3);
+}
+
+.principal {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: var(--e3);
+  align-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+}
+
+/* Uma tela fixada ocupa tudo: é o modo "quero ler o que está escrito ali". */
+.principal[data-modo='destaque'] {
+  grid-template-columns: 1fr;
+}
+
+.principal[data-modo='pessoas'] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+.tira {
+  flex: none;
+  display: flex;
+  gap: var(--e2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.quadro {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--raio-md);
+  background: var(--palco);
+  border: 1px solid var(--linha);
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+}
+
+.principal[data-modo='destaque'] .quadro {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.quadro[data-tela] {
+  border-color: rgba(94, 234, 212, 0.35);
+}
+
+.falando {
+  border-color: var(--menta);
+  box-shadow: 0 0 0 1px var(--menta);
+}
+
+.miniatura {
+  flex: none;
+  width: 176px;
+  aspect-ratio: 16 / 9;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  /* `contain` e não `cover`: cortar a borda de uma tela compartilhada esconde justamente a
+     barra de abas, o terminal e o menu que a pessoa queria mostrar. */
+  object-fit: contain;
+  background: var(--palco);
+}
+
+.semVideo {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, var(--superficie) 0%, var(--fundo-2) 100%);
+}
+
+.iniciais {
+  font-size: var(--titulo-sm);
+  font-weight: 700;
+  color: var(--texto-fraco);
+  letter-spacing: 0.02em;
+}
+
+.etiqueta {
+  position: absolute;
+  left: var(--e2);
+  bottom: var(--e2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100% - var(--e8));
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: rgba(7, 9, 12, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.nome {
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  color: var(--texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mudo {
+  color: var(--coral);
+  display: flex;
+}
+
+.fixar {
+  position: absolute;
+  top: var(--e2);
+  right: var(--e2);
+  display: flex;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--raio-sm);
+  border: 1px solid transparent;
+  background: rgba(7, 9, 12, 0.72);
+  color: var(--texto-fraco);
+}
+
+.fixar:hover {
+  color: var(--texto);
+}
+
+.fixar[aria-pressed='true'] {
+  color: var(--menta);
+  border-color: rgba(94, 234, 212, 0.4);
+  background: var(--menta-fraca);
+}
+
+.vazio {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--texto-fraquissimo);
+}

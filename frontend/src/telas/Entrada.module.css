@@ -1,0 +1,66 @@
+.tela {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--e6);
+  background: radial-gradient(1200px 600px at 50% -10%, #17222a 0%, var(--fundo) 60%);
+}
+
+.caixa {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
+
+.marca {
+  font-size: var(--titulo-md);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--menta);
+  text-align: center;
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-lg);
+  padding: var(--e5);
+  box-shadow: var(--sombra-md);
+}
+
+.titulo {
+  font-size: var(--titulo-sm);
+  margin: 0;
+}
+
+.legenda {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: var(--texto-md);
+  text-align: center;
+}
+
+.cartao .legenda {
+  text-align: left;
+}
+
+.rotulo {
+  color: var(--texto);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
+
+.rodape {
+  margin: 0;
+  text-align: center;
+  font-size: var(--texto-sm);
+  color: var(--texto-fraquissimo);
+}
