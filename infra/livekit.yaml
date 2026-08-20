@@ -1,0 +1,12 @@
+port: 7880
+bind_addresses: ["0.0.0.0"]
+rtc:
+  udp_port: 7882
+  tcp_port: 7881
+  use_external_ip: true
+room:
+  # A API é a única autoridade de criação. Ver ADR 0002.
+  auto_create: false
+logging:
+  level: info
+  json: false

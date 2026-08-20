@@ -1,0 +1,7 @@
+.git
+.env
+.scratch
+.worktrees
+.superpowers
+**/node_modules
+**/dist
