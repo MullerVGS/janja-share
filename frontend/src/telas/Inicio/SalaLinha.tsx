@@ -129,7 +129,12 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
           </Botao>
         </form>
       ) : (
-        <Botao aparencia={sala.cheia ? 'secundario' : 'primario'} disabled={sala.cheia} onClick={clicarEntrar}>
+        <Botao
+          aparencia={sala.cheia ? 'secundario' : 'primario'}
+          disabled={sala.cheia}
+          ocupado={enviando}
+          onClick={clicarEntrar}
+        >
           {sala.cheia ? 'cheia' : 'Entrar'}
         </Botao>
       )}

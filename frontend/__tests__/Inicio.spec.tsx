@@ -257,4 +257,21 @@ describe('início: criar sala', () => {
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
+
+  it('fecha no botão de fechar e no Esc, sem criar nada', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
+    await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await usuario.click(screen.getByRole('button', { name: 'Criar sala' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await usuario.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    expect(chamadas.some((c) => c.metodo === 'POST' && c.caminho === '/api/salas')).toBe(false)
+  })
 })

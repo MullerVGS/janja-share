@@ -16,17 +16,21 @@ interface Props {
  */
 export function Dialogo({ aberto, titulo, aoFechar, children }: Props) {
   const caixaRef = useRef<HTMLDivElement>(null)
+  // Só para o Esc não recriar o listener a cada render do dono do diálogo (que passa um
+  // `aoFechar` novo toda vez) — o efeito abaixo depende só de `aberto`.
+  const aoFecharRef = useRef(aoFechar)
+  aoFecharRef.current = aoFechar
 
   useEffect(() => {
     if (!aberto) return
     caixaRef.current?.focus()
 
     function aoTeclar(evento: KeyboardEvent) {
-      if (evento.key === 'Escape') aoFechar()
+      if (evento.key === 'Escape') aoFecharRef.current()
     }
     document.addEventListener('keydown', aoTeclar)
     return () => document.removeEventListener('keydown', aoTeclar)
-  }, [aberto, aoFechar])
+  }, [aberto])
 
   if (!aberto) return null
 
