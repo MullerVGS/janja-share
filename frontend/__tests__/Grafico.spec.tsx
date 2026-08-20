@@ -50,3 +50,24 @@ describe('gráfico', () => {
     expect(cabecalho).toHaveTextContent(/^FPS30 fps$/)
   })
 })
+
+describe('série fora do eixo', () => {
+  it('não puxa o domínio: o eixo fica no teto das outras séries e a linha cola no topo', () => {
+    const { container } = render(
+      <Grafico
+        titulo="Bitrate"
+        series={[
+          { nome: 'saindo', valores: [1000, 1200], cor: 'menta', destaque: true },
+          { nome: 'disponível', valores: [50_000, 50_000], cor: 'lilas', foraDoEixo: true },
+        ]}
+        referencias={[{ nome: 'teto', valor: 2500 }]}
+        piso={2500}
+        formatar={(valor) => `${valor}`}
+      />,
+    )
+    const eixo = container.querySelectorAll('span[style]')
+    expect([...eixo].map((span) => span.textContent)).toEqual(['1250', '2500'])
+    const linhas = container.querySelectorAll('path')
+    expect(linhas[1]?.getAttribute('d')).toMatch(/^M[\d.]+ 0L[\d.]+ 0$/)
+  })
+})

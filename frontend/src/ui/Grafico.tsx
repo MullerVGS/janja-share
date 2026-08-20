@@ -11,6 +11,11 @@ export interface SerieDoGrafico {
   cor: CorDaSerie
   /** A série que o gráfico é sobre: ganha o valor atual no cabeçalho. */
   destaque?: boolean
+  /**
+   * Não puxa o eixo: acima do teto a linha cola no topo, e o valor real fica na leitura. É
+   * para a banda disponível estimada, que pode ser dez vezes o teto pedido e achataria o resto.
+   */
+  foraDoEixo?: boolean
 }
 
 export interface Referencia {
@@ -47,7 +52,7 @@ export function Grafico({ titulo, series, referencias = [], faixas = [], piso = 
   const quantidade = Math.max(0, ...series.map((serie) => serie.valores.length))
   const xs = posicoesX(quantidade, TETO_DO_HISTORICO, LARGURA)
   const dominio = dominioY(
-    series.map((serie) => serie.valores),
+    series.filter((serie) => !serie.foraDoEixo).map((serie) => serie.valores),
     referencias.map((referencia) => referencia.valor),
     piso,
   )
@@ -138,7 +143,13 @@ export function Grafico({ titulo, series, referencias = [], faixas = [], piso = 
             <path
               key={serie.nome}
               className={`${estilos.linha} ${estilos[serie.cor]} ${serie.destaque ? estilos.destaque : ''}`}
-              d={caminho(serie.valores, xs, dominio, ALTURA, degraus)}
+              d={caminho(
+                serie.foraDoEixo ? serie.valores.map((valor) => (valor === null ? null : Math.min(valor, dominio.maximo))) : serie.valores,
+                xs,
+                dominio,
+                ALTURA,
+                degraus,
+              )}
             />
           ))}
 
