@@ -57,7 +57,13 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
 
     const marcar = () => setVersao((v) => v + 1)
     for (const evento of EVENTOS_DO_PALCO) nova.on(evento, marcar)
-    nova.on(RoomEvent.ConnectionStateChanged, (estado) => setConexao(estado))
+    // Conectar também muda o palco: é no `Connected` que o participante local ganha identidade e
+    // nome. Sem marcar aqui, o próprio quadro fica em "?" até o evento seguinte do palco — que
+    // numa sala em que ninguém publica nada pode não vir nunca.
+    nova.on(RoomEvent.ConnectionStateChanged, (estado) => {
+      setConexao(estado)
+      marcar()
+    })
     nova.on(RoomEvent.AudioPlaybackStatusChanged, () => setAudioLiberado(nova.canPlaybackAudio))
 
     setSala(nova)
