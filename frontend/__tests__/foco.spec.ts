@@ -20,10 +20,10 @@ function palco(telas: Peca[], pessoas: Peca[] = []): Palco {
 }
 
 describe('decidirFoco: entrar na sala', () => {
-  it('com tela no ar, foca a primeira (a mais antiga)', () => {
-    const antigA = peca({ chave: 'tela:a' })
+  it('com tela no ar, foca a primeira do palco', () => {
+    const primeira = peca({ chave: 'tela:a' })
     const nova = peca({ chave: 'tela:b' })
-    const resultado = decidirFoco(FOCO_INICIAL, palco([antigA, nova]), { tipo: 'palcoMudou', telasAntes: [] })
+    const resultado = decidirFoco(FOCO_INICIAL, palco([primeira, nova]), { tipo: 'palcoMudou', telasAntes: [] })
     expect(resultado).toEqual({ chave: 'tela:a', soltoPelaPessoa: false })
   })
 
@@ -108,7 +108,7 @@ describe('decidirFoco: exceção da tela própria', () => {
 })
 
 describe('decidirFoco: peça em foco que sai', () => {
-  it('devolve para a grade sem marcar soltoPelaPessoa, e a próxima tela a subir assume', () => {
+  it('sem outra tela no ar, devolve para a grade sem marcar soltoPelaPessoa, e a próxima tela a subir assume', () => {
     const estado: EstadoDoFoco = { chave: 'tela:a', soltoPelaPessoa: false }
 
     const semAMinhaTela = decidirFoco(estado, palco([]), { tipo: 'palcoMudou', telasAntes: ['tela:a'] })
@@ -117,5 +117,23 @@ describe('decidirFoco: peça em foco que sai', () => {
     const proxima = peca({ chave: 'tela:b' })
     const comTelaNova = decidirFoco(semAMinhaTela, palco([proxima]), { tipo: 'palcoMudou', telasAntes: [] })
     expect(comTelaNova).toEqual({ chave: 'tela:b', soltoPelaPessoa: false })
+  })
+
+  it('havendo outra tela viva, ela assume na mesma passada — ninguém fica na grade com tela no ar', () => {
+    const estado: EstadoDoFoco = { chave: 'tela:a', soltoPelaPessoa: false }
+    const resultado = decidirFoco(estado, palco([peca({ chave: 'tela:b' })]), {
+      tipo: 'palcoMudou',
+      telasAntes: ['tela:a', 'tela:b'],
+    })
+    expect(resultado).toEqual({ chave: 'tela:b', soltoPelaPessoa: false })
+  })
+
+  it('a pessoa em foco que sai da sala não promove ninguém quando não há tela no ar', () => {
+    const estado: EstadoDoFoco = { chave: 'pessoa:bea', soltoPelaPessoa: false }
+    const resultado = decidirFoco(estado, palco([], [peca({ chave: 'pessoa:eu', ehTela: false })]), {
+      tipo: 'palcoMudou',
+      telasAntes: [],
+    })
+    expect(resultado).toEqual({ chave: null, soltoPelaPessoa: false })
   })
 })
