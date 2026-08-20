@@ -75,6 +75,13 @@ describe('aba Qualidade: controles', () => {
     ])
   })
 
+  it('cada grupo de controles tem o nome que se lê — inclusive o que tem espaço e vírgula', () => {
+    montarQualidade()
+    for (const nome of ['Conteúdo', 'Codec', 'Resolução', 'FPS', 'Sob aperto, ceder']) {
+      expect(screen.getByRole('radiogroup', { name: nome })).toBeInTheDocument()
+    }
+  })
+
   it('o slider de teto vai de 200 a 20 000 kbps', () => {
     montarQualidade()
     const slider = screen.getByRole('slider', { name: /teto/i })

@@ -141,7 +141,6 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
   const [republicando, setRepublicando] = useState(false)
   // O último pedido, para a republicação em curso saber se ficou para trás.
   const pedido = useRef(perfil)
-  pedido.current = perfil
 
   // Republicar deixa a tela sem publicação por um instante; isso não é "parou".
   const ativo = Boolean(publicacao) || republicando
@@ -226,6 +225,7 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
 
   const definirPerfil = useCallback(
     (novo: PerfilDeQualidade) => {
+      pedido.current = novo
       setPerfil(novo)
       gravarPreferencias({ perfil: novo })
       setGovernador(zerarGovernador(historico))
@@ -254,7 +254,8 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
       try {
         if (desligarAntes) await sala.localParticipant.setScreenShareEnabled(false)
         setCodecPendente(null)
-        await sala.localParticipant.setScreenShareEnabled(true, opcoesDeCaptura(perfilEfetivo), opcoesDePublicacao(perfilEfetivo))
+        // Começa pelo pedido: parar zerou o governador, e um degrau antigo não tem mais motivo.
+        await sala.localParticipant.setScreenShareEnabled(true, opcoesDeCaptura(perfil), opcoesDePublicacao(perfil))
       } catch (falha) {
         // Cancelar o seletor nativo do Chrome cai aqui como `NotAllowedError`; não é erro para
         // mostrar em vermelho, é a pessoa mudando de ideia.
@@ -266,7 +267,7 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
         setMudando(false)
       }
     },
-    [sala, perfilEfetivo],
+    [sala, perfil],
   )
 
   const alternar = useCallback(async () => {

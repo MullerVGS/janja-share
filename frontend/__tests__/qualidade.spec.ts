@@ -242,6 +242,7 @@ describe('perfil vindo de fora (preferências)', () => {
     expect(ehPerfil(semCodec)).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, conteudo: 'nitidez' })).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, codec: 'h265' })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, codec: 'constructor' })).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, ceder: 'tudo' })).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, resolucao: '4k' })).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, fps: 45 })).toBe(false)

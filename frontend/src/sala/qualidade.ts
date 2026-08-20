@@ -126,13 +126,11 @@ export function resolucaoDaAltura(altura: number): Resolucao | null {
 export function ehPerfil(valor: unknown): valor is PerfilDeQualidade {
   if (valor === null || typeof valor !== 'object') return false
   const p = valor as Record<string, unknown>
+  const entre = (vocabulario: object, valor: unknown) => typeof valor === 'string' && Object.hasOwn(vocabulario, valor)
   return (
-    typeof p.conteudo === 'string' &&
-    p.conteudo in CONTEUDOS &&
-    typeof p.codec === 'string' &&
-    p.codec in CODECS &&
-    typeof p.ceder === 'string' &&
-    p.ceder in CEDER &&
+    entre(CONTEUDOS, p.conteudo) &&
+    entre(CODECS, p.codec) &&
+    entre(CEDER, p.ceder) &&
     RESOLUCOES.some((opcao) => opcao.valor === p.resolucao) &&
     OPCOES_DE_FPS.includes(p.fps as number) &&
     typeof p.tetoKbps === 'number' &&

@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import estilos from './Segmentado.module.css'
 
 export interface OpcaoSegmentada<T> {
@@ -19,12 +20,13 @@ interface Props<T> {
  * o painel de qualidade vive aberto durante a chamada: cada opção precisa custar um clique.
  */
 export function Segmentado<T extends string | number>({ rotulo, opcoes, valor, aoEscolher }: Props<T>) {
+  const id = useId()
   return (
     <div className={estilos.grupo}>
-      <span className={estilos.rotulo} id={`seg-${rotulo}`}>
+      <span className={estilos.rotulo} id={id}>
         {rotulo}
       </span>
-      <div className={estilos.trilha} role="radiogroup" aria-labelledby={`seg-${rotulo}`}>
+      <div className={estilos.trilha} role="radiogroup" aria-labelledby={id}>
         {opcoes.map((opcao) => (
           <button
             key={String(opcao.valor)}

@@ -13,7 +13,7 @@ export interface Resumo {
   tom: Tom
 }
 
-export interface Governo {
+export interface Governador {
   pedido: PerfilDeQualidade
   estado: EstadoDoGovernador
 }
@@ -22,11 +22,11 @@ export interface Governo {
 export function resumirTransmissao(
   amostra: AmostraDoEmissor | null,
   relatorio: RelatorioDeAplicacao | null,
-  governo: Governo | null,
+  governador: Governador | null,
 ): Resumo | null {
   if (!amostra) return null
 
-  const degrau = governo ? descreverDegrau(governo.pedido, governo.estado) : null
+  const degrau = governador ? descreverDegrau(governador.pedido, governador.estado) : null
   const partes = [
     amostra.codec ?? '—',
     amostra.altura === null ? '—' : `${amostra.altura}p`,
