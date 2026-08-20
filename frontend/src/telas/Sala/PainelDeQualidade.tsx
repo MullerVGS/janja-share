@@ -4,6 +4,7 @@ import {
   PRIORIDADES,
   RESOLUCOES,
   TETO,
+  trocarPrioridade,
   type PerfilDeQualidade,
   type Prioridade,
   type Resolucao,
@@ -61,7 +62,7 @@ export function PainelDeQualidade({ compartilhamento }: { compartilhamento: Comp
           rotulo="Prioridade"
           opcoes={OPCOES_DE_PRIORIDADE}
           valor={perfil.prioridade}
-          aoEscolher={(escolhida) => ajustar({ prioridade: escolhida })}
+          aoEscolher={(escolhida) => definirPerfil(trocarPrioridade(perfil, escolhida))}
         />
         <p className={estilos.explicacao}>{prioridade.explicacao}</p>
       </div>

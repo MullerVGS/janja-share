@@ -68,28 +68,39 @@ export const PRIORIDADES: Record<Prioridade, Ajuste> = {
 }
 
 /**
- * Limites do slider de teto, em kbps.
- *
- * Os números moram só aqui de propósito: quem controla o projeto vai afiná-los quando souber o
- * uplink medido da VPS, e a afinação precisa ser um diff de uma linha.
+ * Quem limita esta transmissão é o **upload residencial de quem compartilha** (tipicamente
+ * 10–40 Mbps no Brasil), não o servidor: a VPS sobe ~1 Gbps medido, então o fan-out do SFU é
+ * praticamente de graça. Não aperte os números abaixo "para poupar o servidor" — não é ele que dói.
  */
+
+/** Limites do slider de teto, em kbps. O topo existe para quem tem fibra boa e quer 1440p60. */
 export const TETO = {
   minimoKbps: 200,
-  maximoKbps: 12_000,
+  maximoKbps: 10_000,
   passoKbps: 100,
 } as const
 
 /**
- * Perfil de partida do compartilhamento de tela: 1080p a 15 fps priorizando nitidez.
+ * Perfil de partida de cada prioridade — os dois modos da chave Nitidez ↔ Fluidez.
  *
- * 15 fps porque a tela típica aqui é editor e terminal — conteúdo que muda em blocos, não em
- * movimento contínuo; e porque gastar quadro é o jeito mais caro de gastar o uplink de uma VPS.
+ * Nitidez a 15 fps porque a tela típica aqui é editor e terminal: conteúdo que muda em blocos,
+ * onde quadro gasto é banda tirada da legibilidade. Fluidez dobra os quadros e sobe o teto na
+ * mesma proporção, senão o modo "movimento fluido" entregaria movimento borrado.
  */
-export const PERFIL_PADRAO: PerfilDeQualidade = {
-  resolucao: '1080p',
-  fps: 15,
-  prioridade: 'nitidez',
-  tetoKbps: 2_500,
+export const PRESETS: Record<Prioridade, PerfilDeQualidade> = {
+  nitidez: { resolucao: '1080p', fps: 15, prioridade: 'nitidez', tetoKbps: 2_500 },
+  fluidez: { resolucao: '1080p', fps: 30, prioridade: 'fluidez', tetoKbps: 4_000 },
+}
+
+export const PERFIL_PADRAO: PerfilDeQualidade = PRESETS.nitidez
+
+/**
+ * Troca de prioridade aplicando o preset da nova — menos a resolução, que continua sendo a
+ * escolha da pessoa sobre a própria tela. Devolver 1080p a quem desceu para 720p justamente
+ * porque a rede estava ruim seria o pior momento possível para ser prestativo.
+ */
+export function trocarPrioridade(atual: PerfilDeQualidade, prioridade: Prioridade): PerfilDeQualidade {
+  return { ...PRESETS[prioridade], resolucao: atual.resolucao }
 }
 
 export function alturaDaResolucao(resolucao: Resolucao): number | null {

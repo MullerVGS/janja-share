@@ -4,7 +4,10 @@ import {
   parametrosDoPerfil,
   restricoesDoPerfil,
   PERFIL_PADRAO,
+  PRESETS,
   PRIORIDADES,
+  TETO,
+  trocarPrioridade,
   type PerfilDeQualidade,
 } from '../src/sala/qualidade'
 
@@ -161,5 +164,48 @@ describe('aplicação ao vivo', () => {
 
   it('sem faixa e sem sender não estoura — só relata que não havia o que ajustar', async () => {
     expect(await aplicarPerfil({}, perfil())).toEqual({ captura: 'indisponivel', encoder: 'indisponivel' })
+  })
+})
+
+/**
+ * Os presets são dimensionados pelo upload residencial de quem compartilha, não pela VPS (que
+ * sobe ~1 Gbps medido). Estes testes existem para que apertá-los "para poupar o servidor" tenha
+ * de ser uma decisão explícita, e não um deslize.
+ */
+describe('presets dimensionados pelo uplink de quem compartilha', () => {
+  it('nitidez fica em 1080p a 15 fps com 2500 kbps', () => {
+    expect(PRESETS.nitidez).toEqual({ resolucao: '1080p', fps: 15, prioridade: 'nitidez', tetoKbps: 2500 })
+  })
+
+  it('fluidez dobra os quadros e sobe o teto junto — 1080p a 30 fps com 4000 kbps', () => {
+    expect(PRESETS.fluidez).toEqual({ resolucao: '1080p', fps: 30, prioridade: 'fluidez', tetoKbps: 4000 })
+  })
+
+  it('o perfil de partida é o preset de nitidez', () => {
+    expect(PERFIL_PADRAO).toBe(PRESETS.nitidez)
+  })
+
+  it('o slider chega a 10 Mbps — teto de quem tem fibra boa e quer 1440p60', () => {
+    expect(TETO.maximoKbps).toBe(10_000)
+    expect(TETO.minimoKbps).toBeLessThan(PRESETS.nitidez.tetoKbps)
+  })
+})
+
+describe('troca de prioridade', () => {
+  it('aplica os quadros e o teto do preset escolhido', () => {
+    const depois = trocarPrioridade(PRESETS.nitidez, 'fluidez')
+    expect(depois.prioridade).toBe('fluidez')
+    expect(depois.fps).toBe(30)
+    expect(depois.tetoKbps).toBe(4000)
+  })
+
+  it('preserva a resolução escolhida — quem desceu para 720p por causa da rede não volta a 1080p', () => {
+    const magro = perfil({ resolucao: '720p', prioridade: 'nitidez' })
+    expect(trocarPrioridade(magro, 'fluidez').resolucao).toBe('720p')
+  })
+
+  it('a volta para nitidez devolve 15 fps e 2500 kbps', () => {
+    const depois = trocarPrioridade(trocarPrioridade(PERFIL_PADRAO, 'fluidez'), 'nitidez')
+    expect([depois.fps, depois.tetoKbps]).toEqual([15, 2500])
   })
 })
