@@ -111,9 +111,62 @@
   text-overflow: ellipsis;
 }
 
-.mudo {
+.microfoneFechado {
   color: var(--coral);
   display: flex;
+}
+
+/* Volume local: some enquanto o ponteiro está longe, aparece ao passar por cima ou quando o
+   teclado chega nele — o quadro é para o vídeo, não para os botões. */
+.volume {
+  position: absolute;
+  right: var(--e2);
+  bottom: var(--e2);
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+  padding: 3px 8px 3px 4px;
+  border-radius: var(--raio-pilula);
+  background: rgba(7, 9, 12, 0.72);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.quadro:hover .volume,
+.volume:focus-within {
+  opacity: 1;
+}
+
+.mudo {
+  display: flex;
+  cursor: pointer;
+  padding: 3px;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: transparent;
+  color: var(--texto-fraco);
+}
+
+.mudo:hover {
+  color: var(--texto);
+}
+
+.mudo[aria-pressed='true'] {
+  color: var(--coral);
+}
+
+.faixaDoVolume {
+  width: 78px;
+  height: 3px;
+  cursor: pointer;
+  accent-color: var(--menta);
+}
+
+/* Na tira o quadro é estreito, mas é lá que as pessoas ficam enquanto há tela no ar — tirar o
+   volume daqui seria tirá-lo justamente da situação normal desta sala. */
+.miniatura .faixaDoVolume {
+  width: 52px;
 }
 
 .fixar {

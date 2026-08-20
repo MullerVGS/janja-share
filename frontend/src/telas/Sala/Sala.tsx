@@ -7,6 +7,7 @@ import { montarPalco } from '../../sala/palco'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
 import { useSala } from '../../sala/useSala'
+import { useVolumes } from '../../sala/useVolumes'
 import { useSessao } from '../../sessao/sessao'
 import { ultima } from '../../telemetria/historico'
 import { useTelemetria } from '../../telemetria/useTelemetria'
@@ -40,6 +41,8 @@ export function Sala() {
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
   // mostrava "Nada dito ainda." enquanto os outros continuavam falando.
   const chat = useChat(sala, credenciais?.nome ?? '')
+  // Um só mapa de volumes na sala: o controle está no quadro e o som sai do `AudioDaSala`.
+  const volumes = useVolumes()
 
   const [fixada, setFixada] = useState<string | null>(null)
   const [preferencias] = useState(lerPreferencias)
@@ -166,7 +169,7 @@ export function Sala() {
 
       <div className={estilos.corpo}>
         <main className={estilos.centro}>
-          <Palco palco={palco} fixada={fixada} aoFixar={setFixada} />
+          <Palco palco={palco} fixada={fixada} aoFixar={setFixada} volumes={volumes} />
         </main>
 
         <Lateral
@@ -206,7 +209,7 @@ export function Sala() {
         aoSair={sair}
       />
 
-      <AudioDaSala sala={sala} />
+      <AudioDaSala sala={sala} volumes={volumes} />
     </div>
   )
 }

@@ -17,6 +17,12 @@ export interface Peca {
   publicacao?: TrackPublication
   microfoneLigado: boolean
   falando: boolean
+  /**
+   * Há som vindo deste quadro — a voz, no quadro de pessoa; o som da tela, no de tela. É o que
+   * decide se existe volume a regular. Vale pela *publicação*, não pelo mudo de quem manda:
+   * mudo vai e volta o tempo todo, e o controle não pode piscar junto.
+   */
+  temAudio: boolean
 }
 
 export interface Palco {
@@ -26,7 +32,8 @@ export interface Palco {
 
 const PALCO_VAZIO: Palco = { telas: [], pessoas: [] }
 
-function nomeDe(participante: Participant): string {
+/** O nome que a etiqueta mostra — e, por isso, também a chave do volume local daquele alguém. */
+export function nomeDoParticipante(participante: Participant): string {
   return participante.name?.trim() || participante.identity
 }
 
@@ -42,28 +49,31 @@ export function montarPalco(sala: Room | null): Palco {
     const camera = participante.getTrackPublication(Track.Source.Camera)
     const microfone = participante.getTrackPublication(Track.Source.Microphone)
     const tela = participante.getTrackPublication(Track.Source.ScreenShare)
+    const somDaTela = participante.getTrackPublication(Track.Source.ScreenShareAudio)
 
     pessoas.push({
       chave: `pessoa:${participante.identity}`,
       identidade: participante.identity,
-      nome: nomeDe(participante),
+      nome: nomeDoParticipante(participante),
       ehTela: false,
       proprio,
       publicacao: camera && !camera.isMuted ? camera : undefined,
       microfoneLigado: Boolean(microfone && !microfone.isMuted),
       falando: participante.isSpeaking,
+      temAudio: Boolean(microfone),
     })
 
     if (tela && !tela.isMuted) {
       telas.push({
         chave: `tela:${participante.identity}`,
         identidade: participante.identity,
-        nome: nomeDe(participante),
+        nome: nomeDoParticipante(participante),
         ehTela: true,
         proprio,
         publicacao: tela,
         microfoneLigado: false,
         falando: false,
+        temAudio: Boolean(somDaTela),
       })
     }
   }
