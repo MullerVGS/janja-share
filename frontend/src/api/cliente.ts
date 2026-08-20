@@ -3,7 +3,7 @@
  *
  * O contrato responde erro sempre como `{ "erro": "<codigo>" }` — o código é o dado, a frase
  * em português é escolha desta camada. Traduzir aqui, e não em cada tela, é o que garante que
- * `convite_esgotado` diga a mesma coisa na entrada e no painel.
+ * `sala_existe` diga a mesma coisa no diálogo de criar e na linha de entrar.
  */
 
 export class ErroDaApi extends Error {
@@ -31,11 +31,6 @@ export class ErroDaApi extends Error {
  * endereço). A mesma frase mentiria sobre um dos dois motivos.
  */
 const FRASES: Record<string, string> = {
-  // TODO(ticket 2, próximo commit): morrem junto com `telas/Entrada.tsx` e `telas/Admin/`.
-  convite_invalido: 'Este convite não existe. Confira se o link foi copiado inteiro.',
-  convite_expirado: 'Este convite expirou. Peça um link novo a quem te chamou.',
-  convite_esgotado: 'Este convite já foi usado o número de vezes permitido.',
-  convite_revogado: 'Este convite foi revogado.',
   nome_invalido: 'Escolha um nome com 1 a 40 caracteres.',
   nome_da_sala_invalido: 'Esse nome de sala não é válido — use letras ou números, até 40 caracteres.',
   sala_existe: 'Já existe uma sala com esse nome — entre nela ou escolha outro.',

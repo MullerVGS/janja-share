@@ -25,4 +25,8 @@ describe('frases dos códigos de domínio das salas', () => {
     expect(frase).not.toBe(mensagemDoErro(new ErroDaApi(400, 'nome_invalido')))
     expect(frase.toLowerCase()).not.toContain('1 a 40 caracteres')
   })
+
+  it('código desconhecido cai no genérico', () => {
+    expect(mensagemDoErro(new ErroDaApi(404, 'codigo_desconhecido'))).toBe('O servidor respondeu 404 sem explicar o motivo.')
+  })
 })

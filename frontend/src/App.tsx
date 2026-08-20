@@ -2,7 +2,6 @@ import { Suspense, lazy } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ProvedorDeSessao } from './sessao/sessao'
-import { Admin } from './telas/Admin/Admin'
 import { Inicio } from './telas/Inicio/Inicio'
 
 // A sala carrega o SDK do LiveKit inteiro — quase todo o peso do bundle. Separá-la deixa a
@@ -30,7 +29,6 @@ export function App() {
             <Routes>
               <Route path="/" element={<Inicio />} />
               <Route path="/sala/:slug" element={<Sala />} />
-              <Route path="/admin" element={<Admin />} />
               {/* O backend devolve o index.html para qualquer rota fora de `/api`, então quem
                   resolve "não existe" é este roteador. */}
               <Route path="*" element={<Navigate to="/" replace />} />
