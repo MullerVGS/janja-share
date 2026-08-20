@@ -15,10 +15,3 @@ export function situacaoDoConvite(convite: Convite, agora: number = Date.now()):
   if (convite.usosMax !== null && convite.usos >= convite.usosMax) return 'esgotado'
   return 'ativo'
 }
-
-export const FRASE_DA_SITUACAO: Record<Situacao, string> = {
-  ativo: 'ativo',
-  revogado: 'revogado',
-  expirado: 'expirado',
-  esgotado: 'esgotado',
-}

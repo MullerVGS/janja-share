@@ -34,15 +34,6 @@
   outline: none;
 }
 
-.comErro {
-  border-color: var(--coral);
-}
-
-.erro {
-  font-size: var(--texto-sm);
-  color: var(--coral);
-}
-
 .dica {
   font-size: var(--texto-sm);
   color: var(--texto-fraquissimo);

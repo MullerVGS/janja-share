@@ -7,7 +7,7 @@ import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { IconeCerto, IconeCopiar } from '../../ui/Icone'
-import { FRASE_DA_SITUACAO, situacaoDoConvite } from './situacao'
+import { situacaoDoConvite } from './situacao'
 import estilos from './Admin.module.css'
 
 const CHAVE_DOS_CONVITES = ['admin', 'convites'] as const
@@ -179,7 +179,7 @@ export function Admin() {
                     </td>
                     <td>
                       <span className={estilos.situacao} data-situacao={situacao}>
-                        {FRASE_DA_SITUACAO[situacao]}
+                        {situacao}
                       </span>
                     </td>
                     <td className={estilos.acao}>
