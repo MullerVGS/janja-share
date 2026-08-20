@@ -1,7 +1,15 @@
+import { Transform } from 'class-transformer'
 import { IsInt, IsString, Length, Max, Min, ValidateIf } from 'class-validator'
 
+const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value)
+
 export class CriarConviteDto {
-  @IsString() @Length(1, 60) rotulo!: string
+  // Transform roda antes da validação (ValidationPipe com transform:true) — "   " vira "" e
+  // cai no @Length(1,60) como vazio, em vez de virar um convite de verdade com rótulo em branco.
+  @Transform(trim)
+  @IsString()
+  @Length(1, 60)
+  rotulo!: string
 
   @IsInt() @Min(1) @Max(8760) validadeHoras!: number
 

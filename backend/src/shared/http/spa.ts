@@ -11,20 +11,27 @@ export function dirPublicoPadrao(): string {
   return resolve(join(__dirname, '..', '..', 'publico'))
 }
 
-const PREFIXO_API = '/api/'
+// Tolerante a barra(s) repetida(s) antes de "api" (`//api/...`) e a caixa (`/API/...`): o
+// Express casa rota ignorando os dois, então este fallback — que roda como middleware cru,
+// ANTES do router do Nest — precisa reconhecer a mesma coisa como "API" ou vira uma forma de
+// contornar o prefixo /api inteiro (e, com ele, a guarda de admin). Um `startsWith` simples
+// deixava passar `/API/admin/convites` como se fosse rota de cliente, devolvendo a casca HTML
+// no lugar do JSON — ou, pior, da guarda.
+const PREFIXO_API = /^\/+api(\/|$)/i
 const TEM_EXTENSAO = /\.[a-z0-9]+$/i
 
 /**
  * O fallback do SPA devolve `index.html` para caminhos que só o React Router conhece
  * (`/c/:token`, `/sala`, `/admin`). Três exclusões:
  * - só GET/HEAD: POST em rota inexistente é erro, não navegação;
- * - nada sob `/api/`: erro de API precisa continuar JSON;
+ * - nada sob `/api` (qualquer caixa, qualquer barra repetida antes): erro de API precisa
+ *   continuar JSON;
  * - nada com extensão: asset que sumiu do build tem que dar 404, não a casca do app com
  *   `Content-Type: text/html` (o erro apareceria como "Unexpected token '<'" no console).
  */
 export function ehRotaDoCliente(metodo: string, caminho: string): boolean {
   if (metodo !== 'GET' && metodo !== 'HEAD') return false
-  if (caminho.startsWith(PREFIXO_API)) return false
+  if (PREFIXO_API.test(caminho)) return false
   return !TEM_EXTENSAO.test(caminho)
 }
 

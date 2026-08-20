@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
 import { TypeOrmModule } from '@nestjs/typeorm'
+import { AdminHostGuard } from './admin/admin-host.guard'
 import { ConfigController } from './config/config.controller'
 import { ConvitesModule } from './convites/convites.module'
 import { SalaModule } from './sala/sala.module'
@@ -23,5 +25,7 @@ import { Convite } from './shared/db/entidades/convite.entity'
     SalaModule,
   ],
   controllers: [ConfigController],
+  // Global: protege TODA /api/admin/* sem depender de @UseGuards() em cada controller admin.
+  providers: [{ provide: APP_GUARD, useClass: AdminHostGuard }],
 })
 export class AppModule {}

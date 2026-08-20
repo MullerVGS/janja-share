@@ -1,11 +1,11 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common'
-import { AdminHostGuard } from '../../admin/admin-host.guard'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common'
 import { CriarConviteDto } from '../dto/criar-convite.dto'
 import { CriarConviteUseCase } from '../useCases/criarConvite/CriarConviteUseCase'
 import { ListarConvitesUseCase } from '../useCases/listarConvites/ListarConvitesUseCase'
 import { RevogarConviteUseCase } from '../useCases/revogarConvite/RevogarConviteUseCase'
 
-@UseGuards(AdminHostGuard)
+// Sem @UseGuards aqui: a guarda de Host é global (AdminHostGuard via APP_GUARD em
+// app.module.ts) e se aplica pelo caminho /api/admin/*, não por decorator neste controller.
 @Controller('admin/convites')
 export class AdminConvitesController {
   constructor(
