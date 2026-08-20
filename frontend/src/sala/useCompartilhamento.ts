@@ -26,8 +26,14 @@ const ATRASO_DO_AJUSTE_MS = 180
  * Não existe picker próprio: o seletor nativo do Chrome é o produto. O que este objeto faz é
  * pedir a ele os recursos que valem a pena — áudio da aba, e o botão nativo de trocar a tela
  * compartilhada sem derrubar a transmissão (`surfaceSwitching`).
+ *
+ * `resolution` é obrigatório mesmo em "Nativa": omitir faz o SDK injetar
+ * `ScreenSharePresets.h1080fps30.resolution`, e a captura nasceria travada em 1080p enquanto a
+ * UI promete que a tela vai como o monitor entrega. Zero é o "sem teto" do SDK — e é o preço de
+ * o `frameRate` daqui também ser ignorado nesse modo (a cláusula do SDK exige largura e altura
+ * positivas), o que o `applyConstraints` logo em seguida resolve.
  */
-function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOptions {
+export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOptions {
   const altura = alturaDaResolucao(perfil.resolucao)
   return {
     audio: true,
@@ -36,7 +42,10 @@ function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOptions {
     // A própria aba do share na lista só produz o túnel de espelhos.
     selfBrowserSurface: 'exclude',
     contentHint: PRIORIDADES[perfil.prioridade].contentHint,
-    ...(altura === null ? {} : { resolution: { width: Math.round((altura * 16) / 9), height: altura, frameRate: perfil.fps } }),
+    resolution:
+      altura === null
+        ? { width: 0, height: 0 }
+        : { width: Math.round((altura * 16) / 9), height: altura, frameRate: perfil.fps },
   }
 }
 
@@ -44,13 +53,18 @@ function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOptions {
  * Camada única de propósito: o teto de bitrate do painel vira uma promessa exata e o medidor
  * mostra um número que corresponde a ela. Com simulcast o uplink seria a soma das camadas —
  * e numa sala de cinco pessoas ninguém assina a versão pequena de uma tela em destaque.
+ *
+ * O encoding vai em `screenShareEncoding`, não em `videoEncoding`: o `computeVideoEncodings` do
+ * SDK só olha para o primeiro quando a fonte é tela. Com o campo errado, a transmissão nascia
+ * no default do SDK (h1080fps15) e só era corrigida pelo `setParameters` — ou seja, escolher
+ * Fluidez e começar a compartilhar dava 15 fps nos primeiros instantes.
  */
-function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptions {
+export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptions {
   return {
     source: Track.Source.ScreenShare,
     simulcast: false,
     degradationPreference: PRIORIDADES[perfil.prioridade].degradacao,
-    videoEncoding: { maxBitrate: perfil.tetoKbps * 1000, maxFramerate: perfil.fps },
+    screenShareEncoding: { maxBitrate: perfil.tetoKbps * 1000, maxFramerate: perfil.fps },
   }
 }
 
