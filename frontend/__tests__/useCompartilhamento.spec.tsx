@@ -13,6 +13,7 @@ function faixaFalsa(kind: 'video' | 'audio', codec: string | undefined = 'vp9') 
   return {
     kind,
     codec: codec as string | undefined,
+    isMuted: false,
     mediaStreamTrack: { readyState: 'live' as MediaStreamTrackState, contentHint: '', applyConstraints: vi.fn(async () => {}) },
     sender: {
       getParameters: () => parametros,
@@ -26,7 +27,14 @@ function faixaFalsa(kind: 'video' | 'audio', codec: string | undefined = 'vp9') 
 }
 
 type Faixa = ReturnType<typeof faixaFalsa>
-type Publicacao = { trackSid: string; track: Faixa; options?: TrackPublishOptions }
+type Publicacao = {
+  trackSid: string
+  track: Faixa
+  options?: TrackPublishOptions
+  readonly isMuted: boolean
+  mute(): Promise<void>
+  unmute(): Promise<void>
+}
 
 /**
  * O participante local de mentira: guarda publicações por fonte e se comporta como o SDK nos
@@ -89,10 +97,24 @@ class SalaFalsa {
     return presas.length > 0
   }
 
+  /** Como no SDK, o mudo mora na faixa: a publicação só o repassa, e por isso ele atravessa uma republicação. */
   private publicar(fonte: Track.Source, faixa: Faixa, options?: TrackPublishOptions): Publicacao {
     this.sids += 1
     faixa.sender = faixa.sender ?? faixaFalsa(faixa.kind).sender
-    const publicacao = { trackSid: `t${this.sids}`, track: faixa, options }
+    const publicacao: Publicacao = {
+      trackSid: `t${this.sids}`,
+      track: faixa,
+      options,
+      get isMuted() {
+        return faixa.isMuted
+      },
+      mute: vi.fn(async () => {
+        faixa.isMuted = true
+      }),
+      unmute: vi.fn(async () => {
+        faixa.isMuted = false
+      }),
+    }
     this.publicacoes.set(fonte, publicacao)
     return publicacao
   }
@@ -434,5 +456,46 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     expect(sala.video()?.track.codec).toBe('h264')
     expect(result.current.perfil.codec).toBe('h264')
     expect(result.current.ocupado).toBe(false)
+  })
+})
+
+describe('useCompartilhamento: áudio da tela', () => {
+  it('sem áudio no seletor não há publicação para calar', async () => {
+    const sala = new SalaFalsa()
+    sala.comAudio = false
+    const { result, ligar } = montar(sala)
+    await ligar()
+
+    expect(result.current.audioDaTela).toBeNull()
+  })
+
+  it('calar e devolver o som é mute na publicação — a faixa não sai do ar', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir, reler } = montar(sala)
+    await ligar()
+    const faixaDeAudio = sala.audio()?.track
+    expect(result.current.audioDaTela).toBe(sala.audio())
+
+    await agir(() => result.current.alternarAudioDaTela())
+    expect(sala.audio()?.isMuted).toBe(true)
+    expect(sala.audio()?.track).toBe(faixaDeAudio)
+    expect(sala.localParticipant.unpublishTrack).not.toHaveBeenCalled()
+
+    await agir(() => result.current.alternarAudioDaTela())
+    reler()
+    expect(sala.audio()?.isMuted).toBe(false)
+  })
+
+  it('o áudio calado volta calado da troca de codec — republicar não é desculpa para voltar a falar', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    await agir(() => result.current.alternarAudioDaTela())
+
+    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+
+    expect(sala.video()?.track.codec).toBe('av1')
+    expect(sala.audio()).toBeDefined()
+    expect(sala.audio()?.isMuted).toBe(true)
   })
 })

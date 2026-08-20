@@ -106,6 +106,67 @@ export function IconeFixar(props: Props) {
   )
 }
 
+export function IconeSom(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" />
+      <path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10" />
+    </Traco>
+  )
+}
+
+export function IconeSomMudo(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" />
+      <path d="M16 10l5 4M21 10l-5 4" />
+    </Traco>
+  )
+}
+
+export function IconeTelaCheia(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="M4 9V4.5h5M20 9V4.5h-5M4 15v4.5h5M20 15v4.5h-5" />
+    </Traco>
+  )
+}
+
+export function IconeSairDaTelaCheia(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="M9 4.5V9H4.5M15 4.5V9h4.5M9 19.5V15H4.5M15 19.5V15h4.5" />
+    </Traco>
+  )
+}
+
+export function IconeJanelinha(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <rect x="12" y="11" width="8" height="6.5" rx="1.5" />
+    </Traco>
+  )
+}
+
+export function IconePixelAPixel(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2" />
+      <path d="M9.5 3.5v17M15.5 3.5v17M3.5 9.5h17M3.5 15.5h17" />
+    </Traco>
+  )
+}
+
+export function IconeCaber(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2" />
+      <rect x="7" y="8.5" width="10" height="7" rx="1" />
+    </Traco>
+  )
+}
+
 export function IconeCopiar(props: Props) {
   return (
     <Traco {...props}>

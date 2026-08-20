@@ -107,6 +107,10 @@ export interface Compartilhamento {
   relatorio: RelatorioDeAplicacao | null
   /** Codec pedido que o SDK não pôs no ar: vale no próximo compartilhamento. */
   codecPendente: Codec | null
+  /** A publicação do som da tela; `null` quando o seletor nativo não marcou "compartilhar áudio". */
+  audioDaTela: LocalTrackPublication | null
+  /** Cala e devolve o som da tela para a sala, sem republicar nada. */
+  alternarAudioDaTela(): Promise<void>
   erro: string | null
   ocupado: boolean
   alternar(): Promise<void>
@@ -300,6 +304,22 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
 
   const reiniciar = useCallback(() => ligar(Boolean(publicacao)), [ligar, publicacao])
 
+  /**
+   * Calar o som da tela é `mute()` na publicação, não despublicar: a faixa continua no ar,
+   * quem assiste vê o silêncio chegar na hora, e voltar a falar não custa uma renegociação.
+   * Recapturar seria a única alternativa — e recapturar reabre o seletor nativo.
+   */
+  const alternarAudioDaTela = useCallback(async () => {
+    const audio = sala ? publicacaoDe(sala, Track.Source.ScreenShareAudio) : undefined
+    if (!audio) return
+    setErro(null)
+    try {
+      await (audio.isMuted ? audio.unmute() : audio.mute())
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'não foi possível mudar o áudio da tela')
+    }
+  }, [sala])
+
   return {
     ativo,
     perfil,
@@ -310,6 +330,8 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     governador,
     relatorio,
     codecPendente,
+    audioDaTela: (sala && publicacaoDe(sala, Track.Source.ScreenShareAudio)) ?? null,
+    alternarAudioDaTela,
     erro,
     ocupado: mudando || republicando,
     alternar,

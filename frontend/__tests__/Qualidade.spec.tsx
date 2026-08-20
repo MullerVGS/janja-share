@@ -1,33 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { GOVERNADOR_PARADO, type EstadoDoGovernador } from '../src/sala/governador'
 import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type PerfilDeQualidade, type RelatorioDeAplicacao } from '../src/sala/qualidade'
 import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { Qualidade } from '../src/telas/Sala/Qualidade'
-
-function compartilhamentoFalso(parcial: Partial<Compartilhamento> = {}): Compartilhamento {
-  const perfil = parcial.perfil ?? PERFIL_PADRAO
-  return {
-    ativo: true,
-    perfil,
-    definirPerfil: vi.fn(),
-    perfilEfetivo: perfil,
-    automatico: true,
-    definirAutomatico: vi.fn(),
-    governador: GOVERNADOR_PARADO,
-    relatorio: null,
-    codecPendente: null,
-    erro: null,
-    ocupado: false,
-    alternar: vi.fn(async () => {}),
-    reiniciar: vi.fn(async () => {}),
-    ...parcial,
-  }
-}
+import { compartilhamentoFalso } from './apoio/compartilhamentoFalso'
 
 function montarQualidade(parcial: Partial<Compartilhamento> = {}) {
-  const compartilhamento = compartilhamentoFalso(parcial)
+  const compartilhamento = compartilhamentoFalso({ ativo: true, ...parcial })
   render(<Qualidade compartilhamento={compartilhamento} />)
   return compartilhamento
 }

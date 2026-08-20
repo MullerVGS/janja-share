@@ -25,25 +25,8 @@ vi.mock('../src/sala/useSala', async () => {
 })
 
 vi.mock('../src/sala/useCompartilhamento', async () => {
-  const { PERFIL_PADRAO } = await import('../src/sala/qualidade')
-  const { GOVERNADOR_PARADO } = await import('../src/sala/governador')
-  return {
-    useCompartilhamento: () => ({
-      ativo: falso.compartilhando,
-      perfil: PERFIL_PADRAO,
-      definirPerfil() {},
-      perfilEfetivo: PERFIL_PADRAO,
-      automatico: true,
-      definirAutomatico() {},
-      governador: GOVERNADOR_PARADO,
-      relatorio: null,
-      codecPendente: null,
-      erro: null,
-      ocupado: false,
-      alternar: async () => {},
-      reiniciar: async () => {},
-    }),
-  }
+  const { compartilhamentoFalso } = await import('./apoio/compartilhamentoFalso')
+  return { useCompartilhamento: () => compartilhamentoFalso({ ativo: falso.compartilhando }) }
 })
 
 /** A sala mais um botão que "começa a compartilhar": vira o hook falso e re-renderiza a árvore. */
