@@ -153,7 +153,7 @@ function Quadro({
             type="button"
             className={estilos.acao}
             aria-pressed={ajuste === 'pixelAPixel'}
-            aria-label={`Ver em ${AJUSTES[outroAjuste(ajuste)].rotulo.toLowerCase()}`}
+            aria-label={AJUSTES[outroAjuste(ajuste)].acao}
             title={AJUSTES[outroAjuste(ajuste)].explicacao}
             onClick={() => aoAjustar(outroAjuste(ajuste))}
           >
@@ -213,6 +213,7 @@ function Quadro({
  * das pessoas. Compartilhar tela é a razão de existir desta sala — o layout diz isso.
  */
 export function Palco({ palco, fixada, aoFixar, volumes, ajuste, aoAjustar }: Props) {
+  const comuns = { fixada, aoFixar, volumes, ajuste, aoAjustar }
   const emDestaque = fixada === null ? undefined : palco.telas.find((tela) => tela.chave === fixada)
 
   let principais: Peca[]
@@ -237,15 +238,7 @@ export function Palco({ palco, fixada, aoFixar, volumes, ajuste, aoAjustar }: Pr
     <div className={estilos.palco}>
       <div className={estilos.principal} data-modo={modo}>
         {principais.map((peca) => (
-          <Quadro
-            key={peca.chave}
-            peca={peca}
-            fixada={fixada}
-            aoFixar={aoFixar}
-            volumes={volumes}
-            ajuste={ajuste}
-            aoAjustar={aoAjustar}
-          />
+          <Quadro key={peca.chave} peca={peca} {...comuns} />
         ))}
         {principais.length === 0 && <p className={estilos.vazio}>Você é a primeira pessoa aqui.</p>}
       </div>
@@ -253,16 +246,7 @@ export function Palco({ palco, fixada, aoFixar, volumes, ajuste, aoAjustar }: Pr
       {tira.length > 0 && (
         <div className={estilos.tira}>
           {tira.map((peca) => (
-            <Quadro
-              key={peca.chave}
-              peca={peca}
-              fixada={fixada}
-              aoFixar={aoFixar}
-              volumes={volumes}
-              ajuste={ajuste}
-              aoAjustar={aoAjustar}
-              miniatura
-            />
+            <Quadro key={peca.chave} peca={peca} {...comuns} miniatura />
           ))}
         </div>
       )}

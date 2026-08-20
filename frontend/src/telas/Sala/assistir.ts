@@ -10,9 +10,10 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefOb
 
 export type Ajuste = 'caber' | 'pixelAPixel'
 
-export const AJUSTES: Record<Ajuste, { rotulo: string; explicacao: string }> = {
-  caber: { rotulo: 'Caber', explicacao: 'a tela inteira dentro do quadro' },
-  pixelAPixel: { rotulo: 'Pixel a pixel', explicacao: 'tamanho original, arraste para andar por ela' },
+/** Cada ajuste descrito pelo que o botão *faz* ao escolhê-lo — é assim que ele se anuncia. */
+export const AJUSTES: Record<Ajuste, { acao: string; explicacao: string }> = {
+  caber: { acao: 'Fazer a tela caber no quadro', explicacao: 'a tela inteira dentro do quadro' },
+  pixelAPixel: { acao: 'Ver em pixel a pixel', explicacao: 'tamanho original, arraste para andar por ela' },
 }
 
 export function ehAjuste(valor: unknown): valor is Ajuste {
@@ -58,6 +59,9 @@ export function useTelaCheia(alvo: RefObject<HTMLElement | null>): { cheia: bool
 /**
  * A janelinha flutuante do Chrome. Cabe um vídeo por vez na janelinha do navegador inteiro, e
  * quem a fecha é ela mesma — daí o estado vir dos eventos do elemento.
+ *
+ * Os ouvintes são presos ao elemento que existir na montagem: quem usa isto é o quadro de tela,
+ * onde o `<video>` nasce junto com o quadro e fica até ele sair.
  */
 export function usePiP(video: RefObject<HTMLVideoElement | null>): { emPiP: boolean; alternar(): void } {
   const [emPiP, setEmPiP] = useState(false)
