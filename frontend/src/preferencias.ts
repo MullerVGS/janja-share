@@ -1,5 +1,6 @@
 import { ehAba, LARGURA_MINIMA_DA_LATERAL, type Aba } from './sala/lateral'
 import { ehPerfil, PERFIL_PADRAO, type PerfilDeQualidade } from './sala/qualidade'
+import { lerVolumes, type Volumes } from './sala/volumes'
 
 /**
  * Preferências da pessoa neste navegador: um único objeto versionado em `localStorage`.
@@ -18,6 +19,8 @@ export interface Preferencias {
   perfil: PerfilDeQualidade
   /** A chave do governador. */
   automatico: boolean
+  /** Volume local de cada pessoa e de cada tela, por nome. */
+  volumes: Volumes
 }
 
 export const PREFERENCIAS_PADRAO: Preferencias = {
@@ -25,6 +28,7 @@ export const PREFERENCIAS_PADRAO: Preferencias = {
   abaDaLateral: 'chat',
   perfil: PERFIL_PADRAO,
   automatico: true,
+  volumes: {},
 }
 
 type Leitor<T> = (valor: unknown) => T | undefined
@@ -35,6 +39,7 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   abaDaLateral: (valor) => (ehAba(valor) ? valor : undefined),
   perfil: (valor) => (ehPerfil(valor) ? valor : undefined),
   automatico: (valor) => (typeof valor === 'boolean' ? valor : undefined),
+  volumes: lerVolumes,
 }
 
 const CAMPOS = Object.keys(LEITORES) as (keyof Preferencias)[]

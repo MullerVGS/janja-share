@@ -73,4 +73,22 @@ describe('preferências', () => {
     localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, perfil: { ...PERFIL_PADRAO, tetoKbps: 999_999 } }))
     expect(lerPreferencias().perfil).toEqual(PERFIL_PADRAO)
   })
+
+  it('os volumes locais vêm guardados por nome; sem nada mexido, o mapa é vazio', () => {
+    expect(PREFERENCIAS_PADRAO.volumes).toEqual({})
+
+    gravarPreferencias({ volumes: { Bia: { pessoa: 40, tela: 0 } } })
+    expect(lerPreferencias().volumes).toEqual({ Bia: { pessoa: 40, tela: 0 } })
+  })
+
+  it('nos volumes, o nome estragado some sozinho — o mapa inteiro não vai junto', () => {
+    localStorage.setItem(
+      CHAVE_DAS_PREFERENCIAS,
+      JSON.stringify({ versao: 1, volumes: { Bia: { tela: 30 }, Caio: { tela: 'alto' } } }),
+    )
+    expect(lerPreferencias().volumes).toEqual({ Bia: { tela: 30 } })
+
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, volumes: 'alto' }))
+    expect(lerPreferencias().volumes).toEqual({})
+  })
 })
