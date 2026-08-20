@@ -74,14 +74,15 @@ export function useGestosDoZoom({ moldura, video, ativo, aoGesto }: Gestos) {
   // O ouvinte não passivo é registrado uma vez por quadro; ler o gesto de uma referência é o que
   // impede que ele seja desmontado e remontado a cada volta da roda.
   const ultimoGesto = useRef(aoGesto)
-  ultimoGesto.current = aoGesto
+  useEffect(() => {
+    ultimoGesto.current = aoGesto
+  })
 
   useEffect(() => {
     const elemento = moldura.current
     if (!elemento || !ativo) return
 
-    function aoGirar(evento: WheelEvent) {
-      if (!elemento) return
+    const aoGirar = (evento: WheelEvent) => {
       evento.preventDefault()
       const area = elemento.getBoundingClientRect()
       ultimoGesto.current(
