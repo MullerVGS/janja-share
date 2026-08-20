@@ -28,37 +28,39 @@ describe('fronteira SPA × API (com bundle presente)', () => {
   it('GET /api/config continua JSON mesmo com o bundle do SPA montado', async () => {
     const res = await request(app.getHttpServer()).get('/api/config').expect(200)
     expect(res.headers['content-type']).toMatch(/json/)
-    expect(res.body).toHaveProperty('sala')
+    expect(res.body).toHaveProperty('urlSfu')
   })
 
   it('caixa alta em /api/* chega no mesmo controller (Express roteia case-insensitive)', async () => {
-    const normal = await request(app.getHttpServer()).get('/api/convites/token-que-nao-existe')
-    const caixaAlta = await request(app.getHttpServer()).get('/API/convites/token-que-nao-existe')
+    const normal = await request(app.getHttpServer()).get('/api/config')
+    const caixaAlta = await request(app.getHttpServer()).get('/API/config')
 
     for (const res of [normal, caixaAlta]) {
+      expect(res.status).toBe(200)
       expect(res.headers['content-type']).toMatch(/json/)
-      expect(res.body).toEqual({ erro: 'convite_invalido' })
+      expect(res.body).toHaveProperty('urlSfu')
     }
   })
 
   it('barra repetida antes de /api nunca vira a casca do SPA — mesmo sem chegar no controller', async () => {
     // `//api/...` não é o mesmo path que `/api/...` para o router do Express (ele não colapsa
     // barras repetidas): não bate com nenhuma rota registrada, então cai no 404 genérico do
-    // Nest em vez de no controller de convites. A garantia que importa aqui não é "chegou no
+    // Nest em vez de no controller de config. A garantia que importa aqui não é "chegou no
     // controller certo" — é "nunca virou 200 text/html com a casca do app por engano".
-    const res = await request(app.getHttpServer()).get('//api/convites/token-que-nao-existe')
+    const res = await request(app.getHttpServer()).get('//api/config')
     expect(res.status).toBe(404)
     expect(res.headers['content-type']).toMatch(/json/)
   })
 
-  it('/api/admin/* com Host errado continua 404 JSON, mesmo em caixa alta', async () => {
-    const res = await request(app.getHttpServer()).get('/API/Admin/Convites').set('Host', 'share.example.com')
+  it('rota de API inexistente devolve 404 JSON, mesmo em caixa alta', async () => {
+    const res = await request(app.getHttpServer()).get('/API/Isto/Nao/Existe')
     expect(res.status).toBe(404)
     expect(res.headers['content-type']).toMatch(/json/)
+    expect(res.body).toEqual({ erro: 'nao_encontrado' })
   })
 
   it('uma rota de verdade do SPA (sem extensão, fora de /api) devolve a casca do index.html', async () => {
-    const res = await request(app.getHttpServer()).get('/sala').expect(200)
+    const res = await request(app.getHttpServer()).get('/sala/jogatina').expect(200)
     expect(res.headers['content-type']).toMatch(/html/)
     expect(res.text).toContain('casca do spa')
   })

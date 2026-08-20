@@ -5,7 +5,7 @@ import { env } from '../shared/env'
 export class ConfigController {
   @Get()
   obter() {
-    const { livekitUrl, sala } = env()
-    return { urlSfu: livekitUrl, sala }
+    const { livekitUrl } = env()
+    return { urlSfu: livekitUrl }
   }
 }

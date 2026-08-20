@@ -14,8 +14,8 @@ describe('GET /api/config', () => {
     await app.close()
   })
 
-  it('devolve urlSfu e sala vindos das envs', async () => {
+  it('devolve urlSfu vindo das envs', async () => {
     const res = await request(app.getHttpServer()).get('/api/config').expect(200)
-    expect(res.body).toEqual({ urlSfu: process.env.LIVEKIT_URL, sala: process.env.SALA })
+    expect(res.body).toEqual({ urlSfu: process.env.LIVEKIT_URL })
   })
 })
