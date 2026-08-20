@@ -1,29 +1,38 @@
 import type { AmostraDoEmissor } from '../../telemetria/amostra'
 import { FRASE_DA_LIMITACAO, formatarKbps } from '../../telemetria/formatar'
-import type { RelatorioDeAplicacao } from '../../sala/qualidade'
+import { descreverDegrau, type EstadoDoGovernador } from '../../sala/governador'
+import type { PerfilDeQualidade, RelatorioDeAplicacao } from '../../sala/qualidade'
 
 /** Menta = no ar; âmbar = limitado; coral = algo que a pessoa precisa olhar. */
 export type Tom = 'ok' | 'atencao' | 'problema'
 
 export interface Resumo {
-  /** `VP9 · 1080p · 30 fps · 3,0 Mb/s` — o estado vem separado para ganhar cor. */
+  /** `VP9 · 1080p · 30 fps · 3,0 Mb/s · Auto 30` — o estado vem separado para ganhar cor. */
   partes: string[]
   estado: string
   tom: Tom
+}
+
+export interface Governo {
+  pedido: PerfilDeQualidade
+  estado: EstadoDoGovernador
 }
 
 /** A linha de resumo da transmissão; `null` quando não há o que resumir. */
 export function resumirTransmissao(
   amostra: AmostraDoEmissor | null,
   relatorio: RelatorioDeAplicacao | null,
+  governo: Governo | null,
 ): Resumo | null {
   if (!amostra) return null
 
+  const degrau = governo ? descreverDegrau(governo.pedido, governo.estado) : null
   const partes = [
     amostra.codec ?? '—',
     amostra.altura === null ? '—' : `${amostra.altura}p`,
     `${amostra.fpsCodificado ?? '—'} fps`,
     formatarKbps(amostra.kbps),
+    ...(degrau ? [`Auto ${degrau.degrau}`] : []),
   ]
 
   if (relatorio?.encoder === 'recusado') return { partes, estado: 'encoder recusou', tom: 'problema' }

@@ -1,3 +1,4 @@
+import { descreverDegrau } from '../../sala/governador'
 import {
   CEDER,
   CODECS,
@@ -14,6 +15,8 @@ import {
 } from '../../sala/qualidade'
 import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import { formatarKbps } from '../../telemetria/formatar'
+import { Aviso } from '../../ui/Aviso'
+import { Botao } from '../../ui/Botao'
 import { Segmentado, type OpcaoSegmentada } from '../../ui/Segmentado'
 import estilos from './Qualidade.module.css'
 
@@ -55,8 +58,10 @@ const OPCOES_DE_CEDER: OpcaoSegmentada<Ceder>[] = (Object.keys(CEDER) as Ceder[]
  * e na aba Transmissão: a ideia é a pessoa *ver* o que baixar o FPS ou apertar o teto faz.
  */
 export function Qualidade({ compartilhamento }: { compartilhamento: Compartilhamento }) {
-  const { perfil, definirPerfil, relatorio, ativo } = compartilhamento
+  const { perfil, definirPerfil, relatorio, ativo, automatico, definirAutomatico, governador, codecPendente, reiniciar, ocupado } =
+    compartilhamento
   const ajustar = (parcial: Partial<PerfilDeQualidade>) => definirPerfil({ ...perfil, ...parcial })
+  const degrau = descreverDegrau(perfil, governador)
 
   return (
     <section className={estilos.aba} aria-label="Qualidade da tela">
@@ -114,6 +119,44 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
           onChange={(evento) => ajustar({ tetoKbps: Number(evento.target.value) })}
         />
       </div>
+
+      <div className={estilos.automatico}>
+        <label className={estilos.chave}>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={automatico}
+            onChange={(evento) => definirAutomatico(evento.target.checked)}
+          />
+          <span>Automático</span>
+        </label>
+        {/* O estado do governador, na forma que a pessoa lê: de onde, para onde, por quê. */}
+        {automatico && (
+          <p className={estilos.estadoDoAuto} role="status" aria-label="Estado do governador" data-segurando={degrau ? '' : undefined}>
+            {degrau ? (
+              <>
+                <span>
+                  Auto · {degrau.transicao} · {degrau.motivo}
+                </span>
+                <Botao aparencia="fantasma" className={estilos.forcar} onClick={() => definirAutomatico(false)}>
+                  forçar
+                </Botao>
+              </>
+            ) : (
+              <span>Auto · o pedido vale inteiro; sob aperto persistente, desce um degrau em {CEDER[perfil.ceder].rotulo.toLowerCase()}.</span>
+            )}
+          </p>
+        )}
+      </div>
+
+      {codecPendente && (
+        <Aviso tom="neutro">
+          <span>{CODECS[codecPendente].rotulo} não entrou no ar: vale no próximo compartilhamento.</span>{' '}
+          <Botao aparencia="fantasma" ocupado={ocupado} onClick={() => void reiniciar()}>
+            Reiniciar transmissão
+          </Botao>
+        </Aviso>
+      )}
 
       {relatorio?.captura === 'recusado' && (
         <p className={estilos.recusa} role="status">

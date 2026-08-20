@@ -23,6 +23,12 @@ export interface Referencia {
   valor: number
 }
 
+/** Uma amostra em que algo aconteceu — o governador agiu — com a frase que o ponteiro revela. */
+export interface Marca {
+  indice: number
+  rotulo: string
+}
+
 interface Props {
   titulo: string
   series: SerieDoGrafico[]
@@ -32,6 +38,7 @@ interface Props {
   faixas?: Faixa<string>[]
   /** Teto mínimo do eixo; o alvo pedido, normalmente. */
   piso?: number
+  marcas?: Marca[]
   degraus?: boolean
   formatar(valor: number): string
 }
@@ -46,7 +53,7 @@ const ALTURA = 96
  * traços que não escalam; tudo que é texto fica em HTML por cima, para não esticar junto.
  * Passar o ponteiro lê todas as séries naquele instante — valor primeiro, nome depois.
  */
-export function Grafico({ titulo, series, referencias = [], faixas = [], piso = 0, degraus = false, formatar }: Props) {
+export function Grafico({ titulo, series, referencias = [], faixas = [], piso = 0, marcas = [], degraus = false, formatar }: Props) {
   const [sobPonteiro, setSobPonteiro] = useState<number | null>(null)
 
   const quantidade = Math.max(0, ...series.map((serie) => serie.valores.length))
@@ -152,6 +159,16 @@ export function Grafico({ titulo, series, referencias = [], faixas = [], piso = 
               )}
             />
           ))}
+
+          {marcas.map((marca) => {
+            const x = xs[marca.indice]
+            if (x === undefined) return null
+            return (
+              <line key={`${marca.indice}-${marca.rotulo}`} className={estilos.marca} data-marca x1={x} x2={x} y1={0} y2={ALTURA}>
+                <title>{marca.rotulo}</title>
+              </line>
+            )
+          })}
 
           {indice !== null && xs[indice] !== undefined && (
             <line className={estilos.mira} x1={xs[indice]} x2={xs[indice]} y1={0} y2={ALTURA} />

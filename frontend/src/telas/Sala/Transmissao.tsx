@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import type { DecisaoDoGovernador } from '../../sala/governador'
 import { alturaDaResolucao, type PerfilDeQualidade } from '../../sala/qualidade'
 import type { AmostraDoEmissor, AmostraDoEspectador } from '../../telemetria/amostra'
 import type { Telemetria } from '../../telemetria/coletor'
 import { formatarKbps } from '../../telemetria/formatar'
 import { ultima, type Historico } from '../../telemetria/historico'
 import { Botao } from '../../ui/Botao'
-import { Grafico } from '../../ui/Grafico'
+import { Grafico, type Marca } from '../../ui/Grafico'
 import { faixas } from '../../ui/grafico'
 import { IconeCerto, IconeCopiar } from '../../ui/Icone'
 import { CartoesDoEmissor, CartoesDoEspectador, ComoChega } from './Cartoes'
@@ -13,7 +14,10 @@ import estilos from './Transmissao.module.css'
 
 interface Props {
   telemetria: Telemetria
-  perfil: PerfilDeQualidade
+  /** Pedido ⊕ degrau do governador: é este o alvo que os gráficos mostram. */
+  perfilEfetivo: PerfilDeQualidade
+  /** Onde o governador agiu; vira marca nos gráficos do emissor. */
+  decisoes: readonly DecisaoDoGovernador[]
   /** Nome de quem publica uma tela, pela identidade — a telemetria só conhece identidades. */
   nomeDe(identidade: string): string
 }
@@ -26,7 +30,7 @@ const linhas = (valor: number) => `${valor}p`
  * chega de cada tela que assisto. Nada aqui é guardado — é o retrato que existe enquanto a
  * sala está aberta, e o "Copiar JSON" é o jeito de levar o retrato para fora.
  */
-export function Transmissao({ telemetria, perfil, nomeDe }: Props) {
+export function Transmissao({ telemetria, perfilEfetivo, decisoes, nomeDe }: Props) {
   const emissor = ultima(telemetria.emissor)
   const recebidas = [...telemetria.recebidas]
 
@@ -43,7 +47,7 @@ export function Transmissao({ telemetria, perfil, nomeDe }: Props) {
               pausado: ninguém assistindo — o encoder volta sozinho quando alguém abrir a tela.
             </p>
           )}
-          <GraficosDoEmissor historico={telemetria.emissor} perfil={perfil} />
+          <GraficosDoEmissor historico={telemetria.emissor} perfil={perfilEfetivo} decisoes={decisoes} />
           <CartoesDoEmissor amostra={emissor} />
 
           <h3 className={estilos.subtitulo}>Como chega</h3>
@@ -60,9 +64,28 @@ export function Transmissao({ telemetria, perfil, nomeDe }: Props) {
   )
 }
 
-function GraficosDoEmissor({ historico, perfil }: { historico: Historico<AmostraDoEmissor>; perfil: PerfilDeQualidade }) {
+/** Cada decisão cai na primeira amostra que a viu; as de antes do histórico (ou de outra publicação) não aparecem. */
+function marcasDasDecisoes(historico: Historico<AmostraDoEmissor>, decisoes: readonly DecisaoDoGovernador[], perfil: PerfilDeQualidade): Marca[] {
+  const unidade = perfil.ceder === 'quadros' ? ' fps' : 'p'
+  const nome = (degrau: number | null) => (degrau === null ? 'pedido' : `${degrau}${unidade}`)
+  return decisoes.flatMap((decisao) => {
+    const indice = historico.findIndex((amostra) => amostra.emMs >= decisao.emMs)
+    return indice === -1 ? [] : [{ indice, rotulo: `governador: ${nome(decisao.de)} → ${nome(decisao.para)}` }]
+  })
+}
+
+function GraficosDoEmissor({
+  historico,
+  perfil,
+  decisoes,
+}: {
+  historico: Historico<AmostraDoEmissor>
+  perfil: PerfilDeQualidade
+  decisoes: readonly DecisaoDoGovernador[]
+}) {
   const limitacoes = faixas(historico.map((amostra) => amostra.limitadoPor))
   const alturaPedida = alturaDaResolucao(perfil.resolucao)
+  const marcas = marcasDasDecisoes(historico, decisoes, perfil)
 
   return (
     <div className={estilos.graficos}>
@@ -74,6 +97,7 @@ function GraficosDoEmissor({ historico, perfil }: { historico: Historico<Amostra
         ]}
         referencias={[{ nome: 'alvo', valor: perfil.fps }]}
         faixas={limitacoes}
+        marcas={marcas}
         piso={perfil.fps}
         formatar={fps}
       />
@@ -85,6 +109,7 @@ function GraficosDoEmissor({ historico, perfil }: { historico: Historico<Amostra
         ]}
         referencias={[{ nome: 'teto', valor: perfil.tetoKbps }]}
         faixas={limitacoes}
+        marcas={marcas}
         piso={perfil.tetoKbps}
         formatar={formatarKbps}
       />
@@ -94,8 +119,9 @@ function GraficosDoEmissor({ historico, perfil }: { historico: Historico<Amostra
           { nome: 'codificada', valores: historico.map((a) => a.altura), cor: 'menta', destaque: true },
           { nome: 'captura', valores: historico.map((a) => a.alturaDaCaptura), cor: 'lilas' },
         ]}
-        referencias={alturaPedida === null ? [] : [{ nome: 'pedida', valor: alturaPedida }]}
+        referencias={alturaPedida === null ? [] : [{ nome: 'alvo', valor: alturaPedida }]}
         faixas={limitacoes}
+        marcas={marcas}
         degraus
         formatar={linhas}
       />
@@ -140,7 +166,7 @@ function montarJson(telemetria: Telemetria, nomeDe: (identidade: string) => stri
 type EstadoDaCopia = 'pronto' | 'copiado' | 'manual'
 
 /** O cru, legível: a última amostra campo a campo, e o botão que leva tudo para fora. */
-function Detalhes({ telemetria, nomeDe }: Omit<Props, 'perfil'>) {
+function Detalhes({ telemetria, nomeDe }: Pick<Props, 'telemetria' | 'nomeDe'>) {
   const [copia, setCopia] = useState<EstadoDaCopia>('pronto')
   const [json, setJson] = useState('')
 

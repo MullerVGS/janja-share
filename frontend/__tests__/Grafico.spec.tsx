@@ -35,6 +35,20 @@ describe('gráfico', () => {
     expect(container.querySelectorAll('path')).toHaveLength(2)
   })
 
+  it('marca, com uma linha vertical, cada amostra em que o governador agiu', () => {
+    const { container } = render(
+      <Grafico
+        titulo="FPS"
+        series={[{ nome: 'codificado', valores: [30, 30, 15, 15], cor: 'menta' }]}
+        marcas={[{ indice: 2, rotulo: '60 → 15 fps' }]}
+        formatar={(valor) => `${valor} fps`}
+      />,
+    )
+    const marca = container.querySelector('line[data-marca]')
+    expect(marca).not.toBeNull()
+    expect(marca?.querySelector('title')).toHaveTextContent('60 → 15 fps')
+  })
+
   it('sob o ponteiro, lê todas as séries naquele instante; buraco aparece como travessão', () => {
     const { container } = montarGrafico()
     const svg = container.querySelector('svg') as SVGSVGElement

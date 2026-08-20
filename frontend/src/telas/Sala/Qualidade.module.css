@@ -61,6 +61,49 @@
   accent-color: var(--menta);
 }
 
+.automatico {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.chave {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  color: var(--texto-fraco);
+  cursor: pointer;
+}
+
+.chave input {
+  accent-color: var(--menta);
+}
+
+.estadoDoAuto {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e2);
+  margin: 0;
+  padding: var(--e2) var(--e3);
+  border-radius: var(--raio-sm);
+  background: var(--superficie-alta);
+  font-size: var(--texto-sm);
+  color: var(--texto-fraco);
+}
+
+.estadoDoAuto[data-segurando] {
+  background: var(--ambar-fraca);
+  color: var(--ambar);
+  font-family: var(--fonte-mono);
+}
+
+.forcar {
+  flex: none;
+}
+
 .recusa {
   margin: 0;
   font-size: var(--texto-sm);

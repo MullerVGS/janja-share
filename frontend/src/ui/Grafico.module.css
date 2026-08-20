@@ -97,6 +97,14 @@
   stroke: var(--lilas);
 }
 
+.marca {
+  stroke: var(--texto);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.7;
+}
+
 .mira {
   stroke: var(--texto-fraco);
   stroke-width: 1;

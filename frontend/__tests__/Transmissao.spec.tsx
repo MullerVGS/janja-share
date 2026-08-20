@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { DecisaoDoGovernador } from '../src/sala/governador'
 import { PERFIL_PADRAO } from '../src/sala/qualidade'
 import { amostraVaziaDoEmissor, amostraVaziaDoEspectador } from '../src/telemetria/amostra'
 import { TELEMETRIA_VAZIA, type Telemetria } from '../src/telemetria/coletor'
@@ -59,8 +60,15 @@ function espectador(parcial: Partial<Espectador> = {}): Espectador {
   }
 }
 
-function montarTransmissao(telemetria: Telemetria) {
-  return render(<Transmissao telemetria={telemetria} perfil={PERFIL_PADRAO} nomeDe={(identidade) => identidade.split('-')[0] ?? identidade} />)
+function montarTransmissao(telemetria: Telemetria, decisoes: DecisaoDoGovernador[] = []) {
+  return render(
+    <Transmissao
+      telemetria={telemetria}
+      perfilEfetivo={PERFIL_PADRAO}
+      decisoes={decisoes}
+      nomeDe={(identidade) => identidade.split('-')[0] ?? identidade}
+    />,
+  )
 }
 
 afterEach(() => vi.useRealTimers())
@@ -123,6 +131,13 @@ describe('aba Transmissão', () => {
     const tabela = screen.getByRole('table', { name: 'Como chega' })
     const linha = within(tabela).getAllByRole('row')[1]
     expect(linha).toHaveTextContent('não medido')
+  })
+
+  it('onde o governador agiu, os gráficos do emissor ganham a marca', () => {
+    const historico = [emissor({ emMs: AGORA }), emissor({ emMs: AGORA + 1000 }), emissor({ emMs: AGORA + 2000 })]
+    const { container } = montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: historico }, [{ emMs: AGORA + 1000, de: null, para: 30, motivo: 'cpu' }])
+    // Uma marca por gráfico do emissor: FPS, Bitrate e Resolução.
+    expect(container.querySelectorAll('line[data-marca]')).toHaveLength(3)
   })
 
   it('dynacast pausado aparece com todas as letras, não como zero', () => {

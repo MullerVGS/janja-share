@@ -176,9 +176,23 @@ export function Sala() {
           largura={larguraDaLateral}
           aoRedimensionar={redimensionarLateral}
           naoLidasNoChat={naoLidasNoChat}
-          resumo={compartilhamento.ativo ? resumirTransmissao(amostraDoEmissor, compartilhamento.relatorio) : null}
+          resumo={
+            compartilhamento.ativo
+              ? resumirTransmissao(amostraDoEmissor, compartilhamento.relatorio, {
+                  pedido: compartilhamento.perfil,
+                  estado: compartilhamento.governador,
+                })
+              : null
+          }
           qualidade={<Qualidade compartilhamento={compartilhamento} />}
-          transmissao={<Transmissao telemetria={telemetria} perfil={compartilhamento.perfil} nomeDe={nomeDe} />}
+          transmissao={
+            <Transmissao
+              telemetria={telemetria}
+              perfilEfetivo={compartilhamento.perfilEfetivo}
+              decisoes={compartilhamento.governador.decisoes}
+              nomeDe={nomeDe}
+            />
+          }
           chat={<Chat chat={chat} />}
         />
       </div>

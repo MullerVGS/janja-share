@@ -26,15 +26,22 @@ vi.mock('../src/sala/useSala', async () => {
 
 vi.mock('../src/sala/useCompartilhamento', async () => {
   const { PERFIL_PADRAO } = await import('../src/sala/qualidade')
+  const { GOVERNADOR_PARADO } = await import('../src/sala/governador')
   return {
     useCompartilhamento: () => ({
       ativo: falso.compartilhando,
       perfil: PERFIL_PADRAO,
       definirPerfil() {},
+      perfilEfetivo: PERFIL_PADRAO,
+      automatico: true,
+      definirAutomatico() {},
+      governador: GOVERNADOR_PARADO,
       relatorio: null,
+      codecPendente: null,
       erro: null,
       ocupado: false,
       alternar: async () => {},
+      reiniciar: async () => {},
     }),
   }
 })

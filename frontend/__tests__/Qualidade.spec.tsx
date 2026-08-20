@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { GOVERNADOR_PARADO } from '../src/sala/governador'
+import { GOVERNADOR_PARADO, type EstadoDoGovernador } from '../src/sala/governador'
 import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type PerfilDeQualidade, type RelatorioDeAplicacao } from '../src/sala/qualidade'
 import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { Qualidade } from '../src/telas/Sala/Qualidade'
@@ -140,5 +140,68 @@ describe('aba Qualidade: recusas', () => {
 
     expect(screen.getByText(/A captura recusou/)).toHaveTextContent('falha da captura')
     expect(screen.getByText(/O encoder recusou/)).toHaveTextContent('falha do encoder')
+  })
+})
+
+describe('aba Qualidade: automático', () => {
+  const SEGURANDO: EstadoDoGovernador = { ...GOVERNADOR_PARADO, degrau: 30, motivo: 'cpu' }
+
+  it('a chave Automático reflete a preferência e a alterna', async () => {
+    const usuario = userEvent.setup()
+    const compartilhamento = montarQualidade({ automatico: true })
+    const chave = screen.getByRole('switch', { name: /automático/i })
+    expect(chave).toBeChecked()
+
+    await usuario.click(chave)
+    expect(compartilhamento.definirAutomatico).toHaveBeenCalledWith(false)
+  })
+
+  it('com degrau em vigor mostra de onde para onde e por quê, e "forçar" desliga o automático', async () => {
+    const usuario = userEvent.setup()
+    const compartilhamento = montarQualidade({
+      perfil: { ...PERFIL_PADRAO, fps: 60 },
+      perfilEfetivo: { ...PERFIL_PADRAO, fps: 30 },
+      governador: SEGURANDO,
+    })
+
+    const estado = screen.getByRole('status', { name: /governador/i })
+    expect(estado).toHaveTextContent('Auto · 60 → 30 fps · CPU')
+
+    await usuario.click(screen.getByRole('button', { name: /forçar/i }))
+    expect(compartilhamento.definirAutomatico).toHaveBeenCalledWith(false)
+  })
+
+  it('automático ligado sem degrau diz que o pedido vale inteiro; desligado, diz que está manual', () => {
+    montarQualidade({ automatico: true })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent(/pedido vale inteiro/)
+    expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()
+  })
+
+  it('desligado, não há estado do governador nem "forçar"', () => {
+    montarQualidade({ automatico: false, governador: SEGURANDO })
+    expect(screen.queryByRole('status', { name: /governador/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('aba Qualidade: codec pendente', () => {
+  it('quando o codec não entrou no ar, avisa que vale no próximo compartilhamento e oferece Reiniciar', async () => {
+    const usuario = userEvent.setup()
+    const compartilhamento = montarQualidade({ perfil: { ...PERFIL_PADRAO, codec: 'av1' }, codecPendente: 'av1' })
+
+    expect(screen.getByText(/não entrou no ar/)).toHaveTextContent('AV1 não entrou no ar: vale no próximo compartilhamento.')
+
+    await usuario.click(screen.getByRole('button', { name: 'Reiniciar transmissão' }))
+    expect(compartilhamento.reiniciar).toHaveBeenCalledOnce()
+  })
+
+  it('ocupado, o botão de reiniciar espera', () => {
+    montarQualidade({ codecPendente: 'av1', ocupado: true })
+    expect(screen.getByRole('button', { name: 'Reiniciar transmissão' })).toBeDisabled()
+  })
+
+  it('sem pendência, não há aviso', () => {
+    montarQualidade()
+    expect(screen.queryByRole('button', { name: 'Reiniciar transmissão' })).not.toBeInTheDocument()
   })
 })
