@@ -68,6 +68,14 @@ class SalaFalsa {
       return video
     }),
 
+    /** O seletor nativo aberto de novo: entrega faixas de captura sem publicar nada. */
+    createScreenTracks: vi.fn(async () => {
+      await this.proximaBatida()
+      const faixas = [faixaFalsa('video', undefined)]
+      if (this.comAudio) faixas.push(faixaFalsa('audio', undefined))
+      return faixas
+    }),
+
     unpublishTrack: vi.fn(async (faixa: Faixa, parar?: boolean) => {
       await this.proximaBatida()
       const entrada = [...this.publicacoes].find(([, publicacao]) => publicacao.track === faixa)
@@ -497,5 +505,53 @@ describe('useCompartilhamento: áudio da tela', () => {
     expect(sala.video()?.track.codec).toBe('av1')
     expect(sala.audio()).toBeDefined()
     expect(sala.audio()?.isMuted).toBe(true)
+  })
+})
+
+describe('useCompartilhamento: trocar de tela', () => {
+  it('abre o seletor de novo e só derruba a tela antiga depois que a nova captura existe', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    const antiga = sala.video()?.track
+
+    await agir(() => result.current.trocarDeTela())
+
+    expect(sala.localParticipant.createScreenTracks).toHaveBeenCalledOnce()
+    // A ordem é o que garante que cancelar não derruba nada: capturar vem antes de despublicar.
+    expect(sala.localParticipant.createScreenTracks.mock.invocationCallOrder[0]).toBeLessThan(
+      sala.localParticipant.setScreenShareEnabled.mock.invocationCallOrder[1] ?? Infinity,
+    )
+    expect(sala.video()?.track).not.toBe(antiga)
+    expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L1T2' })
+    expect(sala.audio()?.track.kind).toBe('audio')
+    expect(result.current.ativo).toBe(true)
+    expect(result.current.ocupado).toBe(false)
+    expect(result.current.erro).toBeNull()
+  })
+
+  it('cancelar o seletor não mexe em nada — a tela que estava no ar continua no ar', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    const antiga = sala.video()?.track
+    const cancelou = Object.assign(new Error('cancelou'), { name: 'NotAllowedError' })
+    sala.localParticipant.createScreenTracks.mockRejectedValueOnce(cancelou)
+
+    await agir(() => result.current.trocarDeTela())
+
+    expect(sala.video()?.track).toBe(antiga)
+    expect(sala.localParticipant.setScreenShareEnabled).toHaveBeenCalledOnce()
+    expect(result.current.ativo).toBe(true)
+    expect(result.current.erro).toBeNull()
+  })
+
+  it('sem tela no ar não há o que trocar', async () => {
+    const sala = new SalaFalsa()
+    const { result, agir } = montar(sala)
+
+    await agir(() => result.current.trocarDeTela())
+
+    expect(sala.localParticipant.createScreenTracks).not.toHaveBeenCalled()
   })
 })

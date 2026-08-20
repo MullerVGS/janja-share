@@ -25,6 +25,7 @@ export function compartilhamentoFalso(parcial: Partial<Compartilhamento> = {}): 
     ocupado: false,
     alternar: vi.fn(async () => {}),
     reiniciar: vi.fn(async () => {}),
+    trocarDeTela: vi.fn(async () => {}),
     ...parcial,
   }
 }

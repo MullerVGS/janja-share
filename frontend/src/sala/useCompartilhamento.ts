@@ -116,6 +116,8 @@ export interface Compartilhamento {
   alternar(): Promise<void>
   /** Para e começa de novo — reabre o seletor nativo. É a saída quando republicar não deu. */
   reiniciar(): Promise<void>
+  /** Reabre o seletor para escolher outra tela; cancelar deixa a de agora no ar. */
+  trocarDeTela(): Promise<void>
 }
 
 function publicacaoDe(sala: Room, fonte: Track.Source): LocalTrackPublication | undefined {
@@ -305,6 +307,41 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
   const reiniciar = useCallback(() => ligar(Boolean(publicacao)), [ligar, publicacao])
 
   /**
+   * Trocar a tela compartilhada sem sair do ar.
+   *
+   * A ordem é a regra: o seletor nativo abre **antes** de qualquer despublicação, e a captura
+   * antiga só cai quando a nova já existe na mão. É isso que faz "cancelar não mexe em nada" ser
+   * verdade — `reiniciar` não serve aqui porque ele para primeiro e pergunta depois.
+   */
+  const trocarDeTela = useCallback(async () => {
+    if (!sala || !publicacaoDe(sala, Track.Source.ScreenShare)) return
+    const participante = sala.localParticipant
+    setErro(null)
+    setMudando(true)
+    try {
+      const novas = await participante.createScreenTracks(opcoesDeCaptura(perfil))
+      const video = novas.find((faixa) => faixa.kind === Track.Kind.Video)
+      if (!video) {
+        // Seletor sem vídeo não é troca de tela; a de agora continua valendo mais que nada.
+        for (const faixa of novas) faixa.stop()
+        return
+      }
+      await participante.setScreenShareEnabled(false)
+      setCodecPendente(null)
+      await participante.publishTrack(video, opcoesDePublicacao(perfil))
+      const audio = novas.find((faixa) => faixa.kind === Track.Kind.Audio)
+      if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
+    } catch (falha) {
+      const nome = falha instanceof Error ? falha.name : ''
+      if (nome !== 'NotAllowedError' && nome !== 'AbortError') {
+        setErro(falha instanceof Error ? falha.message : 'não foi possível trocar de tela')
+      }
+    } finally {
+      setMudando(false)
+    }
+  }, [sala, perfil])
+
+  /**
    * Calar o som da tela é `mute()` na publicação, não despublicar: a faixa continua no ar,
    * quem assiste vê o silêncio chegar na hora, e voltar a falar não custa uma renegociação.
    * Recapturar seria a única alternativa — e recapturar reabre o seletor nativo.
@@ -336,5 +373,6 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     ocupado: mudando || republicando,
     alternar,
     reiniciar,
+    trocarDeTela,
   }
 }
