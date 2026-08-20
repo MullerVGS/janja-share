@@ -116,3 +116,12 @@
   border-radius: var(--raio-sm);
   padding: var(--e2) var(--e3);
 }
+
+.recusaGrave {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--coral);
+  background: var(--coral-fraca);
+  border-radius: var(--raio-sm);
+  padding: var(--e2) var(--e3);
+}

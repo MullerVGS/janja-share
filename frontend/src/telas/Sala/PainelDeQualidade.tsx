@@ -112,8 +112,17 @@ export function PainelDeQualidade({ compartilhamento }: { compartilhamento: Comp
 
       {relatorio?.captura === 'recusado' && (
         <p className={estilos.recusa} role="status">
-          A captura recusou este ajuste{relatorio.falha ? `: ${relatorio.falha}` : ''}. A fonte compartilhada não
-          entrega mais que isso — o teto e a prioridade continuam valendo.
+          A captura recusou este ajuste{relatorio.falhaDaCaptura ? `: ${relatorio.falhaDaCaptura}` : ''}. A fonte
+          compartilhada não entrega mais que isso — o teto e a prioridade continuam valendo.
+        </p>
+      )}
+
+      {/* Recusa do encoder é mais grave que a da captura: o slider mostra o valor novo, mas o
+          que está no ar continua sendo o anterior. Sem este aviso, o painel mentiria. */}
+      {relatorio?.encoder === 'recusado' && (
+        <p className={estilos.recusaGrave} role="alert">
+          O encoder recusou este ajuste{relatorio.falhaDoEncoder ? `: ${relatorio.falhaDoEncoder}` : ''}. O teto e a
+          prioridade que estão no ar ainda são os anteriores — mexa em qualquer controle para tentar de novo.
         </p>
       )}
     </section>

@@ -141,7 +141,7 @@ describe('aplicação ao vivo', () => {
 
     expect(relatorio.captura).toBe('recusado')
     expect(relatorio.encoder).toBe('aplicado')
-    expect(relatorio.falha).toContain('OverconstrainedError')
+    expect(relatorio.falhaDaCaptura).toContain('OverconstrainedError')
     expect(remetente.atuais().encodings[0]?.maxFramerate).toBe(60)
   })
 

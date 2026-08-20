@@ -152,8 +152,9 @@ export type EstadoDoAjuste = 'aplicado' | 'recusado' | 'indisponivel'
 export interface RelatorioDeAplicacao {
   captura: EstadoDoAjuste
   encoder: EstadoDoAjuste
-  /** Primeira falha encontrada, para a UI dizer o que não pegou em vez de mentir sucesso. */
-  falha?: string
+  /** Uma mensagem por metade: as duas falham por motivos diferentes e a UI conta as duas. */
+  falhaDaCaptura?: string
+  falhaDoEncoder?: string
 }
 
 export interface AlvoDeQualidade {
@@ -182,7 +183,7 @@ export async function aplicarPerfil(
       relatorio.captura = 'aplicado'
     } catch (erro) {
       relatorio.captura = 'recusado'
-      relatorio.falha ??= descrever(erro)
+      relatorio.falhaDaCaptura = descrever(erro)
     }
   }
 
@@ -192,7 +193,7 @@ export async function aplicarPerfil(
       relatorio.encoder = 'aplicado'
     } catch (erro) {
       relatorio.encoder = 'recusado'
-      relatorio.falha ??= descrever(erro)
+      relatorio.falhaDoEncoder = descrever(erro)
     }
   }
 
