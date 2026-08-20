@@ -337,13 +337,13 @@ describe('salas/', () => {
       expect(sexta.body).toEqual({ erro: 'espere' })
     })
 
-    it('sala cheia (12 pessoas) devolve 409 sala_cheia', async () => {
+    it('sala cheia (30 pessoas) devolve 409 sala_cheia', async () => {
       sfu.salasAtuais = [
         {
           slug: 'lotada',
           nomeNoSfu: 'lotada-x1',
           nome: 'Lotada',
-          pessoas: Array.from({ length: 12 }, (_, i) => `p${i}`),
+          pessoas: Array.from({ length: 30 }, (_, i) => `p${i}`),
           telasNoAr: 0,
           cheia: true,
         },

@@ -29,7 +29,7 @@ export interface SalaNoSfu {
 
 const TEMPO_VAZIA_S = 60
 const TEMPO_CARENCIA_S = 120
-const LOTACAO_MAXIMA = 12
+const LOTACAO_MAXIMA = 30
 const CACHE_MS = 2000
 const TAMANHO_NONCE = 4 // 4 bytes = 8 hex — curto, mas caro demais para adivinhar num nome só
 

@@ -16,7 +16,7 @@ function sala(overrides: Partial<Room> = {}): Room {
     name: 'jogatina-a1b2c3d4',
     metadata: JSON.stringify({ slug: 'jogatina', nome: 'Jogatina' }),
     numParticipants: 0,
-    maxParticipants: 12,
+    maxParticipants: 30,
     ...overrides,
   })
 }
@@ -58,9 +58,9 @@ describe('LivekitRoomProvider — listarSalas() com o SDK dublado', () => {
     ])
   })
 
-  it('resolve slug e nome pelo metadata, não pelo `name` bruto do SFU (Decisão 5)', async () => {
+  it('resolve slug e nome pelo metadata, não pelo `name` bruto do SFU', async () => {
     jest.spyOn(RoomServiceClient.prototype, 'listRooms').mockResolvedValue([
-      new Room({ name: 'jogatina-ffff0000', metadata: JSON.stringify({ slug: 'jogatina', nome: 'Jogatina à Noite' }), numParticipants: 0, maxParticipants: 12 }),
+      new Room({ name: 'jogatina-ffff0000', metadata: JSON.stringify({ slug: 'jogatina', nome: 'Jogatina à Noite' }), numParticipants: 0, maxParticipants: 30 }),
     ])
     jest.spyOn(RoomServiceClient.prototype, 'listParticipants').mockResolvedValue([])
 
@@ -84,9 +84,9 @@ describe('LivekitRoomProvider — listarSalas() com o SDK dublado', () => {
     expect(lista).toEqual([{ slug: 'vazia', nomeNoSfu: 'vazia-11112222', nome: 'Vazia', pessoas: [], telasNoAr: 0, cheia: false }])
   })
 
-  it('cheia quando pessoas atinge a lotação máxima (12)', async () => {
+  it('cheia quando pessoas atinge a lotação máxima (30)', async () => {
     jest.spyOn(RoomServiceClient.prototype, 'listRooms').mockResolvedValue([sala()])
-    jest.spyOn(RoomServiceClient.prototype, 'listParticipants').mockResolvedValue(Array.from({ length: 12 }, (_, i) => participante(`p${i}`)))
+    jest.spyOn(RoomServiceClient.prototype, 'listParticipants').mockResolvedValue(Array.from({ length: 30 }, (_, i) => participante(`p${i}`)))
 
     const provider = new LivekitRoomProvider()
     const lista = await provider.listarSalas()
@@ -171,7 +171,7 @@ describe('LivekitRoomProvider — criarSala()', () => {
       name: nomeNoSfu,
       emptyTimeout: 60,
       departureTimeout: 120,
-      maxParticipants: 12,
+      maxParticipants: 30,
       metadata: JSON.stringify({ slug: 'jogatina', nome: 'Jogatina' }),
     })
   })
