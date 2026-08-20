@@ -206,6 +206,28 @@ describe('aba Transmissão', () => {
     expect(detalhes).toHaveTextContent('bandaDisponivelKbps')
   })
 
+  // Campos numéricos zerados já pareceram "sem valor" na árvore de
+  // acessibilidade enquanto o cartão mostrava o número. O `dd` sempre usa `String(valor)` — 0
+  // vira o texto "0", nunca some — então isto é lock de regressão, não a causa: com o DOM
+  // provado correto, o achado é da ferramenta de leitura da árvore, não do render.
+  it('Detalhes não escancha campos com valor 0 — o dd mostra "0", nunca fica vazio', async () => {
+    const usuario = userEvent.setup()
+    montarTransmissao({
+      ...TELEMETRIA_VAZIA,
+      emissor: [emissor({ kbps: 0, rtt: 0, perda: 0, mudancasDeResolucao: 0, fpsCaptura: 0 })],
+    })
+
+    await usuario.click(screen.getByText('Detalhes'))
+    const detalhes = screen.getByText('Detalhes').closest('details') as HTMLElement
+
+    for (const campo of ['kbps', 'rtt', 'perda', 'mudancasDeResolucao', 'fpsCaptura']) {
+      const dd = within(detalhes).getByText(campo).nextElementSibling
+      expect(dd).not.toBeNull()
+      expect(dd).not.toBeEmptyDOMElement()
+      expect(dd).toHaveTextContent('0')
+    }
+  })
+
   it('Copiar JSON leva histórico e relatos à área de transferência, com nomes legíveis', async () => {
     const usuario = userEvent.setup()
     const writeText = vi.fn(async (_texto: string) => {})
