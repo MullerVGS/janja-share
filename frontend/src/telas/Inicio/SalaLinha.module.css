@@ -1,6 +1,7 @@
 .linha {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--e4);
   padding: var(--e3) var(--e4);
   border-radius: var(--raio-md);
@@ -76,10 +77,25 @@
   margin-left: 0;
 }
 
+.avatarExtra {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--texto-xs);
+  font-weight: 700;
+  color: var(--texto-fraco);
+  background: var(--superficie-alta);
+  border: 2px solid var(--superficie);
+  margin-left: -8px;
+}
+
 .formulario {
-  flex: none;
+  flex: 1 1 100%;
   display: flex;
   align-items: flex-end;
+  flex-wrap: wrap;
   gap: var(--e2);
 }
 

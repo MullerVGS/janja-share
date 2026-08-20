@@ -1,7 +1,7 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes, useParams } from 'react-router-dom'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SalaNaLista } from '../src/api/salas'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { useSessao } from '../src/sessao/sessao'
@@ -121,6 +121,115 @@ describe('início: lista de salas', () => {
       'O servidor de mídia não respondeu. Tente de novo em instantes.',
     )
     expect(screen.queryByText(/nenhuma sala/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('início: poll de fundo (5s) que falha não apaga a lista nem o que a pessoa digitou', () => {
+  // Faz nos dois lados do mount: o `useQuery` registra o `setInterval` do refetch já na
+  // montagem — fake timers ligados só depois não pegam esse intervalo (ele fica preso ao
+  // `setInterval` real), e o segundo poll nunca dispara dentro do tempo falso do teste.
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] }))
+  afterEach(() => vi.useRealTimers())
+
+  it('religa em 5s (refetchInterval); um 503 no poll vira aviso por cima da lista, sem desmontar a linha', async () => {
+    let chamadasGet = 0
+    servir({
+      'GET /api/salas': () => {
+        chamadasGet++
+        return chamadasGet === 1 ? { corpo: SALAS } : { status: 503, corpo: { erro: 'sfu_indisponivel' } }
+      },
+    })
+    // `delay: null`: sem isso, o `userEvent` conta com `setTimeout` real entre teclas, e só o
+    // `setInterval` está fake aqui — misturar os dois regimes de tempo trava o teste.
+    const usuario = userEvent.setup({ delay: null })
+    montarInicio()
+
+    await screen.findByText('Reunião')
+    await usuario.click(within(linhaDe('Reunião')).getByRole('button', { name: 'Entrar' }))
+    await usuario.type(within(linhaDe('Reunião')).getByLabelText('Senha'), 'meio-digitada')
+    expect(chamadasGet).toBe(1)
+
+    // `Async`, e não `advanceTimersByTime`: precisa dar vez ao microtask do `fetch` mockado
+    // para o segundo `GET` sair. Depois, volta para timers reais — o resto da cadeia (`.json()`,
+    // o processamento interno do react-query, o re-render) é assíncrono demais para garantir em
+    // quantos ticks falsos termina, e `findByRole` com timer real resolve isso sem chute.
+    await act(async () => vi.advanceTimersByTimeAsync(5000))
+    expect(chamadasGet).toBe(2)
+    vi.useRealTimers()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'O servidor de mídia não respondeu. Tente de novo em instantes.',
+    )
+    // A lista continua — a linha não desmontou, e a senha meio-digitada não sumiu.
+    expect(screen.getByText('Reunião')).toBeInTheDocument()
+    expect(within(linhaDe('Reunião')).getByLabelText('Senha')).toHaveValue('meio-digitada')
+  })
+})
+
+describe('início: linha de sala — robustez', () => {
+  it('nomes repetidos na mesma sala não colidem de chave — sem aviso do React no console', async () => {
+    const consoleErro = vi.spyOn(console, 'error').mockImplementation(() => {})
+    servir({
+      'GET /api/salas': {
+        corpo: [
+          { slug: 'duplicada', nome: 'Duplicada', pessoas: ['Bia', 'Bia'], telasNoAr: 0, temSenha: false, cheia: false },
+        ],
+      },
+    })
+    montarInicio()
+
+    await screen.findByText('Duplicada')
+    expect(within(linhaDe('Duplicada')).getAllByTitle('Bia')).toHaveLength(2)
+    const avisosDeChave = consoleErro.mock.calls.filter((chamada) => String(chamada[0]).includes('key'))
+    expect(avisosDeChave).toEqual([])
+    consoleErro.mockRestore()
+  })
+
+  it('mais de 6 pessoas mostra os 6 primeiros avatares e um "+N" para o resto', async () => {
+    servir({ 'GET /api/salas': { corpo: SALAS } })
+    montarInicio()
+
+    const linha = await screen.findByText('Lotada').then(() => linhaDe('Lotada'))
+    expect(within(linha).getAllByTitle(/^P\d+$/)).toHaveLength(6)
+    expect(within(linha).getByText('+6')).toBeInTheDocument()
+  })
+
+  it('Cancelar fecha o formulário expandido e esquece o que foi digitado', async () => {
+    servir({ 'GET /api/salas': { corpo: SALAS } })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await screen.findByText('Reunião')
+    const linha = linhaDe('Reunião')
+    await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
+    await usuario.type(within(linha).getByLabelText('Senha'), 'alguma coisa')
+
+    await usuario.click(within(linha).getByRole('button', { name: 'Cancelar' }))
+
+    expect(within(linha).queryByLabelText('Senha')).not.toBeInTheDocument()
+    expect(within(linha).getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
+
+    // Reabrir prova que o campo esqueceu o que tinha antes.
+    await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
+    expect(within(linha).getByLabelText('Senha')).toHaveValue('')
+  })
+
+  it('erro no caminho direto (sem senha, nome já sabido) expande a linha em vez de só mostrar a frase', async () => {
+    prepararNome('Ana')
+    servir({
+      'GET /api/salas': { corpo: SALAS },
+      'POST /api/salas/jogatina/entrar': { status: 400, corpo: { erro: 'nome_invalido' } },
+    })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await screen.findByText('Jogatina')
+    const linha = linhaDe('Jogatina')
+    await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
+
+    expect(await within(linha).findByRole('alert')).toHaveTextContent('Escolha um nome com 1 a 40 caracteres.')
+    // Expandiu: agora há um jeito de agir, não só a frase — aqui, cancelar.
+    expect(within(linha).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
   })
 })
 
@@ -273,5 +382,27 @@ describe('início: criar sala', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     expect(chamadas.some((c) => c.metodo === 'POST' && c.caminho === '/api/salas')).toBe(false)
+  })
+
+  it('abre com o foco no primeiro campo — o efeito do Dialogo não rouba o autoFocus', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
+
+    expect(within(screen.getByRole('dialog')).getByLabelText('Nome da sala')).toHaveFocus()
+  })
+
+  it('devolve o foco a quem abriu o diálogo, ao fechar', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    const gatilho = await screen.findByRole('button', { name: 'Criar sala' })
+    await usuario.click(gatilho)
+    await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
+
+    expect(gatilho).toHaveFocus()
   })
 })

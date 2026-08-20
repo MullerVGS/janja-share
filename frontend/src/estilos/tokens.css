@@ -12,6 +12,8 @@
   --superficie: #191e26;
   --superficie-alta: #212832;
   --palco: #07090c;
+  /* `--palco` em rgba: pílulas sobre vídeo (overlay do quadro) e o fundo do diálogo modal. */
+  --veu: rgba(7, 9, 12, 0.72);
 
   /* — texto — */
   --texto: #e8edf4;

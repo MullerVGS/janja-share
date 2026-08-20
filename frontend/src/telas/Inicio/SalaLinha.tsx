@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { mensagemDoErro } from '../../api/cliente'
-import { entrarNaSala, type Credenciais, type SalaNaLista } from '../../api/salas'
+import { entrarNaSala, LIMITE_DO_NOME, type Credenciais, type SalaNaLista } from '../../api/salas'
 import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
@@ -8,7 +8,8 @@ import { IconeCadeado } from '../../ui/Icone'
 import { corDoNome, iniciaisDoNome } from './avatares'
 import estilos from './SalaLinha.module.css'
 
-const LIMITE_DO_NOME = 40
+/** Avatares de sobra viram um "+N" — uma fila crescendo sem teto por sala fica ilegível. */
+const MAX_AVATARES_VISIVEIS = 6
 
 interface Props {
   sala: SalaNaLista
@@ -39,6 +40,13 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
     setExpandido(true)
   }
 
+  function cancelar() {
+    setExpandido(false)
+    setSenha('')
+    setNomeLocal('')
+    setErro(null)
+  }
+
   async function enviar(evento?: FormEvent) {
     evento?.preventDefault()
     const seuNome = (precisaDoNome ? nomeLocal : meuNome).trim()
@@ -52,6 +60,10 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
       aoEntrar(credenciais)
     } catch (falha) {
       setErro(falha)
+      // Cobre o caminho direto (sem senha, nome já sabido): se o servidor discordar por qualquer
+      // motivo — uma sala que passou a exigir senha entre um poll e outro, por exemplo — a linha
+      // precisa de um campo para corrigir, não só da frase do erro.
+      setExpandido(true)
     } finally {
       setEnviando(false)
     }
@@ -78,9 +90,9 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
           <span className={estilos.vazio}>ninguém agora</span>
         ) : (
           <div className={estilos.avatares}>
-            {sala.pessoas.map((pessoa) => (
+            {sala.pessoas.slice(0, MAX_AVATARES_VISIVEIS).map((pessoa, indice) => (
               <span
-                key={pessoa}
+                key={`${pessoa}-${indice}`}
                 className={estilos.avatar}
                 style={{ backgroundColor: corDoNome(pessoa) }}
                 title={pessoa}
@@ -88,6 +100,14 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
                 {iniciaisDoNome(pessoa)}
               </span>
             ))}
+            {sala.pessoas.length > MAX_AVATARES_VISIVEIS && (
+              <span
+                className={estilos.avatarExtra}
+                title={sala.pessoas.slice(MAX_AVATARES_VISIVEIS).join(', ')}
+              >
+                +{sala.pessoas.length - MAX_AVATARES_VISIVEIS}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -126,6 +146,9 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
             disabled={(precisaDoNome ? nomeLocal.trim() : meuNome.trim()) === ''}
           >
             Entrar
+          </Botao>
+          <Botao type="button" aparencia="fantasma" disabled={enviando} onClick={cancelar}>
+            Cancelar
           </Botao>
         </form>
       ) : (

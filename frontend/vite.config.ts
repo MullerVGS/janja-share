@@ -2,11 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // O Nest serve este bundle em produção, na mesma origem da API. O dev usa proxy para fingir a
-// mesma coisa — é o que mantém `/api` relativo nos dois ambientes e o header `Host` (que é a
-// guarda do `/admin`) chegando ao backend inalterado, daí `changeOrigin: false`.
+// mesma coisa — é o que mantém `/api` relativo nos dois ambientes. `changeOrigin: false`
+// preserva o header `Host` original da requisição em vez de reescrevê-lo para o alvo do proxy.
 const BACKEND = process.env.SHARE_API ?? 'http://localhost:3000'
 
-export default defineConfig({
+const config = {
   plugins: [react()],
   server: {
     port: 5174,

@@ -1,5 +1,8 @@
 import { enviarJson, pedir } from './cliente'
 
+/** `nome` (da sala) e `seuNome` (da pessoa): 1 a 40 caracteres, pelo contrato. */
+export const LIMITE_DO_NOME = 40
+
 /** Resposta de `POST /api/salas` e `POST /api/salas/:slug/entrar`: tudo que a sala precisa para conectar. */
 export interface Credenciais {
   token: string

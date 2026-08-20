@@ -1,13 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { mensagemDoErro } from '../../api/cliente'
-import { criarSala, type Credenciais } from '../../api/salas'
+import { criarSala, LIMITE_DO_NOME, type Credenciais } from '../../api/salas'
 import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { Dialogo } from '../../ui/Dialogo'
 import estilos from './DialogoCriarSala.module.css'
-
-const LIMITE_DO_NOME = 40
 
 interface Props {
   aberto: boolean

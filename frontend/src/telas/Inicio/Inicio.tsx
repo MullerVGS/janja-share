@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { mensagemDoErro } from '../../api/cliente'
-import { listarSalas, type Credenciais } from '../../api/salas'
+import { LIMITE_DO_NOME, listarSalas, type Credenciais } from '../../api/salas'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { useSessao } from '../../sessao/sessao'
 import { Aviso } from '../../ui/Aviso'
@@ -11,8 +11,6 @@ import { Campo } from '../../ui/Campo'
 import { DialogoCriarSala } from './DialogoCriarSala'
 import { SalaLinha } from './SalaLinha'
 import estilos from './Inicio.module.css'
-
-const LIMITE_DO_NOME = 40
 
 /**
  * A porta que não é convite: abrir a URL, ver o que está rolando e entrar em um clique.
@@ -59,9 +57,13 @@ export function Inicio() {
 
       {lista.isPending && <p className={estilos.carregando}>Carregando salas…</p>}
 
+      {/* Um poll de fundo pode falhar sem derrubar `data` (react-query mantém o último sucesso) —
+          por isso o aviso fica por cima da lista, e não no lugar dela: um 503 passageiro não pode
+          desmontar cada `SalaLinha` e levar junto a senha ou o nome que a pessoa já digitou. A
+          tela só-de-erro (sem lista nenhuma) só acontece quando ainda não há `data` nenhum. */}
       {lista.isError && <Aviso tom="erro">{mensagemDoErro(lista.error)}</Aviso>}
 
-      {lista.isSuccess && lista.data.length === 0 && (
+      {lista.data && lista.data.length === 0 && (
         <div className={estilos.vazio}>
           <p>Nenhuma sala no ar agora.</p>
           <Botao aparencia="primario" onClick={() => setCriarAberto(true)}>
@@ -70,7 +72,7 @@ export function Inicio() {
         </div>
       )}
 
-      {lista.isSuccess && lista.data.length > 0 && (
+      {lista.data && lista.data.length > 0 && (
         <>
           <ul className={estilos.lista}>
             {lista.data.map((sala) => (

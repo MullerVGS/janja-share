@@ -126,7 +126,7 @@
   max-width: calc(100% - var(--e8));
   padding: 3px 9px;
   border-radius: var(--raio-pilula);
-  background: rgba(7, 9, 12, 0.72);
+  background: var(--veu);
   backdrop-filter: blur(6px);
 }
 
@@ -155,7 +155,7 @@
   gap: var(--e1);
   padding: 3px 8px 3px 4px;
   border-radius: var(--raio-pilula);
-  background: rgba(7, 9, 12, 0.72);
+  background: var(--veu);
   backdrop-filter: blur(6px);
   opacity: 0;
   transition: opacity 0.12s ease;
@@ -211,7 +211,7 @@
   padding: 6px;
   border-radius: var(--raio-sm);
   border: 1px solid transparent;
-  background: rgba(7, 9, 12, 0.72);
+  background: var(--veu);
   color: var(--texto-fraco);
 }
 

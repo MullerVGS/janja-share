@@ -102,22 +102,36 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
 
   const valor = useMemo<Sessao>(
     () => ({
-      credenciaisDe: (slug) => mapa[slug]?.credenciais ?? null,
+      // Reconfere a validade a cada chamada, com o relógio de agora — não só a que filtrou o
+      // `useState` inicial. Sem isto, uma aba aberta além das 8h do JWT entregaria uma
+      // credencial morta, e a pessoa veria erro de conexão em vez de voltar para o início.
+      credenciaisDe: (slug) => {
+        const entrada = mapa[slug]
+        if (!entrada) return null
+        return entrada.expiraEm - MARGEM_MS > Date.now() ? entrada.credenciais : null
+      },
+      // Atualização funcional nos dois: duas chamadas de `guardar` (ou `guardar` seguido de
+      // `encerrar`) no mesmo tick partiriam do mesmo `mapa` capturado pelo `useMemo`, e a
+      // segunda apagaria o efeito da primeira — tanto do estado quanto do `sessionStorage`.
       guardar: (credenciais) => {
-        const proximo: MapaDeSessoes = {
-          ...mapa,
-          [credenciais.slug]: {
-            credenciais,
-            expiraEm: expiracaoDoToken(credenciais.token) ?? Date.now() + VALIDADE_SUPOSTA_MS,
-          },
-        }
-        escreverMapa(proximo)
-        setMapa(proximo)
+        setMapa((atual) => {
+          const proximo: MapaDeSessoes = {
+            ...atual,
+            [credenciais.slug]: {
+              credenciais,
+              expiraEm: expiracaoDoToken(credenciais.token) ?? Date.now() + VALIDADE_SUPOSTA_MS,
+            },
+          }
+          escreverMapa(proximo)
+          return proximo
+        })
       },
       encerrar: (slug) => {
-        const { [slug]: _fora, ...proximo } = mapa
-        escreverMapa(proximo)
-        setMapa(proximo)
+        setMapa((atual) => {
+          const { [slug]: _fora, ...proximo } = atual
+          escreverMapa(proximo)
+          return proximo
+        })
       },
     }),
     [mapa],
