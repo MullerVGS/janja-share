@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { entrar, precheckarConvite } from '../api/convites'
 import { mensagemDoErro } from '../api/cliente'
 import { useSessao } from '../sessao/sessao'
@@ -16,11 +16,13 @@ const LIMITE_DO_NOME = 40
  * digitar o nome é a versão ruim da mesma tela.
  *
  * A pré-checagem não consome uso do convite (contrato); quem consome é o `POST /api/entrar`.
+ * Por isso, sessão válida guardada atravessa direto: abrir o mesmo link duas vezes, ou dar F5,
+ * não pode custar um uso.
  */
 export function Entrada() {
   const { token = '' } = useParams()
   const navegar = useNavigate()
-  const { guardar } = useSessao()
+  const { credenciais, guardar } = useSessao()
 
   const [nome, setNome] = useState('')
   const [erroAoEntrar, setErroAoEntrar] = useState<unknown>(null)
@@ -30,6 +32,8 @@ export function Entrada() {
     queryKey: ['convite', token],
     queryFn: () => precheckarConvite(token),
     retry: false,
+    // Quem já tem sessão válida está só recarregando a página: nem a pré-checagem precisa sair.
+    enabled: credenciais === null,
   })
 
   async function enviar(evento: FormEvent) {
@@ -45,6 +49,8 @@ export function Entrada() {
       setEnviando(false)
     }
   }
+
+  if (credenciais) return <Navigate to="/sala" replace />
 
   return (
     <div className={estilos.tela}>

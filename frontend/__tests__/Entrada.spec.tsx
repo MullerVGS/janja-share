@@ -2,9 +2,10 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import { useSessao } from '../src/sessao/sessao'
+import { CHAVE_DA_SESSAO, useSessao } from '../src/sessao/sessao'
 import { Entrada } from '../src/telas/Entrada'
 import { montar } from './apoio/montar'
+import { credenciaisFalsas, guardarSessao, jwtFalso } from './apoio/sessaoFalsa'
 import { chamadas, servidorMudo, servir } from './apoio/servidorFalso'
 
 const TOKEN = 'tOk3n-de-convite'
@@ -129,5 +130,98 @@ describe('tela de entrada', () => {
 
     await usuario.type(screen.getByLabelText('Seu nome'), 'Ana')
     await waitFor(() => expect(botao).toBeEnabled())
+  })
+})
+
+/**
+ * `POST /api/entrar` consome um uso do convite. Recarregar a página não pode custar um uso — daí
+ * a sessão guardada na aba, e daí estes testes: o que decide bater na porta é a validade do
+ * passe que já está na mão.
+ */
+describe('reaproveitamento da sessão guardada', () => {
+  it('sessão válida na aba entra direto, sem chamar /api/entrar nem a pré-checagem', async () => {
+    servir({
+      [`GET /api/convites/${TOKEN}`]: { corpo: { valido: true, rotulo: 'Pessoal' } },
+      'POST /api/entrar': { corpo: CREDENCIAIS },
+    })
+    const daqui_a_uma_hora = Date.now() + 60 * 60 * 1000
+    guardarSessao(credenciaisFalsas(daqui_a_uma_hora, 'Ana'), daqui_a_uma_hora)
+
+    montarEntrada()
+
+    expect(await screen.findByText(/na sala como Ana em share/)).toBeInTheDocument()
+    expect(chamadas).toEqual([])
+  })
+
+  it('sessão vencida é descartada e a entrada volta a pedir o nome', async () => {
+    servir({
+      [`GET /api/convites/${TOKEN}`]: { corpo: { valido: true, rotulo: 'Pessoal' } },
+      'POST /api/entrar': { corpo: CREDENCIAIS },
+    })
+    const uma_hora_atras = Date.now() - 60 * 60 * 1000
+    guardarSessao(credenciaisFalsas(uma_hora_atras), uma_hora_atras)
+    const usuario = userEvent.setup()
+
+    montarEntrada()
+
+    expect(await screen.findByText('Pessoal')).toBeInTheDocument()
+    await usuario.type(screen.getByLabelText('Seu nome'), 'Ana')
+    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    await screen.findByText(/na sala como Ana/)
+    expect(chamadas.some((chamada) => chamada.caminho === '/api/entrar')).toBe(true)
+  })
+
+  it('sem sessão guardada, entrar consome o convite como sempre', async () => {
+    servir({
+      [`GET /api/convites/${TOKEN}`]: { corpo: { valido: true, rotulo: 'Pessoal' } },
+      'POST /api/entrar': { corpo: CREDENCIAIS },
+    })
+    const usuario = userEvent.setup()
+    montarEntrada()
+
+    await screen.findByText('Pessoal')
+    await usuario.type(screen.getByLabelText('Seu nome'), 'Ana')
+    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    await screen.findByText(/na sala como Ana/)
+    expect(chamadas.filter((chamada) => chamada.caminho === '/api/entrar')).toHaveLength(1)
+  })
+
+  it('o que entrou fica guardado na aba — é o que sobrevive ao recarregamento', async () => {
+    servir({
+      [`GET /api/convites/${TOKEN}`]: { corpo: { valido: true, rotulo: 'Pessoal' } },
+      'POST /api/entrar': { corpo: CREDENCIAIS },
+    })
+    const usuario = userEvent.setup()
+    montarEntrada()
+
+    await screen.findByText('Pessoal')
+    await usuario.type(screen.getByLabelText('Seu nome'), 'Ana')
+    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
+    await screen.findByText(/na sala como Ana/)
+
+    const guardado = JSON.parse(sessionStorage.getItem(CHAVE_DA_SESSAO) as string)
+    expect(guardado.credenciais).toEqual(CREDENCIAIS)
+    expect(guardado.expiraEm).toBeGreaterThan(Date.now())
+  })
+
+  it('a validade guardada vem do exp do próprio JWT, não de um palpite do front', async () => {
+    const expira = Date.now() + 2 * 60 * 60 * 1000
+    servir({
+      [`GET /api/convites/${TOKEN}`]: { corpo: { valido: true, rotulo: 'Pessoal' } },
+      'POST /api/entrar': { corpo: { ...CREDENCIAIS, token: jwtFalso(expira) } },
+    })
+    const usuario = userEvent.setup()
+    montarEntrada()
+
+    await screen.findByText('Pessoal')
+    await usuario.type(screen.getByLabelText('Seu nome'), 'Ana')
+    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
+    await screen.findByText(/na sala como Ana/)
+
+    const guardado = JSON.parse(sessionStorage.getItem(CHAVE_DA_SESSAO) as string)
+    // Segundos inteiros no JWT; a comparação tolera o arredondamento, não oito horas de palpite.
+    expect(Math.abs(guardado.expiraEm - expira)).toBeLessThan(1000)
   })
 })

@@ -18,8 +18,8 @@ export function Inicio() {
             <code className={estilos.rotulo}> /c/…</code> — peça um a quem administra a sala.
           </p>
           <p className={estilos.legenda}>
-            Se você já tinha entrado e recarregou a página, a sessão se perdeu junto: ela vive só na
-            memória do navegador. Abra o convite de novo.
+            Recarregar a página não derruba quem já entrou — a sessão volta sozinha. Ela se perde ao
+            fechar a aba, ou quando o passe da sala vence; aí é abrir o convite de novo.
           </p>
         </div>
       </div>

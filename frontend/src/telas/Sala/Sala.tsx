@@ -54,8 +54,8 @@ export function Sala() {
           <div className={entrada.cartao}>
             <h1 className={entrada.titulo}>Sua sessão não está mais aqui</h1>
             <p className={entrada.legenda}>
-              A sessão da sala vive só na memória desta aba — recarregar a página, fechá-la ou abrir a sala
-              em outra aba a perde. Abra o link de convite de novo para voltar.
+              A sessão sobrevive a um F5, mas morre quando a aba fecha — e o passe da sala tem prazo.
+              Abra o link de convite de novo para voltar.
             </p>
             <Link to="/">Voltar ao início</Link>
           </div>
