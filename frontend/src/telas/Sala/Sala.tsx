@@ -34,8 +34,8 @@ export function Sala() {
   const { credenciais, encerrar } = useSessao()
   const navegar = useNavigate()
   const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
-  const compartilhamento = useCompartilhamento(sala)
   const telemetria = useTelemetria(sala)
+  const compartilhamento = useCompartilhamento(sala, telemetria.emissor)
   // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
   // mostrava "Nada dito ainda." enquanto os outros continuavam falando.

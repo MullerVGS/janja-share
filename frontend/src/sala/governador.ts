@@ -50,8 +50,8 @@ export interface EstadoDoGovernador {
   /** Instante (relógio das amostras) da última limitação ou decisão: é de onde os 30 s contam. */
   limpoDesdeMs: number | null
   subiuEmMs: number | null
-  /** Amostras até aqui já foram julgadas; a janela seguinte começa depois. */
-  decidiuEmMs: number | null
+  /** A janela só conta amostras depois deste instante: as de antes já foram julgadas, ou são de antes de a pessoa mexer. */
+  janelaDesdeMs: number | null
   decisoes: readonly DecisaoDoGovernador[]
 }
 
@@ -62,8 +62,14 @@ export const GOVERNADOR_PARADO: EstadoDoGovernador = {
   alturaSemDegrau: null,
   limpoDesdeMs: null,
   subiuEmMs: null,
-  decidiuEmMs: null,
+  janelaDesdeMs: null,
   decisoes: [],
+}
+
+/** O que acontece quando a pessoa mexe num controle: tudo zera, e a próxima janela começa agora. */
+export function zerarGovernador(historico: readonly AmostraDoEmissor[]): EstadoDoGovernador {
+  const nova = historico[historico.length - 1]
+  return nova ? { ...GOVERNADOR_PARADO, janelaDesdeMs: nova.emMs } : GOVERNADOR_PARADO
 }
 
 function motivoDe(amostra: AmostraDoEmissor): MotivoDoGovernador | null {
@@ -107,7 +113,7 @@ export function decidir(
   // Pausado pelo dynacast não é limitação nem tempo limpo: a batida não conta para nada.
   if (!nova.ativo) return estado.limpoDesdeMs === agora ? estado : { ...estado, limpoDesdeMs: agora }
 
-  const janela = historico.filter((amostra) => estado.decidiuEmMs === null || amostra.emMs > estado.decidiuEmMs).slice(-JANELA)
+  const janela = historico.filter((amostra) => estado.janelaDesdeMs === null || amostra.emMs > estado.janelaDesdeMs).slice(-JANELA)
   const degraus = pedido.ceder === 'quadros' ? DEGRAUS_DE_FPS : DEGRAUS_DE_ALTURA
   const medidaDe = (amostra: AmostraDoEmissor) => (pedido.ceder === 'quadros' ? amostra.fpsCodificado : amostra.altura)
   const teto = tetoDoPedido(pedido, estado, janela)
@@ -130,7 +136,7 @@ export function decidir(
         queimados: queimaAgora ? [...estado.queimados, alvo] : estado.queimados,
         alturaSemDegrau: pedido.ceder === 'resolucao' ? (estado.alturaSemDegrau ?? teto) : null,
         limpoDesdeMs: agora,
-        decidiuEmMs: agora,
+        janelaDesdeMs: agora,
         decisoes: anotarDecisao(estado, { emMs: agora, de: estado.degrau, para, motivo }),
       }
     }
@@ -149,7 +155,7 @@ export function decidir(
         alturaSemDegrau: para === null ? null : estado.alturaSemDegrau,
         limpoDesdeMs: agora,
         subiuEmMs: agora,
-        decidiuEmMs: agora,
+        janelaDesdeMs: agora,
         decisoes: anotarDecisao(estado, { emMs: agora, de: estado.degrau, para, motivo: null }),
       }
     }

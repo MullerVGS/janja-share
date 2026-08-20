@@ -5,6 +5,7 @@ import {
   GOVERNADOR_PARADO,
   perfilEfetivo,
   TETO_DE_DECISOES,
+  zerarGovernador,
   type EstadoDoGovernador,
 } from '../src/sala/governador'
 import { PERFIL_PADRAO, type PerfilDeQualidade } from '../src/sala/qualidade'
@@ -237,6 +238,19 @@ describe('governador: subir', () => {
 describe('governador: memória e descrição', () => {
   it('sem histórico o estado não muda', () => {
     expect(decidir(GOVERNADOR_PARADO, [], QUADROS)).toBe(GOVERNADOR_PARADO)
+  })
+
+  it('zerar apaga degrau e queimados, e a janela recomeça agora: as amostras de antes não decidem de novo', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    sessao.estado = zerarGovernador(sessao.historico)
+    expect(sessao.estado).toMatchObject({ degrau: null, queimados: [], janelaDesdeMs: 5000 })
+
+    sessao.segundos(4, CPU)
+    expect(sessao.degrau).toBeNull()
+    sessao.segundos(1, CPU)
+    expect(sessao.degrau).toBe(30)
+
+    expect(zerarGovernador([])).toBe(GOVERNADOR_PARADO)
   })
 
   it('registra cada decisão com de/para/motivo, limitado', () => {

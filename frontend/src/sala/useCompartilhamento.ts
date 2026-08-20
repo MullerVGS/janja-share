@@ -1,13 +1,30 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Track, type LocalTrackPublication, type Room, type TrackPublishOptions } from 'livekit-client'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Track,
+  type LocalTrack,
+  type LocalTrackPublication,
+  type LocalVideoTrack,
+  type Room,
+  type TrackPublishOptions,
+} from 'livekit-client'
 import type { ScreenShareCaptureOptions } from 'livekit-client'
+import { gravarPreferencias, lerPreferencias } from '../preferencias'
+import type { AmostraDoEmissor } from '../telemetria/amostra'
+import type { Historico } from '../telemetria/historico'
+import {
+  decidir,
+  GOVERNADOR_PARADO,
+  perfilEfetivo as combinar,
+  zerarGovernador,
+  type EstadoDoGovernador,
+} from './governador'
 import {
   aplicarPerfil,
   alturaDaResolucao,
   CEDER,
   CODECS,
   CONTEUDOS,
-  PERFIL_PADRAO,
+  type Codec,
   type PerfilDeQualidade,
   type RelatorioDeAplicacao,
 } from './qualidade'
@@ -74,26 +91,73 @@ export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptio
   }
 }
 
+const OPCOES_DO_AUDIO_DA_TELA: TrackPublishOptions = { source: Track.Source.ScreenShareAudio }
+
 export interface Compartilhamento {
   ativo: boolean
+  /** O pedido da pessoa: o teto do governador. */
   perfil: PerfilDeQualidade
   definirPerfil(perfil: PerfilDeQualidade): void
+  /** Pedido ⊕ degrau do governador — o que de fato está na captura e no encoder. */
+  perfilEfetivo: PerfilDeQualidade
+  automatico: boolean
+  definirAutomatico(ligado: boolean): void
+  governador: EstadoDoGovernador
   /** O que de fato pegou no último ajuste; `null` enquanto não há transmissão. */
   relatorio: RelatorioDeAplicacao | null
+  /** Codec pedido que o SDK não pôs no ar: vale no próximo compartilhamento. */
+  codecPendente: Codec | null
   erro: string | null
   ocupado: boolean
   alternar(): Promise<void>
+  /** Para e começa de novo — reabre o seletor nativo. É a saída quando republicar não deu. */
+  reiniciar(): Promise<void>
 }
 
-export function useCompartilhamento(sala: Room | null): Compartilhamento {
-  const publicacao =
-    (sala?.localParticipant.getTrackPublication(Track.Source.ScreenShare) as LocalTrackPublication | undefined) ?? null
+function publicacaoDe(sala: Room, fonte: Track.Source): LocalTrackPublication | undefined {
+  return sala.localParticipant.getTrackPublication(fonte) as LocalTrackPublication | undefined
+}
+
+function faixaMorta(faixa: LocalTrack): boolean {
+  return faixa.mediaStreamTrack.readyState === 'ended'
+}
+
+/**
+ * O compartilhamento de tela: o pedido da pessoa, o governador por cima dele, e a tradução dos
+ * dois para o SDK. O `historico` é a telemetria do emissor; é dele que o governador decide.
+ */
+export function useCompartilhamento(sala: Room | null, historico: Historico<AmostraDoEmissor>): Compartilhamento {
+  const publicacao = sala ? publicacaoDe(sala, Track.Source.ScreenShare) : undefined
   const sid = publicacao?.trackSid ?? null
 
-  const [perfil, definirPerfil] = useState<PerfilDeQualidade>(PERFIL_PADRAO)
+  const [guardadas] = useState(lerPreferencias)
+  const [perfil, setPerfil] = useState(guardadas.perfil)
+  const [automatico, setAutomatico] = useState(guardadas.automatico)
+  const [governador, setGovernador] = useState(GOVERNADOR_PARADO)
   const [relatorio, setRelatorio] = useState<RelatorioDeAplicacao | null>(null)
+  const [codecPendente, setCodecPendente] = useState<Codec | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState(false)
+  const [mudando, setMudando] = useState(false)
+  const [republicando, setRepublicando] = useState(false)
+  // O último pedido, para a republicação em curso saber se ficou para trás.
+  const pedido = useRef(perfil)
+  pedido.current = perfil
+
+  // Republicar deixa a tela sem publicação por um instante; isso não é "parou".
+  const ativo = Boolean(publicacao) || republicando
+
+  // O governador anda uma vez por amostra nova; parar de transmitir o zera.
+  useEffect(() => {
+    if (!ativo) {
+      setGovernador(GOVERNADOR_PARADO)
+      return
+    }
+    if (!automatico) return
+    setGovernador((estado) => decidir(estado, historico, perfil))
+  }, [historico, automatico, ativo, perfil])
+
+  // Só o degrau muda o efetivo; o resto do estado do governador muda a cada amostra limitada.
+  const perfilEfetivo = useMemo(() => combinar(perfil, governador), [perfil, governador.degrau])
 
   // Ajuste ao vivo: sem republicar, sem renegociar. Roda também logo depois de publicar,
   // porque a captura entrega o que o monitor tem e o teto real é este.
@@ -104,35 +168,134 @@ export function useCompartilhamento(sala: Room | null): Compartilhamento {
       return
     }
     const espera = setTimeout(() => {
-      void aplicarPerfil({ faixa: faixa.mediaStreamTrack, remetente: faixa.sender }, perfil).then(setRelatorio)
+      void aplicarPerfil({ faixa: faixa.mediaStreamTrack, remetente: faixa.sender }, perfilEfetivo).then(setRelatorio)
     }, ATRASO_DO_AJUSTE_MS)
     return () => clearTimeout(espera)
     // `sid` identifica a publicação; `publicacao.track` é lido na hora para pegar o sender que
     // costuma aparecer alguns milissegundos depois dela.
-  }, [sid, perfil, publicacao])
+  }, [sid, perfilEfetivo, publicacao])
+
+  /**
+   * Troca de codec no ar: a mesma faixa de captura sai e volta com as opções novas — sem
+   * reabrir o seletor, com um piscar de ~1 s para quem assiste. O áudio da tela vai junto para
+   * as duas publicações seguirem do mesmo dono e com o mesmo ciclo de vida.
+   *
+   * Se o SDK recusar, a anterior volta ao ar e o codec fica pendente; se a faixa chegar morta
+   * ao despublicar, não há o que republicar e a transmissão cai — o botão Reiniciar recomeça.
+   */
+  const republicar = useCallback(
+    async (novo: PerfilDeQualidade) => {
+      if (!sala) return
+      const participante = sala.localParticipant
+      const video = publicacaoDe(sala, Track.Source.ScreenShare)
+      const faixa = video?.track as LocalVideoTrack | undefined
+      if (!video || !faixa) return
+      const audio = publicacaoDe(sala, Track.Source.ScreenShareAudio)?.track
+
+      setRepublicando(true)
+      setErro(null)
+      try {
+        await participante.unpublishTrack(faixa, false)
+        if (audio) await participante.unpublishTrack(audio, false)
+        if (faixaMorta(faixa)) throw new Error('a captura morreu ao despublicar')
+        await participante.publishTrack(faixa, opcoesDePublicacao(novo))
+        if (audio && !faixaMorta(audio)) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
+      } catch {
+        setCodecPendente(novo.codec)
+        if (!faixaMorta(faixa) && !publicacaoDe(sala, Track.Source.ScreenShare)) {
+          try {
+            await participante.publishTrack(faixa, video.options ?? opcoesDePublicacao(perfil))
+            if (audio && !faixaMorta(audio)) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
+          } catch {
+            // Sem como voltar: a captura órfã precisa morrer, senão o Chrome segue "compartilhando".
+            faixa.stop()
+            audio?.stop()
+          }
+        }
+      } finally {
+        setRepublicando(false)
+      }
+
+      // A pessoa trocou de novo enquanto esta republicação andava.
+      if (pedido.current.codec !== novo.codec && publicacaoDe(sala, Track.Source.ScreenShare)) {
+        await republicar(pedido.current)
+      }
+    },
+    [sala, perfil],
+  )
+
+  const definirPerfil = useCallback(
+    (novo: PerfilDeQualidade) => {
+      setPerfil(novo)
+      gravarPreferencias({ perfil: novo })
+      setGovernador(zerarGovernador(historico))
+      if (novo.codec !== perfil.codec) {
+        setCodecPendente(null)
+        if (!republicando) void republicar(novo)
+      }
+    },
+    [historico, perfil.codec, republicando, republicar],
+  )
+
+  const definirAutomatico = useCallback(
+    (ligado: boolean) => {
+      setAutomatico(ligado)
+      gravarPreferencias({ automatico: ligado })
+      setGovernador(zerarGovernador(historico))
+    },
+    [historico],
+  )
+
+  const ligar = useCallback(
+    async (desligarAntes: boolean) => {
+      if (!sala) return
+      setErro(null)
+      setMudando(true)
+      try {
+        if (desligarAntes) await sala.localParticipant.setScreenShareEnabled(false)
+        setCodecPendente(null)
+        await sala.localParticipant.setScreenShareEnabled(true, opcoesDeCaptura(perfilEfetivo), opcoesDePublicacao(perfilEfetivo))
+      } catch (falha) {
+        // Cancelar o seletor nativo do Chrome cai aqui como `NotAllowedError`; não é erro para
+        // mostrar em vermelho, é a pessoa mudando de ideia.
+        const nome = falha instanceof Error ? falha.name : ''
+        if (nome !== 'NotAllowedError' && nome !== 'AbortError') {
+          setErro(falha instanceof Error ? falha.message : 'não foi possível compartilhar a tela')
+        }
+      } finally {
+        setMudando(false)
+      }
+    },
+    [sala, perfilEfetivo],
+  )
 
   const alternar = useCallback(async () => {
     if (!sala) return
+    if (!publicacao) return ligar(false)
     setErro(null)
-    setOcupado(true)
+    setMudando(true)
     try {
-      const querLigar = !publicacao
-      await sala.localParticipant.setScreenShareEnabled(
-        querLigar,
-        querLigar ? opcoesDeCaptura(perfil) : undefined,
-        querLigar ? opcoesDePublicacao(perfil) : undefined,
-      )
-    } catch (falha) {
-      // Cancelar o seletor nativo do Chrome cai aqui como `NotAllowedError`; não é erro para
-      // mostrar em vermelho, é a pessoa mudando de ideia.
-      const nome = falha instanceof Error ? falha.name : ''
-      if (nome !== 'NotAllowedError' && nome !== 'AbortError') {
-        setErro(falha instanceof Error ? falha.message : 'não foi possível compartilhar a tela')
-      }
+      await sala.localParticipant.setScreenShareEnabled(false)
     } finally {
-      setOcupado(false)
+      setMudando(false)
     }
-  }, [sala, publicacao, perfil])
+  }, [sala, publicacao, ligar])
 
-  return { ativo: Boolean(publicacao), perfil, definirPerfil, relatorio, erro, ocupado, alternar }
+  const reiniciar = useCallback(() => ligar(Boolean(publicacao)), [ligar, publicacao])
+
+  return {
+    ativo,
+    perfil,
+    definirPerfil,
+    perfilEfetivo,
+    automatico,
+    definirAutomatico,
+    governador,
+    relatorio,
+    codecPendente,
+    erro,
+    ocupado: mudando || republicando,
+    alternar,
+    reiniciar,
+  }
 }
