@@ -187,6 +187,15 @@ export function IconeCaber(props: Props) {
   )
 }
 
+export function IconePainel(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="2.5" y="4" width="19" height="16" rx="2.5" />
+      <path d="M14.5 4v16" />
+    </Traco>
+  )
+}
+
 export function IconeCopiar(props: Props) {
   return (
     <Traco {...props}>

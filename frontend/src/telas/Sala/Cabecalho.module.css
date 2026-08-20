@@ -1,0 +1,62 @@
+.cabecalho {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+  padding: var(--e1) var(--e1) var(--e1) var(--e3);
+  border-radius: var(--raio-pilula);
+  background: var(--veu);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--linha);
+  box-shadow: var(--sombra-md);
+}
+
+.pulso {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--texto-fraquissimo);
+}
+
+.pulso[data-conectado] {
+  background: var(--menta);
+  animation: shPulsar 2.4s ease-in-out infinite;
+}
+
+.nomeDaSala {
+  font-size: var(--texto-md);
+  font-weight: 600;
+  color: var(--texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
+}
+
+.estado {
+  font-size: var(--texto-sm);
+  color: var(--texto-fraco);
+  white-space: nowrap;
+}
+
+.botao {
+  display: flex;
+  flex: none;
+  cursor: pointer;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-pilula);
+  background: transparent;
+  color: var(--texto-fraco);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.botao:hover {
+  background: var(--realce);
+  color: var(--texto);
+}
+
+.botao[aria-pressed='true'] {
+  color: var(--menta);
+  background: var(--menta-fraca);
+}
