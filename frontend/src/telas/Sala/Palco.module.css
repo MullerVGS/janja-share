@@ -38,12 +38,12 @@
 }
 
 .quadro[data-tela] {
-  border-color: var(--menta-fraca);
+  border-color: var(--acao-fraca);
 }
 
 .quadro[data-falando] {
-  border-color: var(--menta);
-  box-shadow: 0 0 0 1px var(--menta);
+  border-color: var(--conectado);
+  box-shadow: 0 0 0 1px var(--conectado);
 }
 
 /* Em tela cheia o quadro é a janela inteira: a proporção fixa daria tarja preta dos dois lados. */
@@ -146,7 +146,7 @@
 }
 
 .microfoneFechado {
-  color: var(--coral);
+  color: var(--perigo);
   display: flex;
 }
 
@@ -157,8 +157,8 @@
   right: var(--e2);
   padding: 3px 9px;
   border-radius: var(--raio-pilula);
-  background: var(--menta-fraca);
-  color: var(--menta);
+  background: var(--acao-fraca);
+  color: var(--acao);
   font-size: var(--texto-xs);
   font-weight: 600;
 }

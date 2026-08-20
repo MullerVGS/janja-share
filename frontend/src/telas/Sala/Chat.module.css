@@ -55,11 +55,11 @@
 .autor {
   font-size: var(--texto-sm);
   font-weight: 700;
-  color: var(--lilas);
+  color: var(--turquesa);
 }
 
 .propria .autor {
-  color: var(--menta);
+  color: var(--acao);
 }
 
 .hora {
@@ -79,7 +79,7 @@
   margin: 0;
   padding: 0 var(--e4) var(--e2);
   font-size: var(--texto-sm);
-  color: var(--coral);
+  color: var(--perigo);
 }
 
 .formulario {
@@ -99,7 +99,7 @@
 }
 
 .entrada:focus-visible {
-  border-color: var(--menta);
+  border-color: var(--acao);
   outline: none;
 }
 
@@ -110,8 +110,8 @@
   padding: var(--e2) var(--e4);
   font-size: var(--texto-sm);
   font-weight: 600;
-  background: var(--menta);
-  color: #06241f;
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
 }
 
 .enviar:disabled {

@@ -5,7 +5,7 @@
  * uma loteria. O hash é determinístico de propósito.
  */
 
-const MATIZES = ['--menta', '--ambar', '--coral', '--lilas'] as const
+const MATIZES = ['--acao', '--atencao', '--perigo', '--turquesa'] as const
 
 export function iniciaisDoNome(nome: string): string {
   const termos = nome.trim().split(/\s+/).filter(Boolean)

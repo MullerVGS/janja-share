@@ -92,8 +92,8 @@ function GraficosDoEmissor({
       <Grafico
         titulo="FPS"
         series={[
-          { nome: 'codificado', valores: historico.map((a) => a.fpsCodificado), cor: 'menta', destaque: true },
-          { nome: 'captura', valores: historico.map((a) => a.fpsCaptura), cor: 'lilas' },
+          { nome: 'codificado', valores: historico.map((a) => a.fpsCodificado), cor: 'acao', destaque: true },
+          { nome: 'captura', valores: historico.map((a) => a.fpsCaptura), cor: 'turquesa' },
         ]}
         referencias={[{ nome: 'alvo', valor: perfil.fps }]}
         faixas={limitacoes}
@@ -104,8 +104,8 @@ function GraficosDoEmissor({
       <Grafico
         titulo="Bitrate"
         series={[
-          { nome: 'saindo', valores: historico.map((a) => a.kbps), cor: 'menta', destaque: true },
-          { nome: 'disponível estimada', valores: historico.map((a) => a.bandaDisponivelKbps), cor: 'lilas', foraDoEixo: true },
+          { nome: 'saindo', valores: historico.map((a) => a.kbps), cor: 'acao', destaque: true },
+          { nome: 'disponível estimada', valores: historico.map((a) => a.bandaDisponivelKbps), cor: 'turquesa', foraDoEixo: true },
         ]}
         referencias={[{ nome: 'teto', valor: perfil.tetoKbps }]}
         faixas={limitacoes}
@@ -116,8 +116,8 @@ function GraficosDoEmissor({
       <Grafico
         titulo="Resolução"
         series={[
-          { nome: 'codificada', valores: historico.map((a) => a.altura), cor: 'menta', destaque: true },
-          { nome: 'captura', valores: historico.map((a) => a.alturaDaCaptura), cor: 'lilas' },
+          { nome: 'codificada', valores: historico.map((a) => a.altura), cor: 'acao', destaque: true },
+          { nome: 'captura', valores: historico.map((a) => a.alturaDaCaptura), cor: 'turquesa' },
         ]}
         referencias={alturaPedida === null ? [] : [{ nome: 'alvo', valor: alturaPedida }]}
         faixas={limitacoes}
@@ -138,12 +138,12 @@ function RecebendoDe({ nome, historico }: { nome: string; historico: Historico<A
         <Grafico
           titulo="FPS"
           series={[
-            { nome: 'decodificado', valores: historico.map((a) => a.fpsDecodificado), cor: 'menta', destaque: true },
-            { nome: 'recebido', valores: historico.map((a) => a.fpsRecebido), cor: 'lilas' },
+            { nome: 'decodificado', valores: historico.map((a) => a.fpsDecodificado), cor: 'acao', destaque: true },
+            { nome: 'recebido', valores: historico.map((a) => a.fpsRecebido), cor: 'turquesa' },
           ]}
           formatar={fps}
         />
-        <Grafico titulo="Bitrate" series={[{ nome: 'chegando', valores: historico.map((a) => a.kbps), cor: 'menta' }]} formatar={formatarKbps} />
+        <Grafico titulo="Bitrate" series={[{ nome: 'chegando', valores: historico.map((a) => a.kbps), cor: 'acao' }]} formatar={formatarKbps} />
       </div>
       {amostra && <CartoesDoEspectador amostra={amostra} />}
     </section>

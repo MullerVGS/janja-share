@@ -53,12 +53,12 @@
 .valorDoTeto {
   font-family: var(--fonte-mono);
   font-size: var(--texto-sm);
-  color: var(--menta);
+  color: var(--acao);
 }
 
 .slider {
   width: 100%;
-  accent-color: var(--menta);
+  accent-color: var(--acao);
 }
 
 .automatico {
@@ -78,7 +78,7 @@
 }
 
 .chave input {
-  accent-color: var(--menta);
+  accent-color: var(--acao);
 }
 
 .estadoDoAuto {
@@ -95,8 +95,8 @@
 }
 
 .estadoDoAuto[data-segurando] {
-  background: var(--ambar-fraca);
-  color: var(--ambar);
+  background: var(--atencao-fraca);
+  color: var(--atencao);
   font-family: var(--fonte-mono);
 }
 
@@ -116,8 +116,8 @@
 .recusaGrave {
   margin: 0;
   font-size: var(--texto-sm);
-  color: var(--coral);
-  background: var(--coral-fraca);
+  color: var(--perigo);
+  background: var(--perigo-fraca);
   border-radius: var(--raio-sm);
   padding: var(--e2) var(--e3);
 }

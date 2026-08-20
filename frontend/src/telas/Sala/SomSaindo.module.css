@@ -7,7 +7,7 @@
   border-radius: var(--raio-pilula);
   background: linear-gradient(
     to top,
-    var(--menta) calc(var(--nivel, 0) * 100%),
+    var(--conectado) calc(var(--nivel, 0) * 100%),
     var(--linha-forte) calc(var(--nivel, 0) * 100%)
   );
   transition: background 0.08s linear;

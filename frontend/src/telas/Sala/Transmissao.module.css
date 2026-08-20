@@ -31,8 +31,8 @@
   margin: 0;
   padding: var(--e2) var(--e3);
   border-radius: var(--raio-sm);
-  background: var(--coral-fraca);
-  color: var(--coral);
+  background: var(--perigo-fraca);
+  color: var(--perigo);
   font-size: var(--texto-sm);
 }
 

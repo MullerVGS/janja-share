@@ -6,9 +6,9 @@
 }
 
 .erro {
-  background: var(--coral-fraca);
-  border-color: rgba(248, 113, 113, 0.35);
-  color: #ffd9d9;
+  background: var(--perigo-fraca);
+  border-color: var(--perigo-media);
+  color: var(--perigo-texto);
 }
 
 .neutro {

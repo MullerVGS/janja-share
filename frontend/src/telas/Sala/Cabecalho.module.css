@@ -19,7 +19,7 @@
 }
 
 .pulso[data-conectado] {
-  background: var(--menta);
+  background: var(--conectado);
   animation: shPulsar 2.4s ease-in-out infinite;
 }
 
@@ -57,6 +57,6 @@
 }
 
 .botao[aria-pressed='true'] {
-  color: var(--menta);
-  background: var(--menta-fraca);
+  color: var(--acao);
+  background: var(--acao-fraca);
 }

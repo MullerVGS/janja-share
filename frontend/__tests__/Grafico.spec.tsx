@@ -7,8 +7,8 @@ function montarGrafico() {
     <Grafico
       titulo="FPS"
       series={[
-        { nome: 'codificado', valores: [28, 29, null, 30], cor: 'menta', destaque: true },
-        { nome: 'captura', valores: [30, 30, 30, 30], cor: 'lilas' },
+        { nome: 'codificado', valores: [28, 29, null, 30], cor: 'acao', destaque: true },
+        { nome: 'captura', valores: [30, 30, 30, 30], cor: 'turquesa' },
       ]}
       referencias={[{ nome: 'alvo', valor: 30 }]}
       faixas={[{ inicio: 1, fim: 2, motivo: 'cpu' }]}
@@ -39,7 +39,7 @@ describe('gráfico', () => {
     const { container } = render(
       <Grafico
         titulo="FPS"
-        series={[{ nome: 'codificado', valores: [30, 30, 15, 15], cor: 'menta' }]}
+        series={[{ nome: 'codificado', valores: [30, 30, 15, 15], cor: 'acao' }]}
         marcas={[{ indice: 2, rotulo: '60 → 15 fps' }]}
         formatar={(valor) => `${valor} fps`}
       />,
@@ -71,8 +71,8 @@ describe('série fora do eixo', () => {
       <Grafico
         titulo="Bitrate"
         series={[
-          { nome: 'saindo', valores: [1000, 1200], cor: 'menta', destaque: true },
-          { nome: 'disponível', valores: [50_000, 50_000], cor: 'lilas', foraDoEixo: true },
+          { nome: 'saindo', valores: [1000, 1200], cor: 'acao', destaque: true },
+          { nome: 'disponível', valores: [50_000, 50_000], cor: 'turquesa', foraDoEixo: true },
         ]}
         referencias={[{ nome: 'teto', valor: 2500 }]}
         piso={2500}

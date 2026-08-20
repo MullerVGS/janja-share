@@ -38,6 +38,6 @@
 }
 
 .opcao[aria-checked='true'] {
-  background: var(--menta-fraca);
-  color: var(--menta);
+  background: var(--acao-fraca);
+  color: var(--acao);
 }

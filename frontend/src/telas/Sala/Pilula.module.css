@@ -37,17 +37,17 @@
 }
 
 .acao[aria-pressed='true'] {
-  color: var(--menta);
-  background: var(--menta-fraca);
+  color: var(--acao);
+  background: var(--acao-fraca);
 }
 
 .perigo {
-  color: var(--coral);
+  color: var(--perigo);
 }
 
 .perigo:hover:not(:disabled) {
-  background: var(--coral-fraca);
-  color: var(--coral);
+  background: var(--perigo-fraca);
+  color: var(--perigo);
 }
 
 .faixaDoVolume {
@@ -55,5 +55,5 @@
   width: 78px;
   height: 3px;
   cursor: pointer;
-  accent-color: var(--menta);
+  accent-color: var(--acao);
 }

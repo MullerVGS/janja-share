@@ -26,13 +26,13 @@
 
 .miniatura:hover,
 .miniatura:focus-visible {
-  border-color: var(--menta);
+  border-color: var(--acao);
   transform: scale(1.02);
 }
 
 .miniatura[data-falando] {
-  border-color: var(--menta);
-  box-shadow: 0 0 0 1px var(--menta), var(--sombra-md);
+  border-color: var(--conectado);
+  box-shadow: 0 0 0 1px var(--conectado), var(--sombra-md);
 }
 
 .video {

@@ -48,7 +48,7 @@
 
 .divisor:hover::after,
 .divisor:focus-visible::after {
-  background: var(--menta);
+  background: var(--acao);
 }
 
 .divisor:focus-visible {
@@ -63,7 +63,7 @@
   padding: var(--e2) var(--e4);
   border: none;
   border-bottom: 1px solid var(--linha);
-  border-left: 3px solid var(--menta);
+  border-left: 3px solid var(--acao);
   background: var(--superficie);
   color: var(--texto-fraco);
   font-family: var(--fonte-mono);
@@ -79,11 +79,11 @@
 }
 
 .resumo[data-tom='atencao'] {
-  border-left-color: var(--ambar);
+  border-left-color: var(--atencao);
 }
 
 .resumo[data-tom='problema'] {
-  border-left-color: var(--coral);
+  border-left-color: var(--perigo);
 }
 
 .partesDoResumo {
@@ -99,15 +99,15 @@
 
 .estadoDoResumo {
   flex: none;
-  color: var(--menta);
+  color: var(--acao);
 }
 
 .resumo[data-tom='atencao'] .estadoDoResumo {
-  color: var(--ambar);
+  color: var(--atencao);
 }
 
 .resumo[data-tom='problema'] .estadoDoResumo {
-  color: var(--coral);
+  color: var(--perigo);
 }
 
 .abas {
@@ -139,16 +139,16 @@
 }
 
 .aba[aria-selected='true'] {
-  color: var(--menta);
-  border-bottom-color: var(--menta);
+  color: var(--acao);
+  border-bottom-color: var(--acao);
 }
 
 .contador {
   min-width: 18px;
   padding: 0 5px;
   border-radius: var(--raio-pilula);
-  background: var(--menta);
-  color: var(--fundo);
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
   font-size: var(--texto-xs);
   font-weight: 700;
   line-height: 18px;

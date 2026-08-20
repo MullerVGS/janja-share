@@ -30,7 +30,7 @@
 }
 
 .entrada:focus-visible {
-  border-color: var(--menta);
+  border-color: var(--acao);
   outline: none;
 }
 

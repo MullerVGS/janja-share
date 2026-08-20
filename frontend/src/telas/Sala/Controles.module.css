@@ -38,19 +38,19 @@
 }
 
 .botao[aria-pressed='true'] {
-  background: var(--menta-fraca);
-  border-color: rgba(94, 234, 212, 0.4);
-  color: var(--menta);
+  background: var(--acao-fraca);
+  border-color: var(--acao-media);
+  color: var(--acao);
 }
 
 .perigo {
-  color: var(--coral);
-  border-color: rgba(248, 113, 113, 0.3);
+  color: var(--perigo);
+  border-color: var(--perigo-media);
 }
 
 .perigo:hover:not(:disabled) {
-  background: var(--coral-fraca);
-  color: var(--coral);
+  background: var(--perigo-fraca);
+  color: var(--perigo);
 }
 
 .separador {
@@ -67,8 +67,8 @@
   min-width: 18px;
   padding: 0 5px;
   border-radius: var(--raio-pilula);
-  background: var(--menta);
-  color: var(--fundo);
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
   font-size: var(--texto-xs);
   font-weight: 700;
   line-height: 18px;

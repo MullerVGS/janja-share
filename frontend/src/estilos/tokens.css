@@ -1,43 +1,54 @@
 /*
  * Tokens do share. Tema escuro por padrão e único: é um app de call noturna, e a grade de
  * vídeo fica melhor sobre fundo escuro (o vídeo é a fonte de luz da tela, não a interface).
- * Nada de hex solto nos módulos CSS — cor, espaço, raio e sombra saem daqui.
+ * Paleta inspirada no Discord — minimalista, planos neutros, um acento só. Nada de hex solto
+ * nos módulos CSS — cor, espaço, raio e sombra saem daqui.
  */
 :root {
   color-scheme: dark;
 
   /* — planos — */
-  --fundo: #0d1014;
-  --fundo-2: #13171d;
-  --superficie: #191e26;
-  --superficie-alta: #212832;
-  --palco: #07090c;
+  --fundo: #1e1f22;
+  --fundo-2: #232428;
+  --superficie: #2b2d31;
+  --superficie-alta: #313338;
+  --palco: #0b0c0e;
   /* `--palco` em rgba: pílulas sobre vídeo (overlay do quadro) e o fundo do diálogo modal. */
-  --veu: rgba(7, 9, 12, 0.72);
+  --veu: rgba(11, 12, 14, 0.72);
 
   /* — texto — */
-  --texto: #e8edf4;
-  --texto-fraco: #a3adbb;
-  --texto-fraquissimo: #6f7987;
+  --texto: #dbdee1;
+  --texto-fraco: #949ba4;
+  --texto-fraquissimo: #7c7e86;
+  /* Texto sobre `--acao`/`--perigo` sólidos (botão primário, enviar, contadores): o acento
+     deixou de ser claro-o-bastante pra levar texto escuro, como levava a menta antiga. */
+  --texto-sobre-acento: #ffffff;
 
   /* — traços — */
-  --linha: #262d38;
-  --linha-forte: #38414f;
+  --linha: #3a3c43;
+  --linha-forte: #4a4d55;
   --realce: rgba(255, 255, 255, 0.06);
   --pressionado: rgba(255, 255, 255, 0.12);
 
   /* — acentos —
-     Menta é a cor do "está no ar": conexão, publicação, destaque de tela.
-     Âmbar é atenção (limitado por banda). Coral é saída e revogação. */
-  --menta: #5eead4;
-  --menta-forte: #2dd4bf;
-  --menta-fraca: rgba(94, 234, 212, 0.14);
-  --ambar: #fbbf24;
-  --ambar-fraca: rgba(251, 191, 36, 0.14);
-  --coral: #f87171;
-  --coral-forte: #ef4444;
-  --coral-fraca: rgba(248, 113, 113, 0.14);
-  --lilas: #a5b4fc;
+     Ação é a cor de "isto é interativo, isto é meu, isto está no ar": marca, links, foco,
+     botão primário, publicação de tela. Conectado é status ao vivo — conexão da sala e quem
+     está falando agora — papel novo que o Discord separa da ação (verde, não azul).
+     Atenção é limitado (CPU/banda, governador segurando). Perigo é parar/sair/erro.
+     Turquesa é a segunda identidade nos gráficos e no chat — sem papel de status. */
+  --acao: #5865f2;
+  --acao-forte: #4752c4;
+  --acao-fraca: rgba(88, 101, 242, 0.14);
+  --acao-media: rgba(88, 101, 242, 0.32);
+  --conectado: #23a55a;
+  --atencao: #d08011;
+  --atencao-fraca: rgba(208, 128, 17, 0.14);
+  --perigo: #da373c;
+  --perigo-fraca: rgba(218, 55, 60, 0.14);
+  --perigo-media: rgba(218, 55, 60, 0.32);
+  /* Tom claro de `--perigo`, só para texto legível sobre `--perigo-fraca` (Aviso de erro). */
+  --perigo-texto: #ffd6d8;
+  --turquesa: #0d9488;
 
   /* — tipografia — */
   --fonte: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -63,14 +74,14 @@
   --e10: 56px;
 
   /* — raio — */
-  --raio-sm: 6px;
-  --raio-md: 10px;
-  --raio-lg: 16px;
+  --raio-sm: 4px;
+  --raio-md: 8px;
+  --raio-lg: 12px;
   --raio-pilula: 999px;
 
-  /* — elevação — */
-  --sombra-md: 0 6px 20px rgba(0, 0, 0, 0.45);
-  --sombra-lg: 0 18px 48px rgba(0, 0, 0, 0.55);
+  /* — elevação — mais secas: blur curto, pouco espalhamento */
+  --sombra-md: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --sombra-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
 
   /* — medidas — */
   --largura-da-gaveta-padrao: 300px;

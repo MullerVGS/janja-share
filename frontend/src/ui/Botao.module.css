@@ -21,11 +21,11 @@
 }
 
 .primario {
-  background: var(--menta);
-  color: #06241f;
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
 }
 .primario:hover:not(:disabled) {
-  background: var(--menta-forte);
+  background: var(--acao-forte);
 }
 
 .secundario {
@@ -45,12 +45,12 @@
 }
 
 .perigo {
-  border-color: var(--coral-fraca);
-  color: var(--coral);
-  background: var(--coral-fraca);
+  border-color: var(--perigo-fraca);
+  color: var(--perigo);
+  background: var(--perigo-fraca);
 }
 .perigo:hover:not(:disabled) {
-  background: rgba(248, 113, 113, 0.24);
+  background: var(--perigo-media);
 }
 
 .blocoInteiro {

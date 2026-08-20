@@ -55,11 +55,11 @@
 }
 
 .faixa {
-  fill: var(--ambar-fraca);
+  fill: var(--atencao-fraca);
 }
 
 .faixa[data-motivo='banda'] {
-  fill: var(--coral-fraca);
+  fill: var(--perigo-fraca);
 }
 
 .grade {
@@ -89,12 +89,12 @@
   opacity: 1;
 }
 
-.menta {
-  stroke: var(--menta);
+.acao {
+  stroke: var(--acao);
 }
 
-.lilas {
-  stroke: var(--lilas);
+.turquesa {
+  stroke: var(--turquesa);
 }
 
 .marca {
@@ -152,12 +152,12 @@
   border-top: 2px solid currentColor;
 }
 
-.chave.menta {
-  color: var(--menta);
+.chave.acao {
+  color: var(--acao);
 }
 
-.chave.lilas {
-  color: var(--lilas);
+.chave.turquesa {
+  color: var(--turquesa);
 }
 
 .chaveDeReferencia {
