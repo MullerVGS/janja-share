@@ -77,12 +77,14 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  touch-action: none;
 }
 
+/* Só onde o arraste do zoom vale: na grade o gesto é inerte, e suprimir o toque ali tiraria da
+   miniatura os gestos do próprio navegador sem nada em troca. */
 .palco[data-modo='foco'] .moldura,
 .quadro[data-cheia] .moldura {
   cursor: grab;
+  touch-action: none;
 }
 
 .palco[data-modo='foco'] .moldura:active,

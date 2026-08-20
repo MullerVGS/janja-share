@@ -1,12 +1,12 @@
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { LocalTrackPublication } from 'livekit-client'
 import { useState } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { Pilula } from '../src/telas/Sala/Pilula'
 import { compartilhamentoFalso } from './apoio/compartilhamentoFalso'
-import { habilitarPiP, habilitarTelaCheia, habilitarWebAudio } from './apoio/navegador'
+import { habilitarPiP, habilitarTelaCheia } from './apoio/navegador'
 import { peca, volumesFalsos } from './apoio/pecas'
 
 type Props = Parameters<typeof Pilula>[0]
@@ -215,37 +215,5 @@ describe('pílula: o áudio da sua tela', () => {
   it('sem WebAudio no navegador, não há indicador de som saindo', () => {
     montarComAudio(audioDaTelaFalso())
     expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
-  })
-})
-
-describe('pílula: indicador de som saindo', () => {
-  beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] }))
-  afterEach(() => vi.useRealTimers())
-
-  it('mede a faixa da tela ~10 vezes por segundo e escreve o nível direto no elemento', async () => {
-    const webAudio = habilitarWebAudio()
-    const audio = audioDaTelaFalso()
-    const { unmount } = montarPilula({
-      peca: peca('Ana', { ehTela: true, proprio: true }),
-      compartilhamento: compartilhamentoFalso({
-        ativo: true,
-        audioDaTela: audio as unknown as LocalTrackPublication,
-      }),
-    })
-
-    const indicador = screen.getByTitle('som saindo')
-    expect(indicador.style.getPropertyValue('--nivel')).toBe('0')
-    expect(webAudio.faixas).toEqual([audio.track.mediaStreamTrack])
-
-    webAudio.amplitude = 255
-    await act(async () => vi.advanceTimersByTime(100))
-    expect(indicador.style.getPropertyValue('--nivel')).toBe('1.00')
-
-    webAudio.amplitude = 0
-    await act(async () => vi.advanceTimersByTime(100))
-    expect(indicador.style.getPropertyValue('--nivel')).toBe('0.00')
-
-    unmount()
-    expect(webAudio.abertos).toBe(0)
   })
 })

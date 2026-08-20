@@ -96,7 +96,19 @@ describe('a barra flutuante', () => {
   })
 
   it('compartilhar fica desabilitado enquanto o SDK está no meio da troca', () => {
-    montarBarra({ compartilhamento: compartilhamentoFalso({ ocupado: true }) })
+    const { sala } = salaComDispositivos()
+    montarBarra({ sala, compartilhamento: compartilhamentoFalso({ ocupado: true }) })
     expect(screen.getByRole('button', { name: 'Compartilhar tela' })).toBeDisabled()
+  })
+
+  it('antes de a sala existir, nada é clicável sem efeito', () => {
+    montarBarra({ sala: null })
+
+    expect(screen.getByRole('button', { name: 'Abrir microfone' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Abrir câmera' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Compartilhar tela' })).toBeDisabled()
+    // Chat e saída não dependem da sala: os dois funcionam desconectado.
+    expect(screen.getByRole('button', { name: 'Chat' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Sair da sala' })).toBeEnabled()
   })
 })

@@ -1,0 +1,14 @@
+/* A barra enche de baixo para cima conforme `--nivel`, que o JS reescreve dez vezes por segundo
+   sem passar pelo React. */
+.somSaindo {
+  flex: none;
+  width: 4px;
+  height: 20px;
+  border-radius: var(--raio-pilula);
+  background: linear-gradient(
+    to top,
+    var(--menta) calc(var(--nivel, 0) * 100%),
+    var(--linha-forte) calc(var(--nivel, 0) * 100%)
+  );
+  transition: background 0.08s linear;
+}

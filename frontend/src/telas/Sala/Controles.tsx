@@ -103,6 +103,8 @@ export function Controles({
 
   const microfoneLigado = sala?.localParticipant.isMicrophoneEnabled ?? false
   const cameraLigada = sala?.localParticipant.isCameraEnabled ?? false
+  // Sem sala não há a quem pedir dispositivo nem tela: botão que não faz nada tem de dizer isso.
+  const semSala = sala === null
 
   async function alternarMicrofone() {
     if (!sala) return
@@ -135,7 +137,7 @@ export function Controles({
       <Botao
         rotulo={microfoneLigado ? 'Fechar microfone' : 'Abrir microfone'}
         ligado={microfoneLigado}
-        desabilitado={mudandoMicrofone}
+        desabilitado={semSala || mudandoMicrofone}
         aoClicar={() => void alternarMicrofone()}
       >
         {microfoneLigado ? <IconeMicrofone /> : <IconeMicrofoneMudo />}
@@ -144,7 +146,7 @@ export function Controles({
       <Botao
         rotulo={cameraLigada ? 'Fechar câmera' : 'Abrir câmera'}
         ligado={cameraLigada}
-        desabilitado={mudandoCamera}
+        desabilitado={semSala || mudandoCamera}
         aoClicar={() => void alternarCamera()}
       >
         {cameraLigada ? <IconeCamera /> : <IconeCameraFechada />}
@@ -153,7 +155,7 @@ export function Controles({
       <Botao
         rotulo={compartilhamento.ativo ? 'Parar de compartilhar a tela' : 'Compartilhar tela'}
         ligado={compartilhamento.ativo}
-        desabilitado={compartilhamento.ocupado}
+        desabilitado={semSala || compartilhamento.ocupado}
         aoClicar={() => void compartilhamento.alternar()}
       >
         <IconeTela />

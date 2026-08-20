@@ -27,7 +27,6 @@ export function Tira({ pecas, aoEscolher }: Props) {
           key={peca.chave}
           type="button"
           className={estilos.miniatura}
-          data-tela={peca.ehTela || undefined}
           data-falando={peca.falando || undefined}
           aria-label={`Pôr ${quem(peca)} no palco`}
           onClick={() => aoEscolher(peca.chave)}

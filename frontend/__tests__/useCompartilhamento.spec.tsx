@@ -51,6 +51,8 @@ class SalaFalsa {
   publicacoes = new Map<Track.Source, Publicacao>()
   sids = 0
   comAudio = true
+  /** O que o último `createScreenTracks` entregou — para conferir quem foi parado. */
+  ultimaCaptura: Faixa[] = []
   private pendentes: (() => void)[] = []
 
   localParticipant = {
@@ -73,6 +75,7 @@ class SalaFalsa {
       await this.proximaBatida()
       const faixas = [faixaFalsa('video', undefined)]
       if (this.comAudio) faixas.push(faixaFalsa('audio', undefined))
+      this.ultimaCaptura = faixas
       return faixas
     }),
 
@@ -528,6 +531,21 @@ describe('useCompartilhamento: trocar de tela', () => {
     expect(result.current.ativo).toBe(true)
     expect(result.current.ocupado).toBe(false)
     expect(result.current.erro).toBeNull()
+    // A captura que foi ao ar continua viva; parar alguma delas mataria a transmissão nova.
+    for (const faixa of sala.ultimaCaptura) expect(faixa.stop).not.toHaveBeenCalled()
+  })
+
+  it('se publicar a tela nova falhar, a captura recém-aberta morre — nada de indicador aceso para ninguém', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    sala.localParticipant.publishTrack.mockRejectedValueOnce(new Error('engine fechada'))
+
+    await agir(() => result.current.trocarDeTela())
+
+    for (const faixa of sala.ultimaCaptura) expect(faixa.stop).toHaveBeenCalledOnce()
+    expect(result.current.erro).toBe('engine fechada')
+    expect(result.current.ocupado).toBe(false)
   })
 
   it('cancelar o seletor não mexe em nada — a tela que estava no ar continua no ar', async () => {

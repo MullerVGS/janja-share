@@ -87,16 +87,6 @@ export function IconeChat(props: Props) {
   )
 }
 
-export function IconeAjustes(props: Props) {
-  return (
-    <Traco {...props}>
-      <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
-      <circle cx="16" cy="7" r="2.2" />
-      <circle cx="8" cy="17" r="2.2" />
-    </Traco>
-  )
-}
-
 export function IconeTrocarTela(props: Props) {
   return (
     <Traco {...props}>

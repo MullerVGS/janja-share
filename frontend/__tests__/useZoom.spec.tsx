@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useCallback, useRef } from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import type { Peca } from '../src/sala/palco'
 import { useGestosDoZoom, useZoom, type ControleDeZoom } from '../src/sala/useZoom'
 
@@ -35,7 +35,14 @@ function Quadrinho({ chave, zoom, ativo }: { chave: string; zoom: ControleDeZoom
   )
 }
 
+/** Quantas vezes a árvore que segura o zoom foi desenhada — o custo de cada gesto. */
+let renders = 0
+beforeEach(() => {
+  renders = 0
+})
+
 function Cenario({ pecas, ativo = true }: { pecas: Peca[]; ativo?: boolean }) {
+  renders += 1
   const zoom = useZoom(pecas)
   return (
     <>
@@ -137,6 +144,19 @@ describe('useZoom: o arraste', () => {
     fireEvent.pointerUp(moldura, { pointerId: 1, clientX: 5000, clientY: 250 })
     fireEvent.pointerMove(moldura, { pointerId: 1, clientX: 0, clientY: 250 })
     expect(zoomDe('tela:a')).toBe('1.100 50 0')
+  })
+
+  it('arrastar a imagem já encaixada não mexe em estado nenhum — nada de render por pointermove', () => {
+    render(<Cenario pecas={[peca('tela:a')]} />)
+    const moldura = medir('tela:a')
+    const antes = renders
+
+    fireEvent.pointerDown(moldura, { pointerId: 1, clientX: 500, clientY: 250 })
+    fireEvent.pointerMove(moldura, { pointerId: 1, clientX: 540, clientY: 250 })
+    fireEvent.pointerMove(moldura, { pointerId: 1, clientX: 580, clientY: 250 })
+
+    expect(zoomDe('tela:a')).toBe('1.000 0 0')
+    expect(renders).toBe(antes)
   })
 
   it('na grade o arraste não anda com a imagem', () => {

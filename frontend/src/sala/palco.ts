@@ -1,11 +1,13 @@
 import { Track, type Participant, type Room, type TrackPublication } from 'livekit-client'
 
 /**
- * O palco: o que a grade desenha, extraído do estado do `Room` a cada mudança.
+ * O palco: tudo que existe na sala, extraído do estado do `Room` a cada mudança.
  *
  * Telas e pessoas são listas separadas de propósito. Compartilhamento simultâneo é caso normal
- * nesta sala, não exceção, e o layout precisa poder dar todo o espaço às telas e empurrar as
- * pessoas para uma tira — coisa impossível se as duas coisas vivessem na mesma lista.
+ * nesta sala, não exceção, e quase toda regra do palco pergunta por *telas*, não por peças: é a
+ * primeira tela que assume o foco ao entrar, é uma tela que promove a próxima quando a peça em
+ * foco sai, e é a sua tela nova que põe você no palco. Com as duas coisas na mesma lista, cada
+ * uma dessas perguntas viraria um filtro repetido.
  */
 export interface Peca {
   chave: string

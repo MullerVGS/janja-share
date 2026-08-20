@@ -129,6 +129,18 @@ function faixaMorta(faixa: LocalTrack): boolean {
 }
 
 /**
+ * Captura aberta que não foi ao ar tem de morrer. Uma faixa viva e despublicada deixa o
+ * navegador dizendo que você está compartilhando a tela — com ninguém do outro lado recebendo.
+ */
+function pararOQueNaoFoiAoAr(sala: Room, capturadas: LocalTrack[]): void {
+  const noAr = [
+    publicacaoDe(sala, Track.Source.ScreenShare)?.track,
+    publicacaoDe(sala, Track.Source.ScreenShareAudio)?.track,
+  ]
+  for (const faixa of capturadas) if (!noAr.includes(faixa)) faixa.stop()
+}
+
+/**
  * O compartilhamento de tela: o pedido da pessoa, o governador por cima dele, e a tradução dos
  * dois para o SDK. O `historico` é a telemetria do emissor; é dele que o governador decide.
  */
@@ -318,25 +330,25 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     const participante = sala.localParticipant
     setErro(null)
     setMudando(true)
+    let capturadas: LocalTrack[] = []
     try {
-      const novas = await participante.createScreenTracks(opcoesDeCaptura(perfil))
-      const video = novas.find((faixa) => faixa.kind === Track.Kind.Video)
-      if (!video) {
-        // Seletor sem vídeo não é troca de tela; a de agora continua valendo mais que nada.
-        for (const faixa of novas) faixa.stop()
-        return
+      capturadas = await participante.createScreenTracks(opcoesDeCaptura(perfil))
+      // Seletor sem vídeo não é troca de tela; a de agora continua valendo mais que nada.
+      const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
+      if (video) {
+        await participante.setScreenShareEnabled(false)
+        setCodecPendente(null)
+        await participante.publishTrack(video, opcoesDePublicacao(perfil))
+        const audio = capturadas.find((faixa) => faixa.kind === Track.Kind.Audio)
+        if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
       }
-      await participante.setScreenShareEnabled(false)
-      setCodecPendente(null)
-      await participante.publishTrack(video, opcoesDePublicacao(perfil))
-      const audio = novas.find((faixa) => faixa.kind === Track.Kind.Audio)
-      if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
     } catch (falha) {
       const nome = falha instanceof Error ? falha.name : ''
       if (nome !== 'NotAllowedError' && nome !== 'AbortError') {
         setErro(falha instanceof Error ? falha.message : 'não foi possível trocar de tela')
       }
     } finally {
+      pararOQueNaoFoiAoAr(sala, capturadas)
       setMudando(false)
     }
   }, [sala, perfil])

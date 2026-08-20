@@ -38,7 +38,11 @@ export function useZoom(pecas: readonly Peca[]): ControleDeZoom {
     setZooms((atuais) => {
       const antes = atuais[chave] ?? ZOOM_INICIAL
       const depois = aplicarGesto(antes, gesto, medidas)
-      return depois === antes ? atuais : { ...atuais, [chave]: depois }
+      // Comparação por valor, não por referência: roda e arraste sempre alocam um `Zoom` novo, e
+      // arrastar a imagem já encaixada (o caso comum em foco) re-renderizaria a sala inteira a
+      // cada `pointermove` para guardar exatamente o mesmo `{1, 0, 0}`.
+      const igual = depois.escala === antes.escala && depois.x === antes.x && depois.y === antes.y
+      return igual ? atuais : { ...atuais, [chave]: depois }
     })
   }, [])
 
