@@ -1,127 +1,102 @@
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { LocalTrackPublication } from 'livekit-client'
-import { useState } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Room } from 'livekit-client'
+import { describe, expect, it, vi } from 'vitest'
 import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { Controles } from '../src/telas/Sala/Controles'
 import { compartilhamentoFalso } from './apoio/compartilhamentoFalso'
-import { habilitarWebAudio } from './apoio/navegador'
 
-/** A publicação do áudio da tela reduzida ao que a barra toca: mudo, faixa e o par mute/unmute. */
-function audioDaTelaFalso() {
-  const publicacao = {
-    isMuted: false,
-    track: { mediaStreamTrack: { id: 'som-da-tela' } as unknown as MediaStreamTrack },
-    mute: vi.fn(async () => {
-      publicacao.isMuted = true
-    }),
-    unmute: vi.fn(async () => {
-      publicacao.isMuted = false
-    }),
+/** O participante local reduzido ao que a barra toca: o estado de cada dispositivo e a troca. */
+function salaComDispositivos(parcial: { microfone?: boolean; camera?: boolean } = {}) {
+  const local = {
+    isMicrophoneEnabled: parcial.microfone ?? false,
+    isCameraEnabled: parcial.camera ?? false,
+    setMicrophoneEnabled: vi.fn(async () => {}),
+    setCameraEnabled: vi.fn(async () => {}),
   }
-  return publicacao
+  return { local, sala: { localParticipant: local } as unknown as Room }
 }
 
-/**
- * A barra com um compartilhamento de mentira. Alternar o áudio re-renderiza a árvore, como o
- * evento `TrackMuted` do `Room` faz na sala de verdade — o botão lê a publicação, não um estado
- * paralelo.
- */
-function montarBarra(parcial: Partial<Compartilhamento> = {}) {
-  function Cenario() {
-    const [, reler] = useState(0)
-    const base = compartilhamentoFalso(parcial)
-    const compartilhamento: Compartilhamento = {
-      ...base,
-      alternarAudioDaTela: async () => {
-        await base.alternarAudioDaTela()
-        reler((n) => n + 1)
-      },
-    }
-    return (
-      <Controles
-        sala={null}
-        compartilhamento={compartilhamento}
-        abaAberta={null}
-        aoAlternarAba={() => {}}
-        aoFalhar={() => {}}
-        aoSair={() => {}}
-      />
-    )
+type Props = Parameters<typeof Controles>[0]
+
+function montarBarra(parcial: Partial<Props> = {}) {
+  const props: Props = {
+    sala: null,
+    compartilhamento: compartilhamentoFalso(),
+    chatAberto: false,
+    naoLidasNoChat: 0,
+    aoAlternarChat: vi.fn(),
+    aoFalhar: vi.fn(),
+    aoSair: vi.fn(),
+    ...parcial,
   }
-  return render(<Cenario />)
+  return { ...props, ...render(<Controles {...props} />) }
 }
 
-const DICA_SEM_AUDIO = "marque 'compartilhar áudio' no seletor ao iniciar"
+describe('a barra flutuante', () => {
+  it('tem microfone, câmera, tela, chat e a saída — e nada do que é de uma tela só', () => {
+    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) as Compartilhamento })
 
-describe('controles: áudio da tela', () => {
-  it('o botão só existe enquanto a tela está no ar', () => {
-    const { unmount } = montarBarra({ ativo: false })
-    expect(screen.queryByRole('button', { name: /áudio da tela/i })).not.toBeInTheDocument()
-    unmount()
-
-    montarBarra({ ativo: true, audioDaTela: audioDaTelaFalso() as unknown as LocalTrackPublication })
-    expect(screen.getByRole('button', { name: /áudio da tela/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button').map((botao) => botao.getAttribute('aria-label'))).toEqual([
+      'Abrir microfone',
+      'Abrir câmera',
+      'Parar de compartilhar a tela',
+      'Chat',
+      'Sair da sala',
+    ])
   })
 
-  it('sem publicação de áudio o botão fica desabilitado e diz onde estava a escolha', () => {
-    montarBarra({ ativo: true, audioDaTela: null })
-
-    const botao = screen.getByRole('button', { name: /áudio da tela/i })
-    expect(botao).toBeDisabled()
-    expect(botao).toHaveAttribute('title', DICA_SEM_AUDIO)
-    expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
-  })
-
-  it('clicar cala e devolve o som da tela, sem republicar nada', async () => {
+  it('microfone e câmera pedem a troca ao SDK e se anunciam pelo estado', async () => {
     const usuario = userEvent.setup()
-    const audio = audioDaTelaFalso()
-    const alternarAudioDaTela = vi.fn(async () => {
-      await (audio.isMuted ? audio.unmute() : audio.mute())
-    })
-    montarBarra({ ativo: true, audioDaTela: audio as unknown as LocalTrackPublication, alternarAudioDaTela })
+    const { local, sala } = salaComDispositivos({ microfone: true })
+    montarBarra({ sala })
 
-    const botao = screen.getByRole('button', { name: /áudio da tela/i })
+    expect(screen.getByRole('button', { name: 'Fechar microfone' })).toHaveAttribute('aria-pressed', 'true')
+    await usuario.click(screen.getByRole('button', { name: 'Fechar microfone' }))
+    expect(local.setMicrophoneEnabled).toHaveBeenCalledWith(false)
+
+    await usuario.click(screen.getByRole('button', { name: 'Abrir câmera' }))
+    expect(local.setCameraEnabled).toHaveBeenCalledWith(true)
+  })
+
+  it('permissão negada vira frase explicando onde destravar; desistir no meio não vira frase', async () => {
+    const usuario = userEvent.setup()
+    const { local, sala } = salaComDispositivos()
+    const aoFalhar = vi.fn()
+    montarBarra({ sala, aoFalhar })
+
+    local.setMicrophoneEnabled.mockRejectedValueOnce(
+      Object.assign(new Error('denied'), { name: 'NotAllowedError' }),
+    )
+    await usuario.click(screen.getByRole('button', { name: 'Abrir microfone' }))
+    expect(aoFalhar).toHaveBeenLastCalledWith(
+      'O navegador bloqueou o acesso ao microfone. Libere a permissão na barra de endereço e tente de novo.',
+    )
+
+    local.setCameraEnabled.mockRejectedValueOnce(Object.assign(new Error('abortou'), { name: 'AbortError' }))
+    await usuario.click(screen.getByRole('button', { name: 'Abrir câmera' }))
+    expect(aoFalhar).toHaveBeenLastCalledWith(null)
+  })
+
+  it('o chat carrega as não lidas e se anuncia aberto', async () => {
+    const usuario = userEvent.setup()
+    const { aoAlternarChat } = montarBarra({ naoLidasNoChat: 4, chatAberto: true })
+
+    const botao = screen.getByRole('button', { name: 'Chat' })
     expect(botao).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('4 mensagens não lidas')).toHaveTextContent('4')
 
     await usuario.click(botao)
-    expect(audio.mute).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: /áudio da tela/i })).toHaveAttribute('aria-pressed', 'false')
-
-    await usuario.click(screen.getByRole('button', { name: /áudio da tela/i }))
-    expect(audio.unmute).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: /áudio da tela/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(aoAlternarChat).toHaveBeenCalledOnce()
   })
 
-  it('sem WebAudio no navegador, não há indicador de som saindo', () => {
-    montarBarra({ ativo: true, audioDaTela: audioDaTelaFalso() as unknown as LocalTrackPublication })
-    expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
+  it('sem mensagem nova, nenhum contador', () => {
+    montarBarra({ naoLidasNoChat: 0 })
+    expect(screen.queryByLabelText(/não lidas/)).not.toBeInTheDocument()
   })
-})
 
-describe('controles: indicador de som saindo', () => {
-  beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] }))
-  afterEach(() => vi.useRealTimers())
-
-  it('mede a faixa da tela ~10 vezes por segundo e escreve o nível direto no elemento', async () => {
-    const webAudio = habilitarWebAudio()
-    const audio = audioDaTelaFalso()
-    const { unmount } = montarBarra({ ativo: true, audioDaTela: audio as unknown as LocalTrackPublication })
-
-    const indicador = screen.getByTitle('som saindo')
-    expect(indicador.style.getPropertyValue('--nivel')).toBe('0')
-    expect(webAudio.faixas).toEqual([audio.track.mediaStreamTrack])
-
-    webAudio.amplitude = 255
-    await act(async () => vi.advanceTimersByTime(100))
-    expect(indicador.style.getPropertyValue('--nivel')).toBe('1.00')
-
-    webAudio.amplitude = 0
-    await act(async () => vi.advanceTimersByTime(100))
-    expect(indicador.style.getPropertyValue('--nivel')).toBe('0.00')
-
-    unmount()
-    expect(webAudio.abertos).toBe(0)
+  it('compartilhar fica desabilitado enquanto o SDK está no meio da troca', () => {
+    montarBarra({ compartilhamento: compartilhamentoFalso({ ocupado: true }) })
+    expect(screen.getByRole('button', { name: 'Compartilhar tela' })).toBeDisabled()
   })
 })

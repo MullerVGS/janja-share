@@ -101,29 +101,38 @@ export function useGestosDoZoom({ moldura, video, ativo, aoGesto }: Gestos) {
   const de = useRef<{ ponteiro: number; x: number; y: number } | null>(null)
 
   return {
-    onPointerDown(evento: PointerEvent<HTMLElement>) {
-      if (!ativo) return
-      // Capturar o ponteiro é o que deixa a mão sair do quadro sem largar a imagem no meio.
-      evento.currentTarget.setPointerCapture?.(evento.pointerId)
-      de.current = { ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY }
-    },
-    onPointerMove(evento: PointerEvent<HTMLElement>) {
-      const inicio = de.current
+    /** Um gesto que não vem do ponteiro — os botões `caber` e `1:1` da pílula. */
+    disparar(gesto: Gesto) {
       const elemento = moldura.current
-      if (!inicio || inicio.ponteiro !== evento.pointerId || !elemento) return
-      ultimoGesto.current(
-        { tipo: 'arraste', dx: evento.clientX - inicio.x, dy: evento.clientY - inicio.y },
-        medir(elemento, video.current),
-      )
-      de.current = { ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY }
+      if (!elemento) return
+      ultimoGesto.current(gesto, medir(elemento, video.current))
     },
-    onPointerUp(evento: PointerEvent<HTMLElement>) {
-      if (de.current?.ponteiro !== evento.pointerId) return
-      de.current = null
-      evento.currentTarget.releasePointerCapture?.(evento.pointerId)
-    },
-    onPointerCancel(evento: PointerEvent<HTMLElement>) {
-      if (de.current?.ponteiro === evento.pointerId) de.current = null
+    /** Os ouvintes do arraste, para espalhar no elemento da imagem. */
+    ponteiro: {
+      onPointerDown(evento: PointerEvent<HTMLElement>) {
+        if (!ativo) return
+        // Capturar o ponteiro é o que deixa a mão sair do quadro sem largar a imagem no meio.
+        evento.currentTarget.setPointerCapture?.(evento.pointerId)
+        de.current = { ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY }
+      },
+      onPointerMove(evento: PointerEvent<HTMLElement>) {
+        const inicio = de.current
+        const elemento = moldura.current
+        if (!inicio || inicio.ponteiro !== evento.pointerId || !elemento) return
+        ultimoGesto.current(
+          { tipo: 'arraste', dx: evento.clientX - inicio.x, dy: evento.clientY - inicio.y },
+          medir(elemento, video.current),
+        )
+        de.current = { ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY }
+      },
+      onPointerUp(evento: PointerEvent<HTMLElement>) {
+        if (de.current?.ponteiro !== evento.pointerId) return
+        de.current = null
+        evento.currentTarget.releasePointerCapture?.(evento.pointerId)
+      },
+      onPointerCancel(evento: PointerEvent<HTMLElement>) {
+        if (de.current?.ponteiro === evento.pointerId) de.current = null
+      },
     },
   }
 }

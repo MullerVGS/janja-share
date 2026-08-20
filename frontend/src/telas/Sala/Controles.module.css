@@ -1,16 +1,19 @@
+/* Flutuante e centrada no rodapé: a barra passa por cima da imagem e some com o resto da
+   interface. Ela não divide espaço com o palco. */
 .barra {
-  flex: none;
-  height: var(--altura-controles);
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: var(--e2);
-  padding: 0 var(--e4);
-  background: var(--fundo-2);
-  border-top: 1px solid var(--linha);
+  padding: var(--e2);
+  border-radius: var(--raio-pilula);
+  background: var(--veu);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--linha);
+  box-shadow: var(--sombra-md);
 }
 
 .botao {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,18 +60,16 @@
   margin: 0 var(--e2);
 }
 
-/* O nível do som da tela: a barra enche de baixo para cima conforme `--nivel`, que o JS
-   reescreve dez vezes por segundo sem passar pelo React. */
-.somSaindo {
-  flex: none;
-  width: 4px;
-  height: 26px;
-  margin-left: calc(var(--e2) * -1 + 2px);
+.contador {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  padding: 0 5px;
   border-radius: var(--raio-pilula);
-  background: linear-gradient(
-    to top,
-    var(--menta) calc(var(--nivel, 0) * 100%),
-    var(--linha-forte) calc(var(--nivel, 0) * 100%)
-  );
-  transition: background 0.08s linear;
+  background: var(--menta);
+  color: var(--fundo);
+  font-size: var(--texto-xs);
+  font-weight: 700;
+  line-height: 18px;
 }

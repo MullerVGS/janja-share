@@ -1,84 +1,92 @@
+/* O palco ocupa a sala inteira: a imagem é o produto, e nada de moldura fixa em volta dela. */
 .palco {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--e3);
-  padding: var(--e3);
-}
-
-.principal {
-  flex: 1;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   display: grid;
   gap: var(--e3);
+  padding: var(--e3);
   align-content: center;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  background: var(--fundo);
+  transition: padding 0.16s ease;
 }
 
-/* Uma tela fixada ocupa tudo: é o modo "quero ler o que está escrito ali". */
-.principal[data-modo='destaque'] {
+/* Em foco a peça vai de borda a borda: é o "quero ler o que está escrito ali". */
+.palco[data-modo='foco'] {
   grid-template-columns: 1fr;
-}
-
-.principal[data-modo='pessoas'] {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-}
-
-.tira {
-  flex: none;
-  display: flex;
-  gap: var(--e2);
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: thin;
+  padding: 0;
+  gap: 0;
 }
 
 .quadro {
   position: relative;
   overflow: hidden;
-  border-radius: var(--raio-md);
-  background: var(--palco);
-  border: 1px solid var(--linha);
   min-height: 0;
   aspect-ratio: 16 / 9;
+  border-radius: var(--raio-md);
+  border: 1px solid var(--linha);
+  background: var(--palco);
+  animation: shCrescer 0.16s ease;
+  transition: border-radius 0.16s ease;
 }
 
-.principal[data-modo='destaque'] .quadro {
+.palco[data-modo='foco'] .quadro {
   height: 100%;
   aspect-ratio: auto;
+  border: none;
+  border-radius: 0;
 }
 
 .quadro[data-tela] {
-  border-color: rgba(94, 234, 212, 0.35);
+  border-color: var(--menta-fraca);
 }
 
-.falando {
+.quadro[data-falando] {
   border-color: var(--menta);
   box-shadow: 0 0 0 1px var(--menta);
 }
 
-.miniatura {
-  flex: none;
-  width: 176px;
-  aspect-ratio: 16 / 9;
+/* Em tela cheia o quadro é a janela inteira: a proporção fixa daria tarja preta dos dois lados. */
+.quadro[data-cheia] {
+  aspect-ratio: auto;
+  border: none;
+  border-radius: 0;
 }
 
-/* A área da imagem. Em "caber" ela só emoldura; em "pixel a pixel" vira o mirante por onde se
-   anda numa tela maior que o quadro. */
+@keyframes shCrescer {
+  from {
+    transform: scale(0.97);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palco,
+  .quadro {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* A área da imagem: onde o clique, o duplo clique e os gestos do zoom caem. */
 .moldura {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  touch-action: none;
 }
 
-.moldura[data-ajuste='pixelAPixel'] {
-  overflow: auto;
+.palco[data-modo='foco'] .moldura,
+.quadro[data-cheia] .moldura {
   cursor: grab;
-  scrollbar-width: thin;
 }
 
-.moldura[data-ajuste='pixelAPixel']:active {
+.palco[data-modo='foco'] .moldura:active,
+.quadro[data-cheia] .moldura:active {
   cursor: grabbing;
 }
 
@@ -89,16 +97,6 @@
      barra de abas, o terminal e o menu que a pessoa queria mostrar. */
   object-fit: contain;
   background: var(--palco);
-}
-
-/* Tamanho natural: um `<video>` sem largura nem altura é desenhado em `videoWidth × videoHeight`,
-   que é exatamente o pixel a pixel — sem precisar medir nada em JavaScript. */
-.moldura[data-ajuste='pixelAPixel'] .video {
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
-  object-fit: none;
 }
 
 .semVideo {
@@ -119,7 +117,7 @@
 .etiqueta {
   position: absolute;
   left: var(--e2);
-  bottom: var(--e2);
+  top: var(--e2);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -128,6 +126,12 @@
   border-radius: var(--raio-pilula);
   background: var(--veu);
   backdrop-filter: blur(6px);
+}
+
+/* Tela cheia é tela cheia: lá dentro só a pílula pode aparecer, e só quando pedida. */
+.quadro[data-cheia] .etiqueta,
+.quadro[data-cheia] .emPiP {
+  display: none;
 }
 
 .nome {
@@ -144,92 +148,11 @@
   display: flex;
 }
 
-/* Volume local: some enquanto o ponteiro está longe, aparece ao passar por cima ou quando o
-   teclado chega nele — o quadro é para o vídeo, não para os botões. */
-.volume {
-  position: absolute;
-  right: var(--e2);
-  bottom: var(--e2);
-  display: flex;
-  align-items: center;
-  gap: var(--e1);
-  padding: 3px 8px 3px 4px;
-  border-radius: var(--raio-pilula);
-  background: var(--veu);
-  backdrop-filter: blur(6px);
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-
-.quadro:hover .volume,
-.volume:focus-within {
-  opacity: 1;
-}
-
-.mudo {
-  display: flex;
-  cursor: pointer;
-  padding: 3px;
-  border: none;
-  border-radius: var(--raio-sm);
-  background: transparent;
-  color: var(--texto-fraco);
-}
-
-.mudo:hover {
-  color: var(--texto);
-}
-
-.mudo[aria-pressed='true'] {
-  color: var(--coral);
-}
-
-.faixaDoVolume {
-  width: 78px;
-  height: 3px;
-  cursor: pointer;
-  accent-color: var(--menta);
-}
-
-/* Na tira o quadro é estreito, mas é lá que as pessoas ficam enquanto há tela no ar — tirar o
-   volume daqui seria tirá-lo justamente da situação normal desta sala. */
-.miniatura .faixaDoVolume {
-  width: 52px;
-}
-
-.acoes {
-  position: absolute;
-  top: var(--e2);
-  right: var(--e2);
-  display: flex;
-  gap: var(--e1);
-}
-
-.acao {
-  display: flex;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: var(--raio-sm);
-  border: 1px solid transparent;
-  background: var(--veu);
-  color: var(--texto-fraco);
-}
-
-.acao:hover {
-  color: var(--texto);
-}
-
-.acao[aria-pressed='true'] {
-  color: var(--menta);
-  border-color: rgba(94, 234, 212, 0.4);
-  background: var(--menta-fraca);
-}
-
 /* O vídeo está tocando noutra janela: sem este aviso, o quadro parece só ter congelado. */
 .emPiP {
   position: absolute;
   top: var(--e2);
-  left: var(--e2);
+  right: var(--e2);
   padding: 3px 9px;
   border-radius: var(--raio-pilula);
   background: var(--menta-fraca);
@@ -238,11 +161,32 @@
   font-weight: 600;
 }
 
-/* Em tela cheia o quadro é a janela inteira: a proporção fixa daria tarja preta dos dois lados. */
-.quadro[data-cheia] {
-  aspect-ratio: auto;
-  border: none;
-  border-radius: 0;
+/* A pílula: some enquanto o ponteiro está longe e volta ao passar por cima ou quando o teclado
+   chega nela. `pointer-events` acompanha a opacidade — botão invisível não pode comer o clique
+   que era para a imagem. */
+.aoPassarOMouse {
+  position: absolute;
+  left: 50%;
+  bottom: var(--e2);
+  transform: translateX(-50%);
+  max-width: calc(100% - var(--e4));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.quadro:hover .aoPassarOMouse,
+.aoPassarOMouse:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.naTelaCheia {
+  position: absolute;
+  left: 50%;
+  bottom: var(--e4);
+  transform: translateX(-50%);
+  max-width: calc(100% - var(--e4));
 }
 
 .vazio {

@@ -36,7 +36,7 @@ export function Tira({ pecas, aoEscolher }: Props) {
             <Video
               publicacao={peca.publicacao}
               className={estilos.video}
-              espelhar={peca.proprio && !peca.ehTela}
+              estilo={peca.proprio && !peca.ehTela ? { transform: 'scaleX(-1)' } : undefined}
             />
           ) : (
             <span className={estilos.iniciais}>{iniciais(peca.nome)}</span>

@@ -29,7 +29,7 @@ function Quadrinho({ chave, zoom, ativo }: { chave: string; zoom: ControleDeZoom
   const { escala, x, y } = zoom.de(chave)
 
   return (
-    <div ref={moldura} data-testid={chave} data-zoom={`${escala.toFixed(3)} ${Math.round(x)} ${Math.round(y)}`} {...gestos}>
+    <div ref={moldura} data-testid={chave} data-zoom={`${escala.toFixed(3)} ${Math.round(x)} ${Math.round(y)}`} {...gestos.ponteiro}>
       <video ref={video} />
     </div>
   )

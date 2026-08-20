@@ -4,8 +4,8 @@ const JANELA_DO_CLIQUE_MS = 250
 const LIMIAR_DE_ARRASTE_PX = 5
 
 /**
- * Separa clique de duplo clique e ignora arraste — o par de `useArraste`
- * (`telas/Sala/assistir.ts`) para o outro lado do gesto: aqui o ponteiro não anda, só bate.
+ * Separa clique de duplo clique e ignora arraste — o par do arraste do zoom
+ * (`sala/useZoom.ts`) para o outro lado do gesto: aqui o ponteiro não anda, só bate.
  *
  * O clique espera a janela inteira antes de agir, porque só assim dá para saber se não vem um
  * segundo bate logo atrás virando duplo clique.

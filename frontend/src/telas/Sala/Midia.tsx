@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, type CSSProperties, type RefObject } from 'react'
 import { Track, type RemoteAudioTrack, type Room, type TrackPublication } from 'livekit-client'
 import { nomeDoParticipante } from '../../sala/palco'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
@@ -13,12 +13,13 @@ import { VOLUME_CHEIO, type TipoDeAudio } from '../../sala/volumes'
 export function Video({
   publicacao,
   className,
-  espelhar = false,
+  estilo,
   referencia,
 }: {
   publicacao?: TrackPublication
   className?: string
-  espelhar?: boolean
+  /** Onde entram as transformações da imagem: o zoom da tela e o espelho da própria câmera. */
+  estilo?: CSSProperties
   /** Para quem precisa do elemento em si — a janelinha do PiP sai daqui. */
   referencia?: RefObject<HTMLVideoElement | null>
 }) {
@@ -44,7 +45,7 @@ export function Video({
       // O áudio nunca vem junto do vídeo no LiveKit (publicação separada); um `<video>` com som
       // aqui só produziria eco da própria voz.
       muted
-      style={espelhar ? { transform: 'scaleX(-1)' } : undefined}
+      style={estilo}
     />
   )
 }

@@ -1,73 +1,68 @@
 .sala {
   position: relative;
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
   background: var(--fundo);
 }
 
-.topo {
-  flex: none;
+/* Tudo que flutua por cima do palco e some junto. O contêiner não come clique nenhum: só os
+   pedaços de interface de verdade voltam a receber ponteiro. */
+.interface {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--e3);
-  padding: var(--e2) var(--e4);
-  border-bottom: 1px solid var(--linha);
-  background: var(--fundo-2);
+  padding: var(--e3);
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0.18s;
 }
 
-.marca {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--menta);
+.interface[data-interface='oculta'] {
+  opacity: 0;
+  visibility: hidden;
 }
 
-.nomeDaSala {
-  font-size: var(--texto-sm);
-  color: var(--texto-fraco);
-  font-family: var(--fonte-mono);
+@media (prefers-reduced-motion: reduce) {
+  .interface {
+    transition: none;
+  }
 }
 
-.pulso {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--texto-fraquissimo);
-}
-
-.pulso[data-conectado] {
-  background: var(--menta);
-  animation: shPulsar 2.4s ease-in-out infinite;
-}
-
-.estado {
-  font-size: var(--texto-sm);
-  color: var(--texto-fraco);
-}
-
-.espaco {
-  flex: 1;
-}
-
-.eu {
-  font-size: var(--texto-sm);
-  color: var(--texto-fraco);
-}
-
-.faixaDeErro {
-  flex: none;
-  padding: var(--e2) var(--e4) 0;
-}
-
-.corpo {
+.alto {
   flex: 1;
   min-height: 0;
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e3);
 }
 
-.centro {
-  flex: 1;
-  min-width: 0;
+.baixo {
+  flex: none;
+  display: flex;
+  justify-content: center;
+}
+
+.alto > *,
+.baixo > * {
+  pointer-events: auto;
+}
+
+/* Acima da interface e da gaveta: um erro não pode ficar embaixo de nada nem sumir sozinho. */
+.avisos {
+  position: absolute;
+  top: var(--e3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
   display: flex;
   flex-direction: column;
+  gap: var(--e2);
+  width: min(560px, calc(100% - var(--e10)));
+}
+
+.avisos:empty {
+  display: none;
 }

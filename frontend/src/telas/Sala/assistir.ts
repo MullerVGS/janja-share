@@ -1,28 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 
 /**
- * Assistir melhor uma tela alheia: tela cheia, janelinha (PiP) e o tamanho em que ela aparece.
+ * Assistir melhor uma tela alheia: tela cheia e janelinha (PiP).
  *
  * Tudo aqui é API do navegador, não do LiveKit — e nenhuma delas existe em todo lugar. A regra
- * é a mesma para as três: sem suporte, o botão não aparece. Um botão que não faz nada é pior
+ * é a mesma para as duas: sem suporte, o botão não aparece. Um botão que não faz nada é pior
  * do que botão nenhum, porque a pessoa fica achando que o app quebrou.
  */
-
-export type Ajuste = 'caber' | 'pixelAPixel'
-
-/** Cada ajuste descrito pelo que o botão *faz* ao escolhê-lo — é assim que ele se anuncia. */
-export const AJUSTES: Record<Ajuste, { acao: string; explicacao: string }> = {
-  caber: { acao: 'Fazer a tela caber no quadro', explicacao: 'a tela inteira dentro do quadro' },
-  pixelAPixel: { acao: 'Ver em pixel a pixel', explicacao: 'tamanho original, arraste para andar por ela' },
-}
-
-export function ehAjuste(valor: unknown): valor is Ajuste {
-  return typeof valor === 'string' && Object.hasOwn(AJUSTES, valor)
-}
-
-export function outroAjuste(ajuste: Ajuste): Ajuste {
-  return ajuste === 'caber' ? 'pixelAPixel' : 'caber'
-}
 
 export function temTelaCheia(): boolean {
   return document.fullscreenEnabled === true
@@ -87,36 +71,4 @@ export function usePiP(video: RefObject<HTMLVideoElement | null>): { emPiP: bool
   }, [video])
 
   return { emPiP, alternar }
-}
-
-/**
- * Arrastar para andar pela tela — o par natural do pixel a pixel, onde a imagem é maior que o
- * quadro. Anda no sentido do papel, não do ponteiro: puxar para a esquerda traz o que estava
- * à direita.
- */
-export function useArraste(ativo: boolean) {
-  const de = useRef<{ ponteiro: number; x: number; y: number } | null>(null)
-
-  return {
-    onPointerDown(evento: PointerEvent<HTMLElement>) {
-      if (!ativo) return
-      evento.currentTarget.setPointerCapture?.(evento.pointerId)
-      de.current = { ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY }
-    },
-    onPointerMove(evento: PointerEvent<HTMLElement>) {
-      const inicio = de.current
-      if (!inicio || inicio.ponteiro !== evento.pointerId) return
-      evento.currentTarget.scrollLeft -= evento.clientX - inicio.x
-      evento.currentTarget.scrollTop -= evento.clientY - inicio.y
-      de.current = { ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY }
-    },
-    onPointerUp(evento: PointerEvent<HTMLElement>) {
-      if (de.current?.ponteiro !== evento.pointerId) return
-      de.current = null
-      evento.currentTarget.releasePointerCapture?.(evento.pointerId)
-    },
-    onPointerCancel(evento: PointerEvent<HTMLElement>) {
-      if (de.current?.ponteiro === evento.pointerId) de.current = null
-    },
-  }
 }

@@ -97,15 +97,6 @@ export function IconeAjustes(props: Props) {
   )
 }
 
-export function IconeFixar(props: Props) {
-  return (
-    <Traco {...props}>
-      <path d="M9 3.5h6l-.8 5.2 3.3 3.3H6.5l3.3-3.3z" />
-      <path d="M12 12v8.5" />
-    </Traco>
-  )
-}
-
 export function IconeTrocarTela(props: Props) {
   return (
     <Traco {...props}>
