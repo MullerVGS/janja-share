@@ -30,22 +30,27 @@ export class CriarSalaUseCase {
     const nomeDaSala = validarNomeDaSala(nomeBruto)
     const slug = slugDaSala(nomeDaSala)
     const seuNome = validarNome(seuNomeBruto)
+    // senha não é um dos "nomes" (que precisam de código de erro dedicado): tipo errado é
+    // recusado pelo DTO (@IsString + @IsOptional); aqui só decide "tem senha ou não".
     const senha = typeof senhaBruta === 'string' && senhaBruta.length > 0 ? senhaBruta : undefined
 
-    // Uma ida só ao SFU (cache de 2s) resolve os dois: teto global e slug já ocupado.
-    const salasAtuais = await this.room.listarSalas()
+    // Leitura SEM cache (Decisão 6): com o cache de 2s de listarSalas(), um segundo POST para o
+    // mesmo nome logo depois do primeiro não veria a sala recém-criada, passaria da checagem de
+    // slug já existe e apagaria (embaixo) o hash de uma sala que está viva.
+    const salasAtuais = await this.room.listarSalasSemCache()
     if (salasAtuais.length >= TETO_SALAS) throw new MuitasSalas()
     if (salasAtuais.some((s) => s.slug === slug)) throw new SalaExiste()
 
     // Linha órfã do mesmo slug: sala morta que deixou hash para trás. Sem apagar antes, um nome
     // reusado herdaria a senha de uma sala que ninguém lembra.
     await this.salas.apagar(slug)
-    if (senha) await this.salas.gravarHash(slug, cifrar(senha))
+    if (senha) await this.salas.gravarHash(slug, await cifrar(senha))
 
-    await this.room.criarSala({ slug, nomeDaSala })
+    // nomeNoSfu carrega o nonce — é ele, não o slug, que vai no grant do token.
+    const nomeNoSfu = await this.room.criarSala({ slug, nomeDaSala })
 
     const identidade = gerarIdentidade(seuNome)
-    const jwt = await this.tokens.emitir(slug, identidade, seuNome)
+    const jwt = await this.tokens.emitir(nomeNoSfu, identidade, seuNome)
     const { livekitUrl } = env()
     return { token: jwt, urlSfu: livekitUrl, slug, nomeDaSala, identidade, nome: seuNome }
   }

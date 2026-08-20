@@ -34,9 +34,11 @@ export class EntrarNaSalaUseCase {
     if (!sala) throw new SalaNaoExiste()
 
     const hash = await this.salas.buscarHash(slug)
-    if (hash) {
+    // hash é `string | null` — `if (hash)` trataria uma linha com senha_hash = '' (não deveria
+    // existir, mas se existisse) como "sala sem senha" e abriria a sala em silêncio.
+    if (hash !== null) {
       const senha = typeof senhaBruta === 'string' ? senhaBruta : ''
-      if (!confere(senha, hash)) {
+      if (!(await confere(senha, hash))) {
         // Só a tentativa ERRADA consome o freio — acertar de primeira nunca penaliza.
         if (!this.freio.permite(`senha:${ip}:${slug}`, LIMITE_SENHAS_ERRADAS, JANELA_SENHA_MS)) throw new Espere()
         throw new SenhaIncorreta()
@@ -45,8 +47,9 @@ export class EntrarNaSalaUseCase {
 
     if (sala.cheia) throw new SalaCheia()
 
+    // nomeNoSfu carrega o nonce — é ele, não o slug, que vai no grant do token.
     const identidade = gerarIdentidade(seuNome)
-    const jwt = await this.tokens.emitir(slug, identidade, seuNome)
+    const jwt = await this.tokens.emitir(sala.nomeNoSfu, identidade, seuNome)
     const { livekitUrl } = env()
     return { token: jwt, urlSfu: livekitUrl, slug, nomeDaSala: sala.nome, identidade, nome: seuNome }
   }
