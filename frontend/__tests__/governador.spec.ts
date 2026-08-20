@@ -1,0 +1,268 @@
+import { describe, expect, it } from 'vitest'
+import {
+  decidir,
+  descreverDegrau,
+  GOVERNADOR_PARADO,
+  perfilEfetivo,
+  TETO_DE_DECISOES,
+  type EstadoDoGovernador,
+} from '../src/sala/governador'
+import { PERFIL_PADRAO, type PerfilDeQualidade } from '../src/sala/qualidade'
+import { amostraVaziaDoEmissor, type AmostraDoEmissor } from '../src/telemetria/amostra'
+import { anotar } from '../src/telemetria/historico'
+
+const QUADROS: PerfilDeQualidade = { ...PERFIL_PADRAO, fps: 60, ceder: 'quadros' }
+const RESOLUCAO: PerfilDeQualidade = { ...PERFIL_PADRAO, resolucao: '1080p', fps: 30, ceder: 'resolucao' }
+
+type Parcial = Partial<AmostraDoEmissor>
+
+const NO_AR: Parcial = { fpsCodificado: 60, fpsCaptura: 60, altura: 1080, alturaDaCaptura: 1080, largura: 1920 }
+const CPU: Parcial = { ...NO_AR, limitadoPor: 'cpu', fpsCodificado: 40 }
+
+/** Alimenta o governador como o hook faz: uma amostra por segundo, o histórico crescendo. */
+class Sessao {
+  estado: EstadoDoGovernador = GOVERNADOR_PARADO
+  historico: AmostraDoEmissor[] = []
+  emMs = 0
+
+  constructor(readonly pedido: PerfilDeQualidade) {}
+
+  segundos(quantos: number, parcial: Parcial): this {
+    for (let i = 0; i < quantos; i += 1) {
+      this.emMs += 1000
+      this.historico = anotar(this.historico, { ...amostraVaziaDoEmissor(this.emMs), ...NO_AR, ...parcial })
+      this.estado = decidir(this.estado, this.historico, this.pedido)
+    }
+    return this
+  }
+
+  get degrau() {
+    return this.estado.degrau
+  }
+}
+
+describe('governador: descer', () => {
+  it('com 5 amostras limitadas e o eixo cedendo, desce em um passo ao maior degrau ≤ 0,9 × média', () => {
+    const sessao = new Sessao(QUADROS).segundos(4, CPU)
+    expect(sessao.degrau).toBeNull()
+
+    sessao.segundos(1, CPU)
+    // média 40 → 36 → o maior degrau que cabe é 30.
+    expect(sessao.degrau).toBe(30)
+    expect(sessao.estado.motivo).toBe('cpu')
+    expect(perfilEfetivo(QUADROS, sessao.estado)).toEqual({ ...QUADROS, fps: 30 })
+  })
+
+  it('aceita 4 de 5 limitadas; 3 de 5 não', () => {
+    const quatro = new Sessao(QUADROS).segundos(1, { ...NO_AR, fpsCodificado: 40 }).segundos(4, CPU)
+    expect(quatro.degrau).toBe(30)
+
+    const tres = new Sessao(QUADROS).segundos(2, { ...NO_AR, fpsCodificado: 40 }).segundos(3, CPU)
+    expect(tres.degrau).toBeNull()
+  })
+
+  it('fonte parada não dispara: fps baixo sem limitação reportada fica como está', () => {
+    const sessao = new Sessao(QUADROS).segundos(10, { ...NO_AR, fpsCodificado: 8, fpsCaptura: 8 })
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('limitação sem o eixo ceder não dispara: 58 de 60 fps limitado por CPU é ruído', () => {
+    const sessao = new Sessao(QUADROS).segundos(10, { ...CPU, fpsCodificado: 58 })
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('"outro" não é limitação que o governador trate', () => {
+    const sessao = new Sessao(QUADROS).segundos(10, { ...CPU, limitadoPor: 'outro' })
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('amostra pausada pelo dynacast não conta como limitada', () => {
+    const pausadas = new Sessao(QUADROS).segundos(10, { ...CPU, ativo: false, fpsCodificado: 0 })
+    expect(pausadas.degrau).toBeNull()
+
+    // Pausada, a batida não decide; na próxima ativa a janela ainda tem 4 limitadas em 5.
+    const umaPausada = new Sessao(QUADROS).segundos(4, CPU).segundos(1, { ...CPU, ativo: false, fpsCodificado: 0 })
+    expect(umaPausada.degrau).toBeNull()
+    umaPausada.segundos(1, CPU)
+    expect(umaPausada.degrau).toBe(30)
+  })
+
+  it('cedendo resolução, desce a altura da captura ao degrau que cabe e o perfil efetivo muda a resolução', () => {
+    const sessao = new Sessao(RESOLUCAO).segundos(5, { ...NO_AR, limitadoPor: 'banda', altura: 810, fpsCodificado: 30 })
+    // 0,9 × 810 = 729 → 720.
+    expect(sessao.degrau).toBe(720)
+    expect(sessao.estado.motivo).toBe('banda')
+    expect(perfilEfetivo(RESOLUCAO, sessao.estado)).toEqual({ ...RESOLUCAO, resolucao: '720p' })
+  })
+
+  it('em nativa, "abaixo do pedido" é abaixo da altura que a captura entrega', () => {
+    const nativa = { ...RESOLUCAO, resolucao: 'nativa' as const }
+    const sessao = new Sessao(nativa).segundos(5, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
+    // 0,9 × 900 = 810 → 720.
+    expect(sessao.degrau).toBe(720)
+  })
+
+  it('pedido maior que o monitor não é o encoder cedendo: 1440p num monitor de 1080 não desce', () => {
+    const alto = { ...RESOLUCAO, resolucao: '1440p' as const }
+    const sessao = new Sessao(alto).segundos(10, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1080, altura: 1080 })
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('sem medida no eixo (fps nulo) não decide', () => {
+    const sessao = new Sessao(QUADROS).segundos(10, { ...CPU, fpsCodificado: null })
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('nunca sobe por uma descida: abaixo do último degrau, fica no último', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, { ...CPU, fpsCodificado: 2 })
+    expect(sessao.degrau).toBe(5)
+  })
+
+  it('depois de decidir, só amostras novas contam: precisa de 5 frescas para descer de novo', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    expect(sessao.degrau).toBe(30)
+
+    sessao.segundos(4, { ...CPU, fpsCodificado: 12 })
+    expect(sessao.degrau).toBe(30)
+
+    sessao.segundos(1, { ...CPU, fpsCodificado: 12 })
+    expect(sessao.degrau).toBe(10)
+  })
+
+  it('o motivo é o que mais apareceu na janela', () => {
+    const sessao = new Sessao(QUADROS).segundos(2, CPU).segundos(3, { ...CPU, limitadoPor: 'banda' })
+    expect(sessao.estado.motivo).toBe('banda')
+  })
+})
+
+describe('governador: subir', () => {
+  it('sobe um degrau depois de 30 s sem limitação, e não antes', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    expect(sessao.degrau).toBe(30)
+
+    sessao.segundos(29, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(30)
+
+    sessao.segundos(1, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(45)
+    expect(sessao.estado.motivo).toBe('cpu')
+  })
+
+  it('uma limitação no meio reinicia a contagem dos 30 s', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU).segundos(20, { ...NO_AR, fpsCodificado: 30 })
+    sessao.segundos(1, { ...CPU, fpsCodificado: 30 })
+    sessao.segundos(29, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(30)
+
+    sessao.segundos(1, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(45)
+  })
+
+  it('nunca passa do pedido: o degrau acima do pedido é o próprio pedido', () => {
+    const trinta = { ...QUADROS, fps: 30 }
+    const sessao = new Sessao(trinta).segundos(5, { ...CPU, fpsCodificado: 20 })
+    expect(sessao.degrau).toBe(15)
+
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 15 })
+    expect(sessao.degrau).toBe(24)
+
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 24 })
+    expect(sessao.degrau).toBeNull()
+    expect(sessao.estado.motivo).toBeNull()
+    expect(perfilEfetivo(trinta, sessao.estado)).toBe(trinta)
+  })
+
+  it('em nativa, volta a nativa quando o degrau acima passa da altura da captura', () => {
+    const nativa = { ...RESOLUCAO, resolucao: 'nativa' as const }
+    const sessao = new Sessao(nativa).segundos(5, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
+    expect(sessao.degrau).toBe(720)
+
+    // Com o degrau em vigor, a captura passa a entregar 720: a altura nativa precisa ter ficado guardada.
+    sessao.segundos(30, { ...NO_AR, alturaDaCaptura: 720, altura: 720 })
+    expect(sessao.degrau).toBe(1080)
+
+    sessao.segundos(30, { ...NO_AR, alturaDaCaptura: 1080, altura: 1080 })
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('descer de novo em menos de 60 s queima o degrau: não se volta a ele', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(45)
+
+    sessao.segundos(5, { ...CPU, fpsCodificado: 35 })
+    expect(sessao.degrau).toBe(30)
+    expect(sessao.estado.queimados).toEqual([45])
+
+    sessao.segundos(60, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(30)
+  })
+
+  it('descer de novo depois de 60 s não queima nada', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(45)
+
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 45 })
+    expect(sessao.degrau).toBeNull()
+    sessao.segundos(60, { ...NO_AR, fpsCodificado: 60 })
+    sessao.segundos(5, { ...CPU, fpsCodificado: 50 })
+    expect(sessao.degrau).toBe(45)
+    expect(sessao.estado.queimados).toEqual([])
+  })
+
+  it('o próprio pedido pode queimar: voltar a ele e cair logo em seguida deixa o degrau de baixo valendo', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, { ...CPU, fpsCodificado: 50 })
+    expect(sessao.degrau).toBe(45)
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 45 })
+    expect(sessao.degrau).toBeNull()
+
+    sessao.segundos(5, { ...CPU, fpsCodificado: 50 })
+    expect(sessao.degrau).toBe(45)
+    expect(sessao.estado.queimados).toEqual([60])
+
+    sessao.segundos(90, { ...NO_AR, fpsCodificado: 45 })
+    expect(sessao.degrau).toBe(45)
+  })
+
+  it('pausado pelo dynacast não conta como tempo limpo', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    sessao.segundos(20, { ...NO_AR, fpsCodificado: 30 })
+    sessao.segundos(20, { ...NO_AR, ativo: false, fpsCodificado: 0 })
+    sessao.segundos(10, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(30)
+  })
+})
+
+describe('governador: memória e descrição', () => {
+  it('sem histórico o estado não muda', () => {
+    expect(decidir(GOVERNADOR_PARADO, [], QUADROS)).toBe(GOVERNADOR_PARADO)
+  })
+
+  it('registra cada decisão com de/para/motivo, limitado', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, { ...CPU, fpsCodificado: 50 })
+    expect(sessao.estado.decisoes).toEqual([{ emMs: 5000, de: null, para: 45, motivo: 'cpu' }])
+
+    // Ciclos de um degrau, espaçados o bastante para não queimar nada: sobe aos 30 s, desce aos 100 s.
+    for (let i = 0; i < TETO_DE_DECISOES; i += 1) {
+      sessao.segundos(95, { ...NO_AR, fpsCodificado: 60 }).segundos(5, { ...CPU, fpsCodificado: 50 })
+    }
+    expect(sessao.estado.queimados).toEqual([])
+    expect(sessao.estado.decisoes).toHaveLength(TETO_DE_DECISOES)
+    expect(sessao.estado.decisoes.at(-1)).toMatchObject({ de: null, para: 45, motivo: 'cpu' })
+  })
+
+  it('descreve o degrau como a pessoa lê: de → para, unidade e motivo', () => {
+    expect(descreverDegrau(QUADROS, GOVERNADOR_PARADO)).toBeNull()
+
+    const quadros = new Sessao(QUADROS).segundos(5, CPU)
+    expect(descreverDegrau(QUADROS, quadros.estado)).toEqual({ transicao: '60 → 30 fps', degrau: '30', motivo: 'CPU' })
+
+    const resolucao = new Sessao(RESOLUCAO).segundos(5, { ...NO_AR, limitadoPor: 'banda', altura: 810 })
+    expect(descreverDegrau(RESOLUCAO, resolucao.estado)).toEqual({ transicao: '1080p → 720p', degrau: '720p', motivo: 'banda' })
+
+    const nativa = { ...RESOLUCAO, resolucao: 'nativa' as const }
+    const emNativa = new Sessao(nativa).segundos(5, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
+    expect(descreverDegrau(nativa, emNativa.estado)?.transicao).toBe('nativa → 720p')
+  })
+})
