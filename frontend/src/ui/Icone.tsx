@@ -106,6 +106,26 @@ export function IconeFixar(props: Props) {
   )
 }
 
+export function IconeTrocarTela(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="2.5" y="4" width="19" height="13" rx="2.5" />
+      <path d="M8.5 20.5h7" />
+      <path d="M8.5 9h7l-2-2M15.5 12.5h-7l2 2" />
+    </Traco>
+  )
+}
+
+export function IconePararTela(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="2.5" y="4" width="19" height="13" rx="2.5" />
+      <path d="M8.5 20.5h7" />
+      <path d="M9.5 8.5h5v5h-5z" />
+    </Traco>
+  )
+}
+
 export function IconeSom(props: Props) {
   return (
     <Traco {...props}>

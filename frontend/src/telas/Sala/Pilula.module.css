@@ -1,0 +1,74 @@
+/* A pílula do rodapé do quadro: aparece com o ponteiro em cima (regra no Palco) e é a única
+   interface que o quadro desenha por cima da imagem. */
+.pilula {
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+  padding: 3px var(--e2);
+  border-radius: var(--raio-pilula);
+  background: var(--veu);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--linha);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.acao {
+  display: flex;
+  flex: none;
+  cursor: pointer;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-sm);
+  background: transparent;
+  color: var(--texto-fraco);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.acao:hover:not(:disabled) {
+  background: var(--realce);
+  color: var(--texto);
+}
+
+.acao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.acao[aria-pressed='true'] {
+  color: var(--menta);
+  background: var(--menta-fraca);
+}
+
+.perigo {
+  color: var(--coral);
+}
+
+.perigo:hover:not(:disabled) {
+  background: var(--coral-fraca);
+  color: var(--coral);
+}
+
+.faixaDoVolume {
+  flex: none;
+  width: 78px;
+  height: 3px;
+  cursor: pointer;
+  accent-color: var(--menta);
+}
+
+/* O nível do som da tela: a barra enche de baixo para cima conforme `--nivel`, que o JS
+   reescreve dez vezes por segundo sem passar pelo React. */
+.somSaindo {
+  flex: none;
+  width: 4px;
+  height: 20px;
+  border-radius: var(--raio-pilula);
+  background: linear-gradient(
+    to top,
+    var(--menta) calc(var(--nivel, 0) * 100%),
+    var(--linha-forte) calc(var(--nivel, 0) * 100%)
+  );
+  transition: background 0.08s linear;
+}
