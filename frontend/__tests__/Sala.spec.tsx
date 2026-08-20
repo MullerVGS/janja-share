@@ -172,6 +172,10 @@ describe('sala: a gaveta e as preferências', () => {
 
     expect(screen.getByText('oi')).toBeInTheDocument()
     expect(screen.queryByLabelText(/não lidas/)).not.toBeInTheDocument()
+
+    // E o botão da barra fecha a gaveta: ele e ela falam da mesma aba.
+    await usuario.click(screen.getByRole('button', { name: 'Chat' }))
+    expect(gaveta()).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('o botão da barra abre a gaveta no chat e persiste; de novo, fecha', async () => {

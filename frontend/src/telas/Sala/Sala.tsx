@@ -86,7 +86,9 @@ export function Sala() {
   }
 
   function alternarChat() {
-    const proximo = alternarAba(gaveta, 'chat')
+    // A aba que vale é a que a gaveta desenha, não a que está guardada: parar de transmitir
+    // muda uma sem mexer na outra, e o botão precisa fechar o que ele diz estar aberto.
+    const proximo = alternarAba({ aberta: gaveta.aberta, aba: abaDaGaveta }, 'chat')
     setGaveta(proximo)
     gravarPreferencias({ abaDaLateral: proximo.aba })
   }
