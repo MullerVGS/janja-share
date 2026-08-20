@@ -178,7 +178,7 @@ describe('aba Qualidade: automático', () => {
     expect(compartilhamento.definirAutomatico).toHaveBeenCalledWith(false)
   })
 
-  it('automático ligado sem degrau diz que o pedido vale inteiro; desligado, diz que está manual', () => {
+  it('automático ligado sem degrau diz que o pedido vale inteiro, sem "forçar"', () => {
     montarQualidade({ automatico: true })
     expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent(/pedido vale inteiro/)
     expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()

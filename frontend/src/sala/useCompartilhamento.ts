@@ -179,8 +179,9 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
    * reabrir o seletor, com um piscar de ~1 s para quem assiste. O áudio da tela vai junto para
    * as duas publicações seguirem do mesmo dono e com o mesmo ciclo de vida.
    *
-   * Se o SDK recusar, a anterior volta ao ar e o codec fica pendente; se a faixa chegar morta
-   * ao despublicar, não há o que republicar e a transmissão cai — o botão Reiniciar recomeça.
+   * Se o SDK recusar o vídeo, a anterior volta ao ar e o codec fica pendente; se a faixa chegar
+   * morta ao despublicar, não há o que republicar e a transmissão cai — o botão Reiniciar
+   * recomeça. Se só o áudio não voltar, o vídeo já está no ar com o codec novo: é erro à parte.
    */
   const republicar = useCallback(
     async (novo: PerfilDeQualidade) => {
@@ -191,27 +192,40 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
       if (!video || !faixa) return
       const audio = publicacaoDe(sala, Track.Source.ScreenShareAudio)?.track
 
+      // Uma faixa despublicada sem parar e sem voltar ao ar fica órfã: a captura segue viva,
+      // o Chrome segue "compartilhando", e ninguém recebe. Morrer é o único destino honesto.
+      const pararAudioOrfao = () => {
+        if (audio && !publicacaoDe(sala, Track.Source.ScreenShareAudio)) audio.stop()
+      }
+
       setRepublicando(true)
       setErro(null)
       try {
-        await participante.unpublishTrack(faixa, false)
-        if (audio) await participante.unpublishTrack(audio, false)
-        if (faixaMorta(faixa)) throw new Error('a captura morreu ao despublicar')
-        await participante.publishTrack(faixa, opcoesDePublicacao(novo))
-        if (audio && !faixaMorta(audio)) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
-      } catch {
-        setCodecPendente(novo.codec)
-        if (!faixaMorta(faixa) && !publicacaoDe(sala, Track.Source.ScreenShare)) {
+        try {
+          await participante.unpublishTrack(faixa, false)
+          if (audio) await participante.unpublishTrack(audio, false)
+          if (faixaMorta(faixa)) throw new Error('a captura morreu ao despublicar')
+          await participante.publishTrack(faixa, opcoesDePublicacao(novo))
+        } catch {
+          setCodecPendente(novo.codec)
+          if (!faixaMorta(faixa) && !publicacaoDe(sala, Track.Source.ScreenShare)) {
+            try {
+              await participante.publishTrack(faixa, video.options ?? opcoesDePublicacao(perfil))
+            } catch {
+              faixa.stop()
+            }
+          }
+        }
+
+        if (audio && !faixaMorta(audio) && publicacaoDe(sala, Track.Source.ScreenShare)) {
           try {
-            await participante.publishTrack(faixa, video.options ?? opcoesDePublicacao(perfil))
-            if (audio && !faixaMorta(audio)) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
+            await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
           } catch {
-            // Sem como voltar: a captura órfã precisa morrer, senão o Chrome segue "compartilhando".
-            faixa.stop()
-            audio?.stop()
+            setErro('A tela voltou ao ar, mas o áudio da tela não. Reinicie a transmissão para recuperá-lo.')
           }
         }
       } finally {
+        pararAudioOrfao()
         setRepublicando(false)
       }
 
@@ -277,6 +291,8 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     setMudando(true)
     try {
       await sala.localParticipant.setScreenShareEnabled(false)
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'não foi possível parar de compartilhar a tela')
     } finally {
       setMudando(false)
     }

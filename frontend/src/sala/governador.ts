@@ -110,10 +110,12 @@ export function decidir(
   if (!nova) return estado
   const agora = nova.emMs
 
-  // Pausado pelo dynacast não é limitação nem tempo limpo: a batida não conta para nada.
-  if (!nova.ativo) return estado.limpoDesdeMs === agora ? estado : { ...estado, limpoDesdeMs: agora }
+  // Pausado pelo dynacast não é limitação: a amostra é ignorada, e o relógio segue.
+  if (!nova.ativo) return estado
 
-  const janela = historico.filter((amostra) => estado.janelaDesdeMs === null || amostra.emMs > estado.janelaDesdeMs).slice(-JANELA)
+  const janela = historico
+    .filter((amostra) => amostra.ativo && (estado.janelaDesdeMs === null || amostra.emMs > estado.janelaDesdeMs))
+    .slice(-JANELA)
   const degraus = pedido.ceder === 'quadros' ? DEGRAUS_DE_FPS : DEGRAUS_DE_ALTURA
   const medidaDe = (amostra: AmostraDoEmissor) => (pedido.ceder === 'quadros' ? amostra.fpsCodificado : amostra.altura)
   const teto = tetoDoPedido(pedido, estado, janela)
@@ -124,10 +126,15 @@ export function decidir(
   const limitadas = janela.filter((amostra) => motivoDe(amostra) !== null)
   if (janela.length >= JANELA && limitadas.length >= MINIMO_LIMITADAS && alvo !== null) {
     const medida = media(limitadas.map(medidaDe))
-    if (medida !== null && medida < FOLGA * alvo) {
-      const para = degraus.find((degrau) => degrau <= FOLGA * medida) ?? degraus[degraus.length - 1] ?? null
+    // Em quadros, o encoder oscila perto do alvo e 0,9× separa ruído de cessão; em resolução
+    // ele só muda por degraus grandes, e qualquer altura abaixo do alvo já é cessão.
+    const cedendo = medida !== null && (pedido.ceder === 'quadros' ? medida < FOLGA * alvo : medida < alvo)
+    const para = medida === null ? null : (degraus.find((degrau) => degrau <= FOLGA * medida) ?? degraus[degraus.length - 1] ?? null)
+    // Com o pedido no piso da escada não há para onde descer — e nada a dizer.
+    if (cedendo && para !== null && para < alvo) {
       const porBanda = limitadas.filter((amostra) => motivoDe(amostra) === 'banda').length
       const motivo: MotivoDoGovernador = porBanda * 2 > limitadas.length ? 'banda' : 'cpu'
+      // Queima só o degrau que falhou logo depois de uma subida — nunca um alcançado por descida.
       const queimaAgora = estado.subiuEmMs !== null && agora - estado.subiuEmMs < QUEIMAR_SE_DESCER_EM_MS
       return {
         ...estado,
@@ -136,6 +143,7 @@ export function decidir(
         queimados: queimaAgora ? [...estado.queimados, alvo] : estado.queimados,
         alturaSemDegrau: pedido.ceder === 'resolucao' ? (estado.alturaSemDegrau ?? teto) : null,
         limpoDesdeMs: agora,
+        subiuEmMs: null,
         janelaDesdeMs: agora,
         decisoes: anotarDecisao(estado, { emMs: agora, de: estado.degrau, para, motivo }),
       }

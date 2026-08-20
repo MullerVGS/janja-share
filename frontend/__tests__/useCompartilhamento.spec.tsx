@@ -199,6 +199,18 @@ describe('useCompartilhamento: pedido e preferências', () => {
     await ligar()
     expect(result.current.ativo).toBe(false)
   })
+
+  it('se parar de compartilhar falhar, o erro chega à pessoa em vez de virar rejeição solta', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    sala.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('engine fechada'))
+
+    await agir(() => result.current.alternar())
+
+    expect(result.current.erro).toBe('engine fechada')
+    expect(result.current.ocupado).toBe(false)
+  })
 })
 
 describe('useCompartilhamento: governador', () => {
@@ -352,6 +364,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     const sala = new SalaFalsa()
     const { result, ligar, agir } = montar(sala)
     await ligar()
+    const faixaDeAudio = sala.audio()?.track
     sala.localParticipant.unpublishTrack.mockImplementationOnce(async (faixa: Faixa) => {
       sala.publicacoes.delete(Track.Source.ScreenShare)
       faixa.mediaStreamTrack.readyState = 'ended'
@@ -364,6 +377,28 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     expect(result.current.codecPendente).toBe('av1')
     expect(result.current.ativo).toBe(false)
     expect(sala.audio()).toBeUndefined()
+    // O áudio foi despublicado sem parar; órfão, precisa morrer junto.
+    expect(faixaDeAudio?.stop).toHaveBeenCalledOnce()
+  })
+
+  it('se só o áudio da tela não voltar, o vídeo está no ar com o codec novo: nada de pendente — é erro próprio, e o áudio órfão para', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    const faixaDeAudio = sala.audio()?.track
+    const publicar = sala.localParticipant.publishTrack.getMockImplementation()
+    sala.localParticipant.publishTrack.mockImplementation(async (faixa: Faixa, opcoes: TrackPublishOptions) => {
+      if (faixa.kind === 'audio') throw new Error('sem vaga para áudio')
+      return publicar?.(faixa, opcoes) as Promise<Publicacao>
+    })
+
+    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+
+    expect(sala.video()?.track.codec).toBe('av1')
+    expect(result.current.codecPendente).toBeNull()
+    expect(result.current.erro).toMatch(/áudio da tela/)
+    expect(sala.audio()).toBeUndefined()
+    expect(faixaDeAudio?.stop).toHaveBeenCalledOnce()
   })
 
   it('Reiniciar transmissão para e começa de novo com o perfil pedido, e limpa o pendente', async () => {

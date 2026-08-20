@@ -77,12 +77,15 @@ describe('governador: descer', () => {
     expect(sessao.degrau).toBeNull()
   })
 
-  it('amostra pausada pelo dynacast não conta como limitada', () => {
+  it('amostra pausada pelo dynacast fica fora da janela', () => {
     const pausadas = new Sessao(QUADROS).segundos(10, { ...CPU, ativo: false, fpsCodificado: 0 })
     expect(pausadas.degrau).toBeNull()
+    expect(pausadas.estado).toBe(GOVERNADOR_PARADO)
 
-    // Pausada, a batida não decide; na próxima ativa a janela ainda tem 4 limitadas em 5.
-    const umaPausada = new Sessao(QUADROS).segundos(4, CPU).segundos(1, { ...CPU, ativo: false, fpsCodificado: 0 })
+    // Pausada, a batida não decide nem ocupa vaga: a janela são as 5 ativas.
+    const umaPausada = new Sessao(QUADROS).segundos(2, { ...NO_AR, fpsCodificado: 40 }).segundos(2, CPU)
+    umaPausada.segundos(3, { ...CPU, ativo: false, fpsCodificado: 0 })
+    umaPausada.segundos(1, CPU)
     expect(umaPausada.degrau).toBeNull()
     umaPausada.segundos(1, CPU)
     expect(umaPausada.degrau).toBe(30)
@@ -103,6 +106,15 @@ describe('governador: descer', () => {
     expect(sessao.degrau).toBe(720)
   })
 
+  it('em resolução, qualquer altura abaixo do alvo já é ceder — sem folga', () => {
+    const sessao = new Sessao(RESOLUCAO).segundos(5, { ...NO_AR, limitadoPor: 'banda', altura: 1078 })
+    // 0,9 × 1078 = 970 → 720.
+    expect(sessao.degrau).toBe(720)
+
+    const noAlvo = new Sessao(RESOLUCAO).segundos(10, { ...NO_AR, limitadoPor: 'banda', altura: 1080 })
+    expect(noAlvo.degrau).toBeNull()
+  })
+
   it('pedido maior que o monitor não é o encoder cedendo: 1440p num monitor de 1080 não desce', () => {
     const alto = { ...RESOLUCAO, resolucao: '1440p' as const }
     const sessao = new Sessao(alto).segundos(10, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1080, altura: 1080 })
@@ -117,6 +129,14 @@ describe('governador: descer', () => {
   it('nunca sobe por uma descida: abaixo do último degrau, fica no último', () => {
     const sessao = new Sessao(QUADROS).segundos(5, { ...CPU, fpsCodificado: 2 })
     expect(sessao.degrau).toBe(5)
+  })
+
+  it('pedido no piso da escada não tem para onde descer: nenhuma decisão, nenhum "Auto"', () => {
+    const cinco = new Sessao({ ...QUADROS, fps: 5 }).segundos(10, { ...CPU, fpsCodificado: 2 })
+    expect(cinco.estado).toMatchObject({ degrau: null, decisoes: [] })
+
+    const baixa = new Sessao({ ...RESOLUCAO, resolucao: '540p' }).segundos(10, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 540, altura: 400 })
+    expect(baixa.estado).toMatchObject({ degrau: null, decisoes: [] })
   })
 
   it('depois de decidir, só amostras novas contam: precisa de 5 frescas para descer de novo', () => {
@@ -199,6 +219,28 @@ describe('governador: subir', () => {
     expect(sessao.degrau).toBe(30)
   })
 
+  it('só o degrau que falhou logo depois de subir queima; a descida seguinte não queima o alcançado por descida', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(45)
+
+    sessao.segundos(5, { ...CPU, fpsCodificado: 35 })
+    expect(sessao.degrau).toBe(30)
+    sessao.segundos(5, { ...CPU, fpsCodificado: 12 })
+    expect(sessao.degrau).toBe(10)
+    expect(sessao.estado.queimados).toEqual([45])
+
+    // Os 30 voltam a estar disponíveis; os 45, não.
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 10 })
+    expect(sessao.degrau).toBe(15)
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 15 })
+    expect(sessao.degrau).toBe(24)
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 24 })
+    expect(sessao.degrau).toBe(30)
+    sessao.segundos(60, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(30)
+  })
+
   it('descer de novo depois de 60 s não queima nada', () => {
     const sessao = new Sessao(QUADROS).segundos(5, CPU)
     sessao.segundos(30, { ...NO_AR, fpsCodificado: 30 })
@@ -226,12 +268,15 @@ describe('governador: subir', () => {
     expect(sessao.degrau).toBe(45)
   })
 
-  it('pausado pelo dynacast não conta como tempo limpo', () => {
+  it('pausado pelo dynacast é ignorado: não decide, não mexe no estado, e o relógio dos 30 s segue contando', () => {
     const sessao = new Sessao(QUADROS).segundos(5, CPU)
     sessao.segundos(20, { ...NO_AR, fpsCodificado: 30 })
+    const antes = sessao.estado
     sessao.segundos(20, { ...NO_AR, ativo: false, fpsCodificado: 0 })
-    sessao.segundos(10, { ...NO_AR, fpsCodificado: 30 })
-    expect(sessao.degrau).toBe(30)
+    expect(sessao.estado).toBe(antes)
+
+    sessao.segundos(1, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(45)
   })
 })
 
