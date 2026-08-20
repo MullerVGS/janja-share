@@ -16,13 +16,25 @@ export class ErroDaApi extends Error {
   }
 }
 
-/** Códigos do contrato + os dois que só existem do lado do navegador (`sem_conexao`, `resposta_estranha`). */
+/**
+ * Códigos do contrato + os dois que só existem do lado do navegador (`sem_conexao`,
+ * `resposta_estranha`).
+ *
+ * Os genéricos (`validacao`, `nao_encontrado`, `erro`, `erro_interno`) não são detalhe de
+ * implementação do backend: são o que o filtro global emite quando a exceção não traz código
+ * próprio, e chegam aqui em todo erro de validação do painel e em todo 500. Sem frase, viravam
+ * "O servidor respondeu 400 sem explicar o motivo".
+ */
 const FRASES: Record<string, string> = {
   convite_invalido: 'Este convite não existe. Confira se o link foi copiado inteiro.',
   convite_expirado: 'Este convite expirou. Peça um link novo a quem te chamou.',
   convite_esgotado: 'Este convite já foi usado o número de vezes permitido.',
   convite_revogado: 'Este convite foi revogado.',
   nome_invalido: 'Escolha um nome com 1 a 40 caracteres.',
+  validacao: 'O servidor recusou os dados enviados. Revise os campos e tente de novo.',
+  nao_encontrado: 'Este endereço não existe no servidor.',
+  erro: 'O servidor recusou a requisição.',
+  erro_interno: 'Algo quebrou no servidor. Tente de novo em instantes.',
   sem_conexao: 'Não foi possível falar com o servidor. Confira sua conexão.',
 }
 

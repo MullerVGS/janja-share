@@ -17,11 +17,14 @@ function quando(iso: string): string {
 }
 
 /**
- * O 404 aqui tem dois significados. Num convite, é o convite que não existe; na rota inteira, é
- * a guarda de host do backend — que responde 404 para não revelar que o painel existe.
+ * O 404 aqui tem dois significados. Num convite, é o convite que não existe (`convite_invalido`);
+ * na rota inteira, é a guarda de host do backend — que responde 404 para não revelar que o painel
+ * existe. A guarda lança `NotFoundException`, e o filtro global a serve como
+ * `{ erro: "nao_encontrado" }`, o mesmo corpo de uma rota que não existe: é esse código, e não o
+ * fallback do navegador, que chega aqui quando o painel é aberto pelo host errado.
  */
 function explicar(erro: unknown): string {
-  if (erro instanceof ErroDaApi && erro.status === 404 && erro.codigo === 'resposta_estranha') {
+  if (erro instanceof ErroDaApi && erro.status === 404 && erro.codigo === 'nao_encontrado') {
     return 'Este painel só responde no host de administração. Abra pelo endereço admin, não pelo endereço da sala.'
   }
   return mensagemDoErro(erro)
@@ -209,7 +212,7 @@ export function Admin() {
           {sala.data?.participantes.map((pessoa) => (
             <li key={pessoa.identidade} className={estilos.pessoa}>
               <span>{pessoa.nome}</span>
-              <span className={estilos.data}>desde {quando(pessoa.entrouEm)}</span>
+              {pessoa.entrouEm && <span className={estilos.data}>desde {quando(pessoa.entrouEm)}</span>}
               {pessoa.publicandoTela && <span className={estilos.compartilhando}>compartilhando tela</span>}
             </li>
           ))}

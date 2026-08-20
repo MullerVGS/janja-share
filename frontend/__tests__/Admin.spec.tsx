@@ -102,15 +102,34 @@ describe('painel de convites', () => {
   it('404 na rota inteira é a guarda de host, e a tela diz isso', async () => {
     servir({
       'GET /api/config': { corpo: CONFIG },
-      // A guarda responde 404 sem o corpo do contrato — é o Nest recusando a rota.
-      'GET /api/admin/convites': { status: 404, corpo: { statusCode: 404, message: 'Cannot GET /api/admin/convites' } },
-      'GET /api/admin/sala': { status: 404, corpo: { statusCode: 404 } },
+      // Exatamente o corpo que o backend serve aqui: a guarda lança NotFoundException e o filtro
+      // global a converte em { erro: 'nao_encontrado' } — o mesmo de uma rota que não existe.
+      // (backend/test/admin.e2e-spec.ts fixa esse literal do outro lado da costura.)
+      'GET /api/admin/convites': { status: 404, corpo: { erro: 'nao_encontrado' } },
+      'GET /api/admin/sala': { status: 404, corpo: { erro: 'nao_encontrado' } },
     })
     montar(<Admin />, '/admin')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Este painel só responde no host de administração.',
     )
+  })
+
+  it('erro de validação do backend vira frase, não "respondeu 400 sem explicar"', async () => {
+    servir({
+      'GET /api/config': { corpo: CONFIG },
+      'GET /api/admin/convites': { corpo: [] },
+      'GET /api/admin/sala': { corpo: { participantes: [] } },
+      // `validacao` é o que o filtro global emite quando o ValidationPipe recusa o corpo.
+      'POST /api/admin/convites': { status: 400, corpo: { erro: 'validacao' } },
+    })
+    const usuario = userEvent.setup()
+    montar(<Admin />, '/admin')
+
+    await usuario.type(await screen.findByLabelText('Rótulo'), 'Pessoal')
+    await usuario.click(screen.getByRole('button', { name: 'Criar convite' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('O servidor recusou os dados enviados.')
   })
 
   it('mostra quem está na sala agora, com quem compartilha tela', async () => {

@@ -9,7 +9,8 @@ export interface ConfigPublica {
 export interface ParticipanteVistoPeloAdmin {
   identidade: string
   nome: string
-  entrouEm: string
+  /** `null` quando o SFU não informou a hora de entrada — melhor omitir do que inventar. */
+  entrouEm: string | null
   publicandoTela: boolean
 }
 

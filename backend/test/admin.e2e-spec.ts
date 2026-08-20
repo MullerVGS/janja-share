@@ -25,6 +25,10 @@ describe('/api/admin/*', () => {
 
     const rotaInexistente = await request(app.getHttpServer()).get('/api/isto-nao-existe-de-verdade').set('Host', HOST_ERRADO)
     expect(rotaInexistente.status).toBe(404)
+    // O literal, e não só "igual ao da outra rota": este é o corpo que o front casa para dizer
+    // "abra pelo endereço admin" (frontend/src/telas/Admin/Admin.tsx). Sem fixá-lo aqui, os dois
+    // lados podiam divergir com os dois testes verdes.
+    expect(rotaInexistente.body).toEqual({ erro: 'nao_encontrado' })
 
     for (const { metodo, caminho } of rotas) {
       const caminhoConcreto = caminho.replace(':id', '00000000-0000-0000-0000-000000000000')
@@ -32,6 +36,7 @@ describe('/api/admin/*', () => {
       expect(res.status).toBe(404)
       // Corpo idêntico ao de uma rota que nem existe — o guard não pode "vazar" um formato
       // de erro diferente que denuncie, por exclusão, que a rota está ali.
+      expect(res.body).toEqual({ erro: 'nao_encontrado' })
       expect(res.body).toEqual(rotaInexistente.body)
       expect(res.headers['content-type']).toEqual(rotaInexistente.headers['content-type'])
     }
