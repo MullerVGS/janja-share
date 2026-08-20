@@ -141,10 +141,10 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     }
   }
 
-  /** Quem saiu da sala não está mais assistindo; quem não publica não tem espectadores. */
+  /** Quem saiu da sala não está mais assistindo; sem tela no ar, ninguém está. */
   function espectadoresAinda(publicando: boolean): ReadonlyMap<string, Espectador> {
-    if (!publicando) return new Map()
     const vivos = new Map<string, Espectador>()
+    if (!publicando) return vivos
     for (const [identidade, espectador] of estado.espectadores) {
       if (sala.remoteParticipants.has(identidade)) vivos.set(identidade, espectador)
     }
@@ -159,7 +159,10 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       const [emissor, recebidas] = await Promise.all([lerEmissor(), lerRecebidas()])
       if (!vivo) return
       if (batidas % (INTERVALO_DO_RELATO_MS / INTERVALO_MS) === 0) relatar(recebidas)
-      publicar({ emissor, recebidas, espectadores: espectadoresAinda(emissor.length > 0) })
+      // Sem tela no ar de ninguém não há o que dizer — e não há por que redesenhar a sala a 1 Hz.
+      const ocioso = emissor.length === 0 && recebidas.size === 0
+      if (ocioso && estado === TELEMETRIA_VAZIA) return
+      publicar(ocioso ? TELEMETRIA_VAZIA : { emissor, recebidas, espectadores: espectadoresAinda(emissor.length > 0) })
     } finally {
       lendo = false
     }

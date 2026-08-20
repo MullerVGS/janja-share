@@ -79,10 +79,12 @@ class SalaFalsa {
 
 function arrancar(sala: SalaFalsa) {
   let atual: Telemetria = TELEMETRIA_VAZIA
+  let avisos = 0
   const parar = criarColetor(sala as unknown as Room, (telemetria) => {
     atual = telemetria
+    avisos += 1
   })
-  return { parar, atual: () => atual }
+  return { parar, atual: () => atual, avisos: () => avisos }
 }
 
 async function passar(segundos: number) {
@@ -105,20 +107,23 @@ describe('coletor de telemetria', () => {
     expect(atual().emissor[1]?.fpsCodificado).toBe(30)
   })
 
-  it('sem tela no ar, o histórico do emissor fica vazio; parar de compartilhar zera', async () => {
+  it('sem tela no ar de ninguém fica quieto; publicar anota, parar de compartilhar zera uma vez', async () => {
     const sala = new SalaFalsa()
-    const { atual } = arrancar(sala)
+    const { atual, avisos } = arrancar(sala)
 
     await passar(2)
     expect(atual().emissor).toHaveLength(0)
+    expect(avisos()).toBe(0)
 
     sala.publicarTela()
     await passar(3)
     expect(atual().emissor).toHaveLength(3)
+    expect(avisos()).toBe(3)
 
     sala.minhaTela = undefined
-    await passar(1)
+    await passar(2)
     expect(atual().emissor).toHaveLength(0)
+    expect(avisos()).toBe(4)
   })
 
   it('dynacast pausado chega na amostra como ativo=false', async () => {

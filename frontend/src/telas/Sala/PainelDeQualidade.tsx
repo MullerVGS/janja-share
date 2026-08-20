@@ -9,7 +9,7 @@ import {
   type Resolucao,
 } from '../../sala/qualidade'
 import type { Compartilhamento } from '../../sala/useCompartilhamento'
-import type { AmostraDoEmissor } from '../../telemetria/amostra'
+import { amostraVaziaDoEmissor, type AmostraDoEmissor } from '../../telemetria/amostra'
 import { FRASE_DA_LIMITACAO, formatarKbps, formatarResolucao } from '../../telemetria/formatar'
 import { Segmentado, type OpcaoSegmentada } from '../../ui/Segmentado'
 import estilos from './PainelDeQualidade.module.css'
@@ -46,6 +46,7 @@ export function PainelDeQualidade({
   amostra: AmostraDoEmissor | null
 }) {
   const { perfil, definirPerfil, relatorio, ativo } = compartilhamento
+  const medida = amostra ?? amostraVaziaDoEmissor(0)
   const ajustar = (parcial: Partial<PerfilDeQualidade>) => definirPerfil({ ...perfil, ...parcial })
   const prioridade = PRIORIDADES[perfil.prioridade]
 
@@ -96,22 +97,22 @@ export function PainelDeQualidade({
 
       <div className={estilos.medidor} data-ativo={ativo || undefined}>
         <div className={estilos.leitura}>
-          <span className={estilos.numero}>{formatarKbps(amostra?.kbps ?? null)}</span>
+          <span className={estilos.numero}>{formatarKbps(medida.kbps)}</span>
           <span className={estilos.legenda}>saindo agora</span>
         </div>
         <div className={estilos.leitura}>
-          <span className={estilos.numero}>{amostra?.fpsCodificado == null ? '—' : `${amostra.fpsCodificado} fps`}</span>
+          <span className={estilos.numero}>{medida.fpsCodificado === null ? '—' : `${medida.fpsCodificado} fps`}</span>
           <span className={estilos.legenda}>codificados</span>
         </div>
         <div className={estilos.leitura}>
-          <span className={estilos.numero}>{formatarResolucao(amostra?.largura ?? null, amostra?.altura ?? null)}</span>
+          <span className={estilos.numero}>{formatarResolucao(medida.largura, medida.altura)}</span>
           <span className={estilos.legenda}>saída real</span>
         </div>
       </div>
 
-      {amostra?.limitadoPor && (
+      {medida.limitadoPor && (
         <p className={estilos.limitacao} role="status">
-          {FRASE_DA_LIMITACAO[amostra.limitadoPor]} — o encoder está cedendo{' '}
+          {FRASE_DA_LIMITACAO[medida.limitadoPor]} — o encoder está cedendo{' '}
           {perfil.prioridade === 'nitidez' ? 'quadros' : 'resolução'} para caber.
         </p>
       )}
