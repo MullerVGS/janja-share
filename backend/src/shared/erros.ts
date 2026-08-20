@@ -70,7 +70,7 @@ export class SfuIndisponivel extends ErroApi {
   }
 }
 
-/** Formato único { erro } para toda resposta HttpException — inclusive as que o Nest gera sozinho (ValidationPipe, guardas). */
+/** Formato único { erro } para toda resposta HttpException — inclusive as que o Nest gera sozinho (ValidationPipe, rota inexistente). */
 @Catch(HttpException)
 export class ErroApiFilter implements ExceptionFilter {
   catch(ex: HttpException, host: ArgumentsHost) {

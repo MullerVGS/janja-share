@@ -49,8 +49,8 @@ export class LivekitRoomProvider {
 
   /**
    * Cache de 2s no processo — várias abas abertas não multiplicam chamadas ao SFU. `agora` é
-   * injetado como parâmetro (não no construtor) para o teste controlar o tempo sem timers reais,
-   * no mesmo estilo de `calcularEstado(convite, agora)`.
+   * injetado como parâmetro com valor padrão (não no construtor) para o teste controlar o tempo
+   * sem timers reais, sem precisar do container de DI para isso.
    *
    * Lança SfuIndisponivel se o SFU não responder — devolver lista vazia mentiria "não há
    * salas" (contrato).

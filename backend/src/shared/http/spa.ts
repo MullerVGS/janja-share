@@ -22,7 +22,7 @@ const TEM_EXTENSAO = /\.[a-z0-9]+$/i
 
 /**
  * O fallback do SPA devolve `index.html` para caminhos que só o React Router conhece
- * (`/c/:token`, `/sala`, `/admin`). Três exclusões:
+ * (`/`, `/sala/:slug`). Três exclusões:
  * - só GET/HEAD: POST em rota inexistente é erro, não navegação;
  * - nada sob `/api` (qualquer caixa, qualquer barra repetida antes): erro de API precisa
  *   continuar JSON;
