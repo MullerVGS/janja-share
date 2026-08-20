@@ -1,0 +1,68 @@
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  font-weight: 550;
+  font-size: var(--texto-md);
+  line-height: 1.2;
+  color: var(--texto);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: var(--e2) var(--e4);
+  border-radius: var(--raio-pilula);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primario {
+  background: var(--menta);
+  color: #06241f;
+}
+.primario:hover:not(:disabled) {
+  background: var(--menta-forte);
+}
+
+.secundario {
+  border-color: var(--linha-forte);
+  background: var(--superficie);
+}
+.secundario:hover:not(:disabled) {
+  background: var(--superficie-alta);
+}
+
+.fantasma {
+  color: var(--texto-fraco);
+}
+.fantasma:hover:not(:disabled) {
+  background: var(--realce);
+  color: var(--texto);
+}
+
+.perigo {
+  border-color: var(--coral-fraca);
+  color: var(--coral);
+  background: var(--coral-fraca);
+}
+.perigo:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.24);
+}
+
+.blocoInteiro {
+  width: 100%;
+}
+
+.girador {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: shGirar 0.7s linear infinite;
+}

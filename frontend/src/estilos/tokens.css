@@ -1,0 +1,76 @@
+/*
+ * Tokens do share. Tema escuro por padrão e único: é um app de call noturna, e a grade de
+ * vídeo fica melhor sobre fundo escuro (o vídeo é a fonte de luz da tela, não a interface).
+ * Nada de hex solto nos módulos CSS — cor, espaço, raio e sombra saem daqui.
+ */
+:root {
+  color-scheme: dark;
+
+  /* — planos — */
+  --fundo: #0d1014;
+  --fundo-2: #13171d;
+  --superficie: #191e26;
+  --superficie-alta: #212832;
+  --palco: #07090c;
+
+  /* — texto — */
+  --texto: #e8edf4;
+  --texto-fraco: #a3adbb;
+  --texto-fraquissimo: #6f7987;
+
+  /* — traços — */
+  --linha: #262d38;
+  --linha-forte: #38414f;
+  --realce: rgba(255, 255, 255, 0.06);
+  --pressionado: rgba(255, 255, 255, 0.12);
+
+  /* — acentos —
+     Menta é a cor do "está no ar": conexão, publicação, destaque de tela.
+     Âmbar é atenção (limitado por banda). Coral é saída e revogação. */
+  --menta: #5eead4;
+  --menta-forte: #2dd4bf;
+  --menta-fraca: rgba(94, 234, 212, 0.14);
+  --ambar: #fbbf24;
+  --ambar-fraca: rgba(251, 191, 36, 0.14);
+  --coral: #f87171;
+  --coral-forte: #ef4444;
+  --coral-fraca: rgba(248, 113, 113, 0.14);
+  --lilas: #a5b4fc;
+
+  /* — tipografia — */
+  --fonte: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fonte-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+
+  --texto-xs: 11px;
+  --texto-sm: 12.5px;
+  --texto-md: 13.5px;
+  --texto-base: 15px;
+  --texto-lg: 18px;
+  --titulo-sm: 21px;
+  --titulo-md: 27px;
+  --titulo-lg: 34px;
+
+  /* — espaço — */
+  --e1: 4px;
+  --e2: 8px;
+  --e3: 12px;
+  --e4: 16px;
+  --e5: 22px;
+  --e6: 28px;
+  --e8: 40px;
+  --e10: 56px;
+
+  /* — raio — */
+  --raio-sm: 6px;
+  --raio-md: 10px;
+  --raio-lg: 16px;
+  --raio-pilula: 999px;
+
+  /* — elevação — */
+  --sombra-md: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --sombra-lg: 0 18px 48px rgba(0, 0, 0, 0.55);
+
+  /* — medidas — */
+  --largura-barra: 300px;
+  --altura-controles: 68px;
+}

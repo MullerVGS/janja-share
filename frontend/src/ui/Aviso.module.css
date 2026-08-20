@@ -1,0 +1,24 @@
+.aviso {
+  border-radius: var(--raio-md);
+  padding: var(--e3) var(--e4);
+  font-size: var(--texto-md);
+  border: 1px solid transparent;
+}
+
+.erro {
+  background: var(--coral-fraca);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #ffd9d9;
+}
+
+.sucesso {
+  background: var(--menta-fraca);
+  border-color: rgba(94, 234, 212, 0.35);
+  color: #c9fff4;
+}
+
+.neutro {
+  background: var(--superficie);
+  border-color: var(--linha);
+  color: var(--texto-fraco);
+}

@@ -1,0 +1,43 @@
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.rotulo {
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  color: var(--texto-fraco);
+}
+
+.trilha {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--fundo-2);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-md);
+}
+
+.opcao {
+  flex: 1;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--texto-fraco);
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  padding: 6px 4px;
+  border-radius: 7px;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.opcao:hover {
+  background: var(--realce);
+  color: var(--texto);
+}
+
+.opcao[aria-checked='true'] {
+  background: var(--menta-fraca);
+  color: var(--menta);
+}

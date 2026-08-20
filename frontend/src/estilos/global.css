@@ -1,0 +1,109 @@
+@import './tokens.css';
+
+/*
+ * Base e nada mais. O resto vive em CSS Modules ao lado do componente.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#raiz {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte);
+  font-size: var(--texto-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--e2);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+h1 {
+  font-size: var(--titulo-lg);
+}
+h2 {
+  font-size: var(--titulo-md);
+}
+h3 {
+  font-size: var(--titulo-sm);
+}
+
+p {
+  margin: 0 0 var(--e3);
+}
+
+a {
+  color: var(--menta);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+svg {
+  display: block;
+}
+
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--menta);
+  outline-offset: 2px;
+}
+::selection {
+  background: rgba(94, 234, 212, 0.3);
+}
+
+@keyframes shGirar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shPulsar {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
