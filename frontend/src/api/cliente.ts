@@ -22,15 +22,29 @@ export class ErroDaApi extends Error {
  *
  * Os genéricos (`validacao`, `nao_encontrado`, `erro`, `erro_interno`) não são detalhe de
  * implementação do backend: são o que o filtro global emite quando a exceção não traz código
- * próprio, e chegam aqui em todo erro de validação do painel e em todo 500. Sem frase, viravam
+ * próprio, e chegam aqui em todo erro de validação e em todo 500. Sem frase, viravam
  * "O servidor respondeu 400 sem explicar o motivo".
+ *
+ * `nome_invalido` e `nome_da_sala_invalido` são códigos separados de propósito: o primeiro é o
+ * nome da pessoa (1 a 40 caracteres), o segundo é o nome da sala — que pode ter 1 a 40
+ * caracteres e ainda assim ser recusado por derrapar no slug (um nome só de emoji não vira
+ * endereço). A mesma frase mentiria sobre um dos dois motivos.
  */
 const FRASES: Record<string, string> = {
+  // TODO(ticket 2, próximo commit): morrem junto com `telas/Entrada.tsx` e `telas/Admin/`.
   convite_invalido: 'Este convite não existe. Confira se o link foi copiado inteiro.',
   convite_expirado: 'Este convite expirou. Peça um link novo a quem te chamou.',
   convite_esgotado: 'Este convite já foi usado o número de vezes permitido.',
   convite_revogado: 'Este convite foi revogado.',
   nome_invalido: 'Escolha um nome com 1 a 40 caracteres.',
+  nome_da_sala_invalido: 'Esse nome de sala não é válido — use letras ou números, até 40 caracteres.',
+  sala_existe: 'Já existe uma sala com esse nome — entre nela ou escolha outro.',
+  sala_nao_existe: 'Essa sala não existe mais.',
+  senha_incorreta: 'Senha incorreta.',
+  sala_cheia: 'A sala está cheia.',
+  muitas_salas: 'Tem sala demais no ar agora. Tente daqui a pouco.',
+  espere: 'Muitas tentativas. Espere alguns segundos.',
+  sfu_indisponivel: 'O servidor de mídia não respondeu. Tente de novo em instantes.',
   validacao: 'O servidor recusou os dados enviados. Revise os campos e tente de novo.',
   nao_encontrado: 'Este endereço não existe no servidor.',
   erro: 'O servidor recusou a requisição.',
