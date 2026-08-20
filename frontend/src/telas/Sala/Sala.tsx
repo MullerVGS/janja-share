@@ -16,8 +16,8 @@ import { Chat } from './Chat'
 import { Controles } from './Controles'
 import { Lateral } from './Lateral'
 import { AudioDaSala } from './Midia'
-import { PainelDeQualidade } from './PainelDeQualidade'
 import { Palco } from './Palco'
+import { Qualidade } from './Qualidade'
 import { resumirTransmissao } from './resumo'
 import { Transmissao } from './Transmissao'
 import entrada from '../Entrada.module.css'
@@ -177,7 +177,7 @@ export function Sala() {
           aoRedimensionar={redimensionarLateral}
           naoLidasNoChat={naoLidasNoChat}
           resumo={compartilhamento.ativo ? resumirTransmissao(amostraDoEmissor, compartilhamento.relatorio) : null}
-          qualidade={<PainelDeQualidade compartilhamento={compartilhamento} amostra={amostraDoEmissor} />}
+          qualidade={<Qualidade compartilhamento={compartilhamento} />}
           transmissao={<Transmissao telemetria={telemetria} perfil={compartilhamento.perfil} nomeDe={nomeDe} />}
           chat={<Chat chat={chat} />}
         />

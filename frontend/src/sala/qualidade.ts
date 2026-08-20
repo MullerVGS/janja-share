@@ -8,23 +8,28 @@
  *  - **encoder** — `RTCRtpSender.setParameters()` muda o que o encoder *manda*
  *    (teto de bitrate e a regra de degradação).
  *
- * Nenhuma das duas renegocia a sessão nem republica a faixa: mudar de perfil não pisca a
- * transmissão de quem está assistindo.
+ * Nenhuma das duas renegocia a sessão nem republica a faixa. O que republica é o codec — e
+ * isso é assunto de `useCompartilhamento`.
  *
- * O par (`contentHint`, `degradationPreference`) é a decisão que importa. Quando a banda não
- * cabe, o encoder precisa jogar algo fora, e essas duas propriedades escolhem *o quê*:
- * resolução ou quadros. Compartilhando código e terminal, jogar fora resolução transforma
- * texto em borrão irrecuperável; jogar fora quadros só deixa o scroll travado. Daí "Nitidez".
+ * Dois eixos guiam o encoder. **Conteúdo** diz o que está na tela (`contentHint`): texto
+ * pede nitidez de borda, movimento pede continuidade. **Ceder** diz o que jogar fora quando
+ * não cabe (`degradationPreference`): quadros, e o texto continua legível com o scroll
+ * travado; ou resolução, e o jogo continua fluido mais borrado. É também o eixo que o
+ * governador degrada em degraus.
  */
 
-export type Resolucao = 'nativa' | '1440p' | '1080p' | '720p'
-export type Prioridade = 'nitidez' | 'fluidez'
+export type Resolucao = 'nativa' | '1440p' | '1080p' | '720p' | '540p'
+export type Conteudo = 'texto' | 'movimento'
+export type Codec = 'vp9' | 'av1' | 'h264' | 'vp8'
+export type Ceder = 'quadros' | 'resolucao'
 
 export interface PerfilDeQualidade {
+  conteudo: Conteudo
+  codec: Codec
   resolucao: Resolucao
   /** Quadros por segundo pedidos à captura e ao encoder. */
   fps: number
-  prioridade: Prioridade
+  ceder: Ceder
   /** Teto de bitrate em kbps. */
   tetoKbps: number
 }
@@ -36,34 +41,39 @@ interface OpcaoDeResolucao {
   altura: number | null
 }
 
+/** Da maior para a menor: é a escada que o governador desce quando o eixo cedido é resolução. */
 export const RESOLUCOES: readonly OpcaoDeResolucao[] = [
   { valor: 'nativa', rotulo: 'Nativa', altura: null },
   { valor: '1440p', rotulo: '1440p', altura: 1440 },
   { valor: '1080p', rotulo: '1080p', altura: 1080 },
   { valor: '720p', rotulo: '720p', altura: 720 },
+  { valor: '540p', rotulo: '540p', altura: 540 },
 ]
 
 export const OPCOES_DE_FPS: readonly number[] = [5, 15, 30, 60]
 
-interface Ajuste {
-  rotulo: string
-  contentHint: 'detail' | 'motion'
-  degradacao: RTCDegradationPreference
-  explicacao: string
+export const CONTEUDOS: Record<Conteudo, { rotulo: string; contentHint: 'text' | 'motion'; descricao: string }> = {
+  texto: { rotulo: 'Texto', contentHint: 'text', descricao: 'código, terminal, documentos — borda nítida vale mais que quadro' },
+  movimento: { rotulo: 'Movimento', contentHint: 'motion', descricao: 'jogo, vídeo — continuidade vale mais que borda' },
 }
 
-export const PRIORIDADES: Record<Prioridade, Ajuste> = {
-  nitidez: {
-    rotulo: 'Nitidez',
-    contentHint: 'detail',
+export const CODECS: Record<Codec, { rotulo: string; descricao: string; svc: boolean }> = {
+  vp9: { rotulo: 'VP9', descricao: 'padrão: bom em texto e em movimento, camadas temporais para quem assiste devagar', svc: true },
+  av1: { rotulo: 'AV1', descricao: 'o melhor em texto; pede mais CPU de quem compartilha', svc: true },
+  h264: { rotulo: 'H.264', descricao: 'o caminho do encoder de hardware — alivia a CPU em 60 fps', svc: false },
+  vp8: { rotulo: 'VP8', descricao: 'legado: só se os outros derem problema', svc: false },
+}
+
+export const CEDER: Record<Ceder, { rotulo: string; degradacao: RTCDegradationPreference; explicacao: string }> = {
+  quadros: {
+    rotulo: 'Quadros',
     degradacao: 'maintain-resolution',
-    explicacao: 'Sob banda ruim cai o número de quadros e a resolução fica de pé — código e texto continuam legíveis.',
+    explicacao: 'Sob aperto cai o número de quadros e a resolução fica de pé — código e texto continuam legíveis.',
   },
-  fluidez: {
-    rotulo: 'Fluidez',
-    contentHint: 'motion',
+  resolucao: {
+    rotulo: 'Resolução',
     degradacao: 'maintain-framerate',
-    explicacao: 'Sob banda ruim cai a resolução e o movimento fica de pé — bom para vídeo e jogo.',
+    explicacao: 'Sob aperto cai a resolução e o movimento fica de pé — bom para vídeo e jogo.',
   },
 }
 
@@ -76,35 +86,59 @@ export const PRIORIDADES: Record<Prioridade, Ajuste> = {
 /** Limites do slider de teto, em kbps. O topo existe para quem tem fibra boa e quer 1440p60. */
 export const TETO = {
   minimoKbps: 200,
-  maximoKbps: 10_000,
+  maximoKbps: 20_000,
   passoKbps: 100,
 } as const
 
 /**
- * Perfil de partida de cada prioridade — os dois modos da chave Nitidez ↔ Fluidez.
+ * Perfil de partida de cada conteúdo.
  *
- * Nitidez a 15 fps porque a tela típica aqui é editor e terminal: conteúdo que muda em blocos,
- * onde quadro gasto é banda tirada da legibilidade. Fluidez dobra os quadros e sobe o teto na
- * mesma proporção, senão o modo "movimento fluido" entregaria movimento borrado.
+ * Texto a 15 fps porque a tela típica aqui é editor e terminal: conteúdo que muda em blocos,
+ * onde quadro gasto é banda tirada da legibilidade. Movimento quadruplica os quadros e sobe
+ * o teto junto, e vai de H.264 porque é o codec que o encoder de hardware do Chrome pega — a
+ * CPU de quem joga já está ocupada com o jogo.
  */
-export const PRESETS: Record<Prioridade, PerfilDeQualidade> = {
-  nitidez: { resolucao: '1080p', fps: 15, prioridade: 'nitidez', tetoKbps: 2_500 },
-  fluidez: { resolucao: '1080p', fps: 30, prioridade: 'fluidez', tetoKbps: 4_000 },
+export const PRESET_DO_CONTEUDO: Record<Conteudo, PerfilDeQualidade> = {
+  texto: { conteudo: 'texto', codec: 'vp9', resolucao: '1080p', fps: 15, ceder: 'quadros', tetoKbps: 2_500 },
+  movimento: { conteudo: 'movimento', codec: 'h264', resolucao: '1080p', fps: 60, ceder: 'resolucao', tetoKbps: 8_000 },
 }
 
-export const PERFIL_PADRAO: PerfilDeQualidade = PRESETS.nitidez
+export const PERFIL_PADRAO: PerfilDeQualidade = PRESET_DO_CONTEUDO.texto
 
 /**
- * Troca de prioridade aplicando o preset da nova — menos a resolução, que continua sendo a
+ * Troca de conteúdo aplicando o preset do novo — menos a resolução, que continua sendo a
  * escolha da pessoa sobre a própria tela. Devolver 1080p a quem desceu para 720p justamente
  * porque a rede estava ruim seria o pior momento possível para ser prestativo.
  */
-export function trocarPrioridade(atual: PerfilDeQualidade, prioridade: Prioridade): PerfilDeQualidade {
-  return { ...PRESETS[prioridade], resolucao: atual.resolucao }
+export function trocarConteudo(atual: PerfilDeQualidade, conteudo: Conteudo): PerfilDeQualidade {
+  return { ...PRESET_DO_CONTEUDO[conteudo], resolucao: atual.resolucao }
 }
 
 export function alturaDaResolucao(resolucao: Resolucao): number | null {
   return RESOLUCOES.find((opcao) => opcao.valor === resolucao)?.altura ?? null
+}
+
+export function resolucaoDaAltura(altura: number): Resolucao | null {
+  return RESOLUCOES.find((opcao) => opcao.altura === altura)?.valor ?? null
+}
+
+/** O que vem do `localStorage` só vira perfil se for um perfil inteiro, campo a campo. */
+export function ehPerfil(valor: unknown): valor is PerfilDeQualidade {
+  if (valor === null || typeof valor !== 'object') return false
+  const p = valor as Record<string, unknown>
+  return (
+    typeof p.conteudo === 'string' &&
+    p.conteudo in CONTEUDOS &&
+    typeof p.codec === 'string' &&
+    p.codec in CODECS &&
+    typeof p.ceder === 'string' &&
+    p.ceder in CEDER &&
+    RESOLUCOES.some((opcao) => opcao.valor === p.resolucao) &&
+    OPCOES_DE_FPS.includes(p.fps as number) &&
+    typeof p.tetoKbps === 'number' &&
+    p.tetoKbps >= TETO.minimoKbps &&
+    p.tetoKbps <= TETO.maximoKbps
+  )
 }
 
 /**
@@ -138,7 +172,7 @@ export function parametrosDoPerfil(
 ): RTCRtpSendParameters {
   return {
     ...atuais,
-    degradationPreference: PRIORIDADES[perfil.prioridade].degradacao,
+    degradationPreference: CEDER[perfil.ceder].degradacao,
     encodings: (atuais.encodings ?? []).map((encoding) => ({
       ...encoding,
       maxBitrate: perfil.tetoKbps * 1000,
@@ -177,7 +211,7 @@ export async function aplicarPerfil(
   if (alvo.faixa) {
     // O `contentHint` é do track e vale mesmo se a restrição de captura for recusada — é ele
     // que diz ao encoder que o conteúdo é texto, e não fica preso ao `applyConstraints`.
-    alvo.faixa.contentHint = PRIORIDADES[perfil.prioridade].contentHint
+    alvo.faixa.contentHint = CONTEUDOS[perfil.conteudo].contentHint
     try {
       await alvo.faixa.applyConstraints(restricoesDoPerfil(perfil))
       relatorio.captura = 'aplicado'

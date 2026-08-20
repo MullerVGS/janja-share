@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   aplicarPerfil,
+  CEDER,
+  CONTEUDOS,
+  ehPerfil,
   parametrosDoPerfil,
-  restricoesDoPerfil,
   PERFIL_PADRAO,
-  PRESETS,
-  PRIORIDADES,
+  PRESET_DO_CONTEUDO,
+  resolucaoDaAltura,
+  restricoesDoPerfil,
   TETO,
-  trocarPrioridade,
+  trocarConteudo,
   type PerfilDeQualidade,
 } from '../src/sala/qualidade'
 
@@ -62,16 +65,23 @@ describe('tradução do perfil para a captura', () => {
     expect(height).not.toHaveProperty('ideal')
     expect(height).not.toHaveProperty('min')
   })
+
+  it('540p existe como degrau de captura: é até onde o governador desce', () => {
+    expect(restricoesDoPerfil(perfil({ resolucao: '540p' })).height).toEqual({ max: 540 })
+    expect(resolucaoDaAltura(540)).toBe('540p')
+    expect(resolucaoDaAltura(1080)).toBe('1080p')
+    expect(resolucaoDaAltura(999)).toBeNull()
+  })
 })
 
 describe('tradução do perfil para o encoder', () => {
-  it('nitidez cede quadros: maintain-resolution', () => {
-    const parametros = parametrosDoPerfil(remetenteFalso().getParameters(), perfil({ prioridade: 'nitidez' }))
+  it('ceder quadros: maintain-resolution', () => {
+    const parametros = parametrosDoPerfil(remetenteFalso().getParameters(), perfil({ ceder: 'quadros' }))
     expect(parametros.degradationPreference).toBe('maintain-resolution')
   })
 
-  it('fluidez cede resolução: maintain-framerate', () => {
-    const parametros = parametrosDoPerfil(remetenteFalso().getParameters(), perfil({ prioridade: 'fluidez' }))
+  it('ceder resolução: maintain-framerate', () => {
+    const parametros = parametrosDoPerfil(remetenteFalso().getParameters(), perfil({ ceder: 'resolucao' }))
     expect(parametros.degradationPreference).toBe('maintain-framerate')
   })
 
@@ -104,16 +114,16 @@ describe('tradução do perfil para o encoder', () => {
 })
 
 describe('aplicação ao vivo', () => {
-  it('nitidez marca o conteúdo como detalhe e ajusta as duas metades', async () => {
+  it('texto marca o conteúdo como text e ajusta as duas metades', async () => {
     const faixa = faixaFalsa()
     const remetente = remetenteFalso()
 
     const relatorio = await aplicarPerfil(
       { faixa: faixa as unknown as MediaStreamTrack, remetente: remetente as unknown as RTCRtpSender },
-      perfil({ prioridade: 'nitidez', fps: 15, tetoKbps: 2000, resolucao: '1080p' }),
+      perfil({ conteudo: 'texto', ceder: 'quadros', fps: 15, tetoKbps: 2000, resolucao: '1080p' }),
     )
 
-    expect(faixa.contentHint).toBe('detail')
+    expect(faixa.contentHint).toBe('text')
     expect(faixa.applyConstraints).toHaveBeenCalledWith({ frameRate: { max: 15 }, height: { max: 1080 } })
     expect(remetente.setParameters).toHaveBeenCalledOnce()
     expect(remetente.atuais().degradationPreference).toBe('maintain-resolution')
@@ -121,12 +131,13 @@ describe('aplicação ao vivo', () => {
     expect(relatorio).toEqual({ captura: 'aplicado', encoder: 'aplicado' })
   })
 
-  it('fluidez marca o conteúdo como movimento', async () => {
+  it('movimento marca o conteúdo como motion', async () => {
     const faixa = faixaFalsa()
-    await aplicarPerfil({ faixa: faixa as unknown as MediaStreamTrack }, perfil({ prioridade: 'fluidez' }))
+    await aplicarPerfil({ faixa: faixa as unknown as MediaStreamTrack }, perfil({ conteudo: 'movimento' }))
 
     expect(faixa.contentHint).toBe('motion')
-    expect(PRIORIDADES.fluidez.degradacao).toBe('maintain-framerate')
+    expect(CONTEUDOS.movimento.contentHint).toBe('motion')
+    expect(CEDER.resolucao.degradacao).toBe('maintain-framerate')
   })
 
   it('captura recusada não impede o encoder — as metades são independentes', async () => {
@@ -149,9 +160,9 @@ describe('aplicação ao vivo', () => {
     const faixa = faixaFalsa()
     faixa.applyConstraints.mockRejectedValueOnce(new Error('não rola'))
 
-    await aplicarPerfil({ faixa: faixa as unknown as MediaStreamTrack }, perfil({ prioridade: 'nitidez' }))
+    await aplicarPerfil({ faixa: faixa as unknown as MediaStreamTrack }, perfil({ conteudo: 'texto' }))
 
-    expect(faixa.contentHint).toBe('detail')
+    expect(faixa.contentHint).toBe('text')
   })
 
   it('sem sender ainda ajusta a captura, e diz que o encoder ficou de fora', async () => {
@@ -172,40 +183,71 @@ describe('aplicação ao vivo', () => {
  * sobe ~1 Gbps medido). Estes testes existem para que apertá-los "para poupar o servidor" tenha
  * de ser uma decisão explícita, e não um deslize.
  */
-describe('presets dimensionados pelo uplink de quem compartilha', () => {
-  it('nitidez fica em 1080p a 15 fps com 2500 kbps', () => {
-    expect(PRESETS.nitidez).toEqual({ resolucao: '1080p', fps: 15, prioridade: 'nitidez', tetoKbps: 2500 })
+describe('presets por conteúdo', () => {
+  it('Texto: 1080p a 15 fps, 2500 kbps, VP9, cede quadros', () => {
+    expect(PRESET_DO_CONTEUDO.texto).toEqual({
+      conteudo: 'texto',
+      codec: 'vp9',
+      resolucao: '1080p',
+      fps: 15,
+      ceder: 'quadros',
+      tetoKbps: 2500,
+    })
   })
 
-  it('fluidez dobra os quadros e sobe o teto junto — 1080p a 30 fps com 4000 kbps', () => {
-    expect(PRESETS.fluidez).toEqual({ resolucao: '1080p', fps: 30, prioridade: 'fluidez', tetoKbps: 4000 })
+  it('Movimento: 1080p a 60 fps, 8000 kbps, H.264, cede resolução', () => {
+    expect(PRESET_DO_CONTEUDO.movimento).toEqual({
+      conteudo: 'movimento',
+      codec: 'h264',
+      resolucao: '1080p',
+      fps: 60,
+      ceder: 'resolucao',
+      tetoKbps: 8000,
+    })
   })
 
-  it('o perfil de partida é o preset de nitidez', () => {
-    expect(PERFIL_PADRAO).toBe(PRESETS.nitidez)
+  it('o perfil de partida é o preset de texto', () => {
+    expect(PERFIL_PADRAO).toBe(PRESET_DO_CONTEUDO.texto)
   })
 
-  it('o slider chega a 10 Mbps — teto de quem tem fibra boa e quer 1440p60', () => {
-    expect(TETO.maximoKbps).toBe(10_000)
-    expect(TETO.minimoKbps).toBeLessThan(PRESETS.nitidez.tetoKbps)
+  it('o slider vai de 200 kb/s a 20 Mb/s', () => {
+    expect(TETO).toEqual({ minimoKbps: 200, maximoKbps: 20_000, passoKbps: 100 })
   })
 })
 
-describe('troca de prioridade', () => {
-  it('aplica os quadros e o teto do preset escolhido', () => {
-    const depois = trocarPrioridade(PRESETS.nitidez, 'fluidez')
-    expect(depois.prioridade).toBe('fluidez')
-    expect(depois.fps).toBe(30)
-    expect(depois.tetoKbps).toBe(4000)
+describe('troca de conteúdo', () => {
+  it('aplica codec, quadros, teto e o eixo a ceder do preset escolhido', () => {
+    const depois = trocarConteudo(PRESET_DO_CONTEUDO.texto, 'movimento')
+    expect(depois).toMatchObject({ conteudo: 'movimento', codec: 'h264', fps: 60, tetoKbps: 8000, ceder: 'resolucao' })
   })
 
   it('preserva a resolução escolhida — quem desceu para 720p por causa da rede não volta a 1080p', () => {
-    const magro = perfil({ resolucao: '720p', prioridade: 'nitidez' })
-    expect(trocarPrioridade(magro, 'fluidez').resolucao).toBe('720p')
+    const magro = perfil({ resolucao: '720p', conteudo: 'texto' })
+    expect(trocarConteudo(magro, 'movimento').resolucao).toBe('720p')
   })
 
-  it('a volta para nitidez devolve 15 fps e 2500 kbps', () => {
-    const depois = trocarPrioridade(trocarPrioridade(PERFIL_PADRAO, 'fluidez'), 'nitidez')
-    expect([depois.fps, depois.tetoKbps]).toEqual([15, 2500])
+  it('a volta para texto devolve VP9, 15 fps e 2500 kbps', () => {
+    const depois = trocarConteudo(trocarConteudo(PERFIL_PADRAO, 'movimento'), 'texto')
+    expect([depois.codec, depois.fps, depois.tetoKbps]).toEqual(['vp9', 15, 2500])
+  })
+})
+
+describe('perfil vindo de fora (preferências)', () => {
+  it('aceita um perfil inteiro e válido', () => {
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.movimento, resolucao: '540p', tetoKbps: 12_300 })).toBe(true)
+  })
+
+  it('recusa campo faltando, valor fora do vocabulário, fps estranho e teto fora do slider', () => {
+    const { codec: _codec, ...semCodec } = PERFIL_PADRAO
+    expect(ehPerfil(semCodec)).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, conteudo: 'nitidez' })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, codec: 'h265' })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, ceder: 'tudo' })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, resolucao: '4k' })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, fps: 45 })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, tetoKbps: 50_000 })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, tetoKbps: 100 })).toBe(false)
+    expect(ehPerfil(null)).toBe(false)
+    expect(ehPerfil('texto')).toBe(false)
   })
 })

@@ -4,8 +4,10 @@ import type { ScreenShareCaptureOptions } from 'livekit-client'
 import {
   aplicarPerfil,
   alturaDaResolucao,
+  CEDER,
+  CODECS,
+  CONTEUDOS,
   PERFIL_PADRAO,
-  PRIORIDADES,
   type PerfilDeQualidade,
   type RelatorioDeAplicacao,
 } from './qualidade'
@@ -37,7 +39,7 @@ export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOp
     surfaceSwitching: 'include',
     // A própria aba do share na lista só produz o túnel de espelhos.
     selfBrowserSurface: 'exclude',
-    contentHint: PRIORIDADES[perfil.prioridade].contentHint,
+    contentHint: CONTEUDOS[perfil.conteudo].contentHint,
     resolution:
       altura === null
         ? { width: 0, height: 0 }
@@ -53,13 +55,21 @@ export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOp
  * O encoding vai em `screenShareEncoding`, não em `videoEncoding`: o `computeVideoEncodings` do
  * SDK só olha para o primeiro quando a fonte é tela. Com o campo errado, a transmissão nascia
  * no default do SDK (h1080fps15) e só era corrigida pelo `setParameters` — ou seja, escolher
- * Fluidez e começar a compartilhar dava 15 fps nos primeiros instantes.
+ * Movimento e começar a compartilhar dava 15 fps nos primeiros instantes.
+ *
+ * `backupCodec: false`: o reserva em VP8 existe para navegadores que não decodificam VP9/AV1,
+ * e aqui todo mundo é Chrome desktop — seria uplink dobrado para ninguém. `L1T2` nos codecs
+ * SVC dá ao SFU duas camadas temporais: quem assiste devagar recebe metade dos quadros sem
+ * que o emissor precise saber.
  */
 export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptions {
   return {
     source: Track.Source.ScreenShare,
     simulcast: false,
-    degradationPreference: PRIORIDADES[perfil.prioridade].degradacao,
+    videoCodec: perfil.codec,
+    backupCodec: false,
+    ...(CODECS[perfil.codec].svc ? { scalabilityMode: 'L1T2' as const } : {}),
+    degradationPreference: CEDER[perfil.ceder].degradacao,
     screenShareEncoding: { maxBitrate: perfil.tetoKbps * 1000, maxFramerate: perfil.fps },
   }
 }

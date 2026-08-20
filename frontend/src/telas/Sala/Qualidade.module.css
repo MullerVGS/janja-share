@@ -1,9 +1,8 @@
-.painel {
+.aba {
   display: flex;
   flex-direction: column;
   gap: var(--e4);
   padding: var(--e4);
-  border-bottom: 1px solid var(--linha);
 }
 
 .cabecalho {
@@ -23,7 +22,7 @@
   color: var(--texto-fraquissimo);
 }
 
-.prioridade {
+.bloco {
   display: flex;
   flex-direction: column;
   gap: var(--e2);
@@ -60,52 +59,6 @@
 .slider {
   width: 100%;
   accent-color: var(--menta);
-}
-
-.medidor {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--e2);
-  padding: var(--e3);
-  border-radius: var(--raio-md);
-  background: var(--fundo-2);
-  border: 1px solid var(--linha);
-  opacity: 0.55;
-}
-
-.medidor[data-ativo] {
-  opacity: 1;
-  border-color: rgba(94, 234, 212, 0.28);
-}
-
-.leitura {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-
-.numero {
-  font-family: var(--fonte-mono);
-  font-size: var(--texto-md);
-  color: var(--texto);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.legenda {
-  font-size: var(--texto-xs);
-  color: var(--texto-fraquissimo);
-}
-
-.limitacao {
-  margin: 0;
-  font-size: var(--texto-sm);
-  color: var(--ambar);
-  background: var(--ambar-fraca);
-  border-radius: var(--raio-sm);
-  padding: var(--e2) var(--e3);
 }
 
 .recusa {
