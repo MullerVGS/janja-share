@@ -3,15 +3,26 @@ import { Test } from '@nestjs/testing'
 import { DataSource } from 'typeorm'
 import { AppModule } from '../src/app.module'
 import { configurarApp } from '../src/bootstrap'
+import { LivekitRoomProvider } from '../src/shared/livekit/livekit-room.provider'
 
-/**
- * `dirPublico` é repassado a configurarApp() — só usado pelo spa.e2e-spec.ts, que precisa de
- * um bundle de verdade num diretório temporário para exercitar a fronteira SPA×API.
- */
-export async function criarApp(dirPublico?: string): Promise<INestApplication> {
-  const mod = await Test.createTestingModule({ imports: [AppModule] }).compile()
+export interface OpcoesApp {
+  /** Só usado por spa.e2e-spec.ts, que precisa de um bundle de verdade num diretório temporário. */
+  dirPublico?: string
+  /**
+   * O SFU real não está de pé nos testes — quem precisa exercitar as rotas de salas troca o
+   * LivekitRoomProvider por um dublê aqui, via container do Nest (nunca por mock de módulo).
+   */
+  roomProvider?: LivekitRoomProvider
+}
+
+export async function criarApp(opcoes: OpcoesApp = {}): Promise<INestApplication> {
+  let builder = Test.createTestingModule({ imports: [AppModule] })
+  if (opcoes.roomProvider) {
+    builder = builder.overrideProvider(LivekitRoomProvider).useValue(opcoes.roomProvider)
+  }
+  const mod = await builder.compile()
   const app = mod.createNestApplication()
-  configurarApp(app, dirPublico)
+  configurarApp(app, opcoes.dirPublico)
   await app.init()
   await app.get(DataSource).runMigrations()
   return app

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { ConfigController } from './config/config.controller'
+import { SalasModule } from './salas/salas.module'
 import { Sala } from './shared/db/entidades/sala.entity'
 
 @Module({
@@ -17,6 +18,7 @@ import { Sala } from './shared/db/entidades/sala.entity'
       migrations: [__dirname + '/shared/db/migrations/*{.ts,.js}'],
       migrationsRun: false,
     }),
+    SalasModule,
   ],
   controllers: [ConfigController],
 })

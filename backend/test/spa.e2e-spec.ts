@@ -17,7 +17,7 @@ describe('fronteira SPA × API (com bundle presente)', () => {
   beforeAll(async () => {
     const dirPublico = mkdtempSync(join(tmpdir(), 'share-spa-teste-'))
     writeFileSync(join(dirPublico, 'index.html'), '<!doctype html><title>casca do spa</title>')
-    app = await criarApp(dirPublico)
+    app = await criarApp({ dirPublico })
   })
 
   afterAll(async () => {
