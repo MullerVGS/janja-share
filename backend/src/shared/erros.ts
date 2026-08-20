@@ -8,45 +8,11 @@ export class ErroApi extends HttpException {
   }
 }
 
-// As quatro classes de convite abaixo (e erroDoEstado) são legado do módulo `convites/`, que
-// este esforço substitui por completo — saem daqui no mesmo commit que apaga `convites/`
-// (senão o typecheck quebra antes da hora).
-export class ConviteInvalido extends ErroApi {
-  constructor() {
-    super(HttpStatus.NOT_FOUND, 'convite_invalido')
-  }
-}
-
-export class ConviteExpirado extends ErroApi {
-  constructor() {
-    super(HttpStatus.GONE, 'convite_expirado')
-  }
-}
-
-export class ConviteEsgotado extends ErroApi {
-  constructor() {
-    super(HttpStatus.GONE, 'convite_esgotado')
-  }
-}
-
-export class ConviteRevogado extends ErroApi {
-  constructor() {
-    super(HttpStatus.GONE, 'convite_revogado')
-  }
-}
-
 /** Nome de uma pessoa (o "seu nome" de quem cria ou entra numa sala) — não confundir com NomeDaSalaInvalido. */
 export class NomeInvalido extends ErroApi {
   constructor() {
     super(HttpStatus.BAD_REQUEST, 'nome_invalido')
   }
-}
-
-/** Traduz o estado calculado em estado-convite.ts para a exceção de contrato correspondente. */
-export function erroDoEstado(estado: 'expirado' | 'revogado' | 'esgotado'): ErroApi {
-  if (estado === 'expirado') return new ConviteExpirado()
-  if (estado === 'revogado') return new ConviteRevogado()
-  return new ConviteEsgotado()
 }
 
 /**
