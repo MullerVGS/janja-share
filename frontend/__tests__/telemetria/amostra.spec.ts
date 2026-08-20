@@ -195,6 +195,35 @@ describe('amostra do emissor', () => {
     expect(amostra.perda).toBeNull()
   })
 
+  it('o par de candidatos vem do transport.selectedCandidatePairId, mesmo havendo outro par nominado', () => {
+    const { amostra } = lerAmostraDoEmissor(
+      relatorio(
+        saida({ transportId: 'tr' }),
+        { id: 'tr', type: 'transport', selectedCandidatePairId: 'parB' },
+        { id: 'parA', type: 'candidate-pair', nominated: true, state: 'succeeded', localCandidateId: 'locA', currentRoundTripTime: 0.01 },
+        { id: 'locA', type: 'local-candidate', protocol: 'udp', candidateType: 'host' },
+        { id: 'parB', type: 'candidate-pair', nominated: true, state: 'succeeded', localCandidateId: 'locB', currentRoundTripTime: 0.2 },
+        { id: 'locB', type: 'local-candidate', protocol: 'tcp', candidateType: 'relay' },
+      ),
+      null,
+      true,
+    )
+    expect(amostra.redeMedida).toBe(true)
+    expect(amostra.protocolo).toBe('tcp')
+    expect(amostra.tipoDeCandidato).toBe('relay')
+    expect(amostra.rtt).toBe(200)
+  })
+
+  it('sem candidate-pair no relatório, a rede fica marcada como não medida — não como "sem TCP"', () => {
+    const { amostra } = lerAmostraDoEmissor(relatorio(saida()), null, true)
+    expect(amostra.redeMedida).toBe(false)
+    expect(amostra.protocolo).toBeNull()
+    expect(amostra.bandaDisponivelKbps).toBeNull()
+    expect(amostra.tipoDeCandidato).toBeNull()
+
+    expect(lerAmostraDoEmissor(relatorio(saida(), ...REDE_UDP), null, true).amostra.redeMedida).toBe(true)
+  })
+
   it('robustez: keyframes, PLI, NACK e FIR acumulados', () => {
     const { amostra } = lerAmostraDoEmissor(
       relatorio(saida({ keyFramesEncoded: 4, pliCount: 2, nackCount: 7, firCount: 1 })),
@@ -306,6 +335,14 @@ describe('amostra do espectador', () => {
     expect([amostra.largura, amostra.altura]).toEqual([1280, 720])
     expect(amostra.protocolo).toBe('udp')
     expect(amostra.rtt).toBe(42)
+    expect(amostra.redeMedida).toBe(true)
+  })
+
+  it('espectador sem candidate-pair também fica com rede não medida', () => {
+    const { amostra } = lerAmostraDoEspectador(relatorio(entrada()), null)
+    expect(amostra.redeMedida).toBe(false)
+    expect(amostra.protocolo).toBeNull()
+    expect(amostra.rtt).toBeNull()
   })
 
   it('a amostra é um objeto fechado', () => {

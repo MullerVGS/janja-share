@@ -43,6 +43,8 @@ export interface AmostraDoEmissor {
   perda: number | null
   jitterMs: number | null
   bandaDisponivelKbps: number | null
+  /** `false` = o relatório não trouxe `candidate-pair`: rede não medida, não "sem TCP". */
+  redeMedida: boolean
   protocolo: Protocolo | null
   tipoDeCandidato: string | null
   robustez: { quadrosChave: number; pli: number; nack: number; fir: number }
@@ -67,6 +69,7 @@ export interface AmostraDoEspectador {
   decoder: string | null
   decoderEmHardware: boolean | null
   rtt: number | null
+  redeMedida: boolean
   protocolo: Protocolo | null
 }
 
@@ -132,20 +135,36 @@ function nomeDoCodec(stats: Map<string, Stat>, codecId: unknown): { codec: strin
 }
 
 interface Rede {
+  medida: boolean
   rtt: number | null
   bandaDisponivelKbps: number | null
   protocolo: Protocolo | null
   tipoDeCandidato: string | null
 }
 
-/** O par de candidatos em uso é o nominado que deu certo; o `local-candidate` dele diz UDP×TCP. */
-function lerRede(stats: Map<string, Stat>): Rede {
-  const par = doTipo(stats, 'candidate-pair').find((stat) => stat.nominated === true && stat.state === 'succeeded')
-  const local = typeof par?.localCandidateId === 'string' ? stats.get(par.localCandidateId) : undefined
+const REDE_NAO_MEDIDA: Rede = { medida: false, rtt: null, bandaDisponivelKbps: null, protocolo: null, tipoDeCandidato: null }
+
+/**
+ * O par de candidatos em uso: o que o `transport` do RTP aponta como selecionado; sem
+ * `transport` no relatório, o nominado que deu certo.
+ */
+function parDeCandidatos(stats: Map<string, Stat>, rtp: Stat): Stat | undefined {
+  const transporte = typeof rtp.transportId === 'string' ? stats.get(rtp.transportId) : undefined
+  const selecionado =
+    typeof transporte?.selectedCandidatePairId === 'string' ? stats.get(transporte.selectedCandidatePairId) : undefined
+  return selecionado ?? doTipo(stats, 'candidate-pair').find((stat) => stat.nominated === true && stat.state === 'succeeded')
+}
+
+/** O `local-candidate` do par em uso diz UDP×TCP e host/srflx/relay. */
+function lerRede(stats: Map<string, Stat>, rtp: Stat): Rede {
+  const par = parDeCandidatos(stats, rtp)
+  if (!par) return REDE_NAO_MEDIDA
+  const local = typeof par.localCandidateId === 'string' ? stats.get(par.localCandidateId) : undefined
   const protocolo = texto(local?.protocol)?.toLowerCase()
-  const banda = numero(par?.availableOutgoingBitrate)
+  const banda = numero(par.availableOutgoingBitrate)
   return {
-    rtt: emMs(numero(par?.currentRoundTripTime)),
+    medida: true,
+    rtt: emMs(numero(par.currentRoundTripTime)),
     bandaDisponivelKbps: banda === null ? null : Math.round(banda / 1000),
     protocolo: protocolo === 'udp' || protocolo === 'tcp' ? protocolo : null,
     tipoDeCandidato: texto(local?.candidateType),
@@ -193,6 +212,7 @@ export function amostraVaziaDoEmissor(emMs: number, ativo = true): AmostraDoEmis
     perda: null,
     jitterMs: null,
     bandaDisponivelKbps: null,
+    redeMedida: false,
     protocolo: null,
     tipoDeCandidato: null,
     robustez: { quadrosChave: 0, pli: 0, nack: 0, fir: 0 },
@@ -217,6 +237,7 @@ export function amostraVaziaDoEspectador(emMs: number): AmostraDoEspectador {
     decoder: null,
     decoderEmHardware: null,
     rtt: null,
+    redeMedida: false,
     protocolo: null,
   }
 }
@@ -248,7 +269,7 @@ export function lerAmostraDoEmissor(
   const fonte = doTipo(stats, 'media-source').find(ehVideo)
   const quadrosCapturados = numero(fonte?.frames)
   const remoto = doTipo(stats, 'remote-inbound-rtp').find(ehVideo)
-  const rede = lerRede(stats)
+  const rede = lerRede(stats, maior)
   const duracoes = (maior.qualityLimitationDurations ?? {}) as Stat
   const motivo = typeof maior.qualityLimitationReason === 'string' ? MOTIVOS[maior.qualityLimitationReason] : undefined
   const codec = nomeDoCodec(stats, maior.codecId)
@@ -280,6 +301,7 @@ export function lerAmostraDoEmissor(
     perda: emPorcento(numero(remoto?.fractionLost)),
     jitterMs: emMs(numero(remoto?.jitter)),
     bandaDisponivelKbps: rede.bandaDisponivelKbps,
+    redeMedida: rede.medida,
     protocolo: rede.protocolo,
     tipoDeCandidato: rede.tipoDeCandidato,
     robustez: {
@@ -318,7 +340,7 @@ export function lerAmostraDoEspectador(
   if (!entrada) return { amostra: amostraVaziaDoEspectador(Date.now()), base: null }
 
   const agora = numero(entrada.timestamp) ?? 0
-  const rede = lerRede(stats)
+  const rede = lerRede(stats, entrada)
   const base: BaseDoEspectador = {
     emMs: agora,
     bytes: numero(entrada.bytesReceived) ?? 0,
@@ -347,6 +369,7 @@ export function lerAmostraDoEspectador(
     decoder: texto(entrada.decoderImplementation),
     decoderEmHardware: booleano(entrada.powerEfficientDecoder),
     rtt: rede.rtt,
+    redeMedida: rede.medida,
     protocolo: rede.protocolo,
   }
 

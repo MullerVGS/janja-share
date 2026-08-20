@@ -87,6 +87,7 @@ export function desempacotarRelato(dados: Uint8Array): Relato | null {
     decoder: texto(campo.decoder),
     decoderEmHardware: booleano(campo.decoderEmHardware),
     rtt: numero(campo.rtt),
+    redeMedida: booleano(campo.redeMedida) ?? false,
     protocolo: protocolo(campo.protocolo),
   }
 }

@@ -24,9 +24,13 @@ export function Cartao({ titulo, linhas }: { titulo: string; linhas: [string, Re
   )
 }
 
-function rede(protocolo: Protocolo | null, tipo: string | null = null): string {
-  if (!protocolo) return '—'
-  return tipo ? `${protocolo.toUpperCase()} · ${tipo}` : protocolo.toUpperCase()
+const NAO_MEDIDO = 'não medido'
+
+/** O caminho da rede; sem `candidate-pair` no relatório a resposta é "não medido", não um travessão. */
+function caminho(amostra: { redeMedida: boolean; protocolo: Protocolo | null }, tipo: string | null = null): string {
+  if (!amostra.redeMedida) return NAO_MEDIDO
+  if (!amostra.protocolo) return '—'
+  return tipo ? `${amostra.protocolo.toUpperCase()} · ${tipo}` : amostra.protocolo.toUpperCase()
 }
 
 function hardware(emHardware: boolean | null): string {
@@ -59,8 +63,8 @@ export function CartoesDoEmissor({ amostra }: { amostra: AmostraDoEmissor }) {
           ['RTT', formatarMs(amostra.rtt)],
           ['perda', formatarPct(amostra.perda)],
           ['jitter', formatarMs(amostra.jitterMs)],
-          ['banda estimada', formatarKbps(amostra.bandaDisponivelKbps)],
-          ['caminho', rede(amostra.protocolo, amostra.tipoDeCandidato)],
+          ['banda estimada', amostra.redeMedida ? formatarKbps(amostra.bandaDisponivelKbps) : NAO_MEDIDO],
+          ['caminho', caminho(amostra, amostra.tipoDeCandidato)],
         ]}
       />
       <Cartao
@@ -75,7 +79,7 @@ export function CartoesDoEmissor({ amostra }: { amostra: AmostraDoEmissor }) {
         titulo="Robustez"
         linhas={[
           ['pedidos de reenvio', `PLI ${robustez.pli} · NACK ${robustez.nack} · FIR ${robustez.fir}`],
-          ['keyframes', `keyframes ${robustez.quadrosChave}`],
+          ['keyframes', String(robustez.quadrosChave)],
         ]}
       />
     </div>
@@ -96,8 +100,8 @@ export function CartoesDoEspectador({ amostra }: { amostra: AmostraDoEspectador 
       <Cartao
         titulo="Rede"
         linhas={[
-          ['caminho', rede(amostra.protocolo)],
-          ['RTT', formatarMs(amostra.rtt)],
+          ['caminho', caminho(amostra)],
+          ['RTT', amostra.redeMedida ? formatarMs(amostra.rtt) : NAO_MEDIDO],
           ['perda', formatarPct(amostra.perda)],
           ['jitter', formatarMs(amostra.jitterMs)],
           ['atraso do buffer', formatarMs(amostra.atrasoDoBufferMs)],
@@ -153,7 +157,7 @@ export function ComoChega({ espectadores }: { espectadores: ReadonlyMap<string, 
                 <td>{formatarPct(relato.perda)}</td>
                 <td>{formatarMs(relato.atrasoDoBufferMs)}</td>
                 <td>{formatarMs(relato.desvioEntreQuadrosMs)}</td>
-                <td>{relato.protocolo ? `${rede(relato.protocolo)} · ${formatarMs(relato.rtt)}` : '—'}</td>
+                <td>{relato.redeMedida ? `${caminho(relato)} · ${formatarMs(relato.rtt)}` : NAO_MEDIDO}</td>
               </tr>
             )
           })}

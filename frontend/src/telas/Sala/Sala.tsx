@@ -52,8 +52,13 @@ export function Sala() {
   const palco = useMemo(() => montarPalco(sala), [sala, versao])
   const amostraDoEmissor = ultima(telemetria.emissor)
 
+  // Mostrar é automático (o app decide, não persiste); escolher é a pessoa clicando, e fica.
   function mostrarAba(aba: Aba) {
     setLateral({ aberta: true, aba })
+  }
+
+  function escolherAba(aba: Aba) {
+    mostrarAba(aba)
     gravarPreferencias({ abaDaLateral: aba })
   }
 
@@ -167,7 +172,7 @@ export function Sala() {
         <Lateral
           aberta={lateral.aberta}
           aba={lateral.aba}
-          aoTrocarAba={mostrarAba}
+          aoTrocarAba={escolherAba}
           largura={larguraDaLateral}
           aoRedimensionar={redimensionarLateral}
           naoLidasNoChat={naoLidasNoChat}

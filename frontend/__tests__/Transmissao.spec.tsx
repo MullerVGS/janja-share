@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PERFIL_PADRAO } from '../src/sala/qualidade'
@@ -30,6 +30,7 @@ function emissor(parcial = {}) {
     perda: 0.5,
     jitterMs: 3,
     bandaDisponivelKbps: 8000,
+    redeMedida: true,
     protocolo: 'udp' as const,
     tipoDeCandidato: 'srflx',
     robustez: { quadrosChave: 4, pli: 2, nack: 7, fir: 0 },
@@ -49,6 +50,7 @@ function espectador(parcial: Partial<Espectador> = {}): Espectador {
       perda: 1.5,
       atrasoDoBufferMs: 45,
       desvioEntreQuadrosMs: 4.2,
+      redeMedida: true,
       protocolo: 'udp',
       rtt: 40,
       decoder: 'FFmpeg',
@@ -99,7 +101,28 @@ describe('aba Transmissão', () => {
     const robustez = screen.getByRole('group', { name: 'Robustez' })
     expect(robustez).toHaveTextContent('PLI 2')
     expect(robustez).toHaveTextContent('NACK 7')
-    expect(robustez).toHaveTextContent('keyframes 4')
+    // Rótulo e valor são coisas distintas: o valor é só o número.
+    expect(within(robustez).getByText('keyframes').nextSibling).toHaveTextContent(/^4$/)
+  })
+
+  it('rede não medida aparece com todas as letras, tanto no cartão quanto no Como chega', () => {
+    const espectadores = new Map([
+      ['bia-1a2b3c', espectador({ relato: { ...espectador().relato, redeMedida: false, protocolo: null, rtt: null } })],
+    ])
+    montarTransmissao({
+      ...TELEMETRIA_VAZIA,
+      emissor: [emissor({ redeMedida: false, protocolo: null, tipoDeCandidato: null, bandaDisponivelKbps: null })],
+      espectadores,
+    })
+
+    const rede = screen.getByRole('group', { name: 'Rede' })
+    expect(within(rede).getByText('caminho').nextSibling).toHaveTextContent('não medido')
+    expect(within(rede).getByText('banda estimada').nextSibling).toHaveTextContent('não medido')
+    expect(within(rede).getByText('RTT').nextSibling).toHaveTextContent('42 ms')
+
+    const tabela = screen.getByRole('table', { name: 'Como chega' })
+    const linha = within(tabela).getAllByRole('row')[1]
+    expect(linha).toHaveTextContent('não medido')
   })
 
   it('dynacast pausado aparece com todas as letras, não como zero', () => {
@@ -137,7 +160,7 @@ describe('aba Transmissão', () => {
   })
 
   it('quem assiste vê a versão própria: o que recebe de cada tela, com gráficos e cartões', () => {
-    const recebida = { ...amostraVaziaDoEspectador(AGORA), fpsDecodificado: 24, fpsRecebido: 25, kbps: 2200, decoder: 'FFmpeg', decoderEmHardware: true, protocolo: 'udp' as const, rtt: 38, freezes: { quantidade: 2, duracaoMs: 900 }, desvioEntreQuadrosMs: 6.1, largura: 1920, altura: 1080 }
+    const recebida = { ...amostraVaziaDoEspectador(AGORA), fpsDecodificado: 24, fpsRecebido: 25, kbps: 2200, decoder: 'FFmpeg', decoderEmHardware: true, redeMedida: true, protocolo: 'udp' as const, rtt: 38, freezes: { quantidade: 2, duracaoMs: 900 }, desvioEntreQuadrosMs: 6.1, largura: 1920, altura: 1080 }
     montarTransmissao({ ...TELEMETRIA_VAZIA, recebidas: new Map([['bia-1a2b3c', [recebida]]]) })
 
     const secao = screen.getByRole('region', { name: 'Recebendo de bia' })
@@ -148,6 +171,13 @@ describe('aba Transmissão', () => {
     expect(within(secao).getByRole('group', { name: 'Estabilidade' })).toHaveTextContent('2 (0,9 s)')
     expect(within(secao).getByRole('group', { name: 'Estabilidade' })).toHaveTextContent('6,1 ms')
     expect(within(secao).getByRole('group', { name: 'Rede' })).toHaveTextContent('UDP')
+  })
+
+  it('assistindo com rede não medida, o cartão Rede diz isso no caminho e no RTT', () => {
+    montarTransmissao({ ...TELEMETRIA_VAZIA, recebidas: new Map([['bia-1a2b3c', [amostraVaziaDoEspectador(AGORA)]]]) })
+    const rede = within(screen.getByRole('region', { name: 'Recebendo de bia' })).getByRole('group', { name: 'Rede' })
+    expect(within(rede).getByText('caminho').nextSibling).toHaveTextContent('não medido')
+    expect(within(rede).getByText('RTT').nextSibling).toHaveTextContent('não medido')
   })
 
   it('Detalhes expande a última amostra crua, legível', async () => {
@@ -166,7 +196,12 @@ describe('aba Transmissão', () => {
     const writeText = vi.fn(async (_texto: string) => {})
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
     const espectadores = new Map([['bia-1a2b3c', espectador()]])
-    montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: [emissor(), emissor()], espectadores })
+    // Dois "caio" homônimos: o JSON precisa distinguir pela identidade, não pelo nome.
+    const recebidas = new Map([
+      ['caio-111111', [amostraVaziaDoEspectador(AGORA)]],
+      ['caio-222222', [amostraVaziaDoEspectador(AGORA), amostraVaziaDoEspectador(AGORA + 1000)]],
+    ])
+    montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: [emissor(), emissor()], espectadores, recebidas })
 
     await usuario.click(screen.getByRole('button', { name: 'Copiar JSON' }))
 
@@ -175,7 +210,31 @@ describe('aba Transmissão', () => {
     expect(typeof copiado.geradoEm).toBe('string')
     expect(copiado.emissor).toHaveLength(2)
     expect((copiado.espectadores as { nome: string }[])[0]?.nome).toBe('Bia')
+    const recebidasCopiadas = copiado.recebidas as { identidade: string; nome: string; amostras: unknown[] }[]
+    expect(recebidasCopiadas.map((r) => [r.identidade, r.nome, r.amostras.length])).toEqual([
+      ['caio-111111', 'caio', 1],
+      ['caio-222222', 'caio', 2],
+    ])
     expect(await screen.findByText('Copiado')).toBeInTheDocument()
+  })
+
+  it('"Copiado" volta a "Copiar JSON" depois de 2 s, e desmontar antes disso não deixa timer pendurado', async () => {
+    vi.useFakeTimers({ now: AGORA })
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async (_texto: string) => {}) } })
+    const { unmount } = montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: [emissor()] })
+    // `fireEvent` e não `userEvent`: com timers falsos o userEvent espera um relógio que não anda.
+    const copiar = () => act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copiar JSON' })))
+
+    await copiar()
+    expect(screen.getByText('Copiado')).toBeInTheDocument()
+    await act(() => vi.advanceTimersByTimeAsync(2000))
+    expect(screen.getByRole('button', { name: 'Copiar JSON' })).toBeInTheDocument()
+
+    await copiar()
+    expect(screen.getByText('Copiado')).toBeInTheDocument()
+    expect(vi.getTimerCount()).toBe(1)
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('sem área de transferência, o JSON aparece num campo para copiar à mão', async () => {

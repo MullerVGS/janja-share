@@ -9,6 +9,7 @@ const NO_AR = {
   largura: 1920,
   fpsCodificado: 30,
   kbps: 3000,
+  redeMedida: true,
   protocolo: 'udp' as const,
 }
 
@@ -33,6 +34,10 @@ describe('resumo da transmissão', () => {
   it('limitado por CPU ou banda é âmbar', () => {
     expect(resumirTransmissao({ ...NO_AR, limitadoPor: 'cpu' }, null)).toMatchObject({ estado: 'limitado pela CPU', tom: 'atencao' })
     expect(resumirTransmissao({ ...NO_AR, limitadoPor: 'banda' }, null)).toMatchObject({ estado: 'limitado pela banda', tom: 'atencao' })
+  })
+
+  it('rede não medida não é TCP: o resumo fica verde', () => {
+    expect(resumirTransmissao({ ...NO_AR, redeMedida: false, protocolo: null }, null)).toMatchObject({ estado: 'ok', tom: 'ok' })
   })
 
   it('pausado pelo dynacast, TCP e recusa do encoder são vermelhos — nesta ordem de gravidade', () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { alturaDaResolucao, type PerfilDeQualidade } from '../../sala/qualidade'
 import type { AmostraDoEmissor, AmostraDoEspectador } from '../../telemetria/amostra'
 import type { Telemetria } from '../../telemetria/coletor'
@@ -130,7 +130,7 @@ function montarJson(telemetria: Telemetria, nomeDe: (identidade: string) => stri
       geradoEm: new Date().toISOString(),
       emissor: telemetria.emissor,
       espectadores: [...telemetria.espectadores.values()],
-      recebidas: Object.fromEntries([...telemetria.recebidas].map(([identidade, historico]) => [nomeDe(identidade), historico])),
+      recebidas: [...telemetria.recebidas].map(([identidade, amostras]) => ({ identidade, nome: nomeDe(identidade), amostras })),
     },
     null,
     2,
@@ -143,6 +143,13 @@ type EstadoDaCopia = 'pronto' | 'copiado' | 'manual'
 function Detalhes({ telemetria, nomeDe }: Omit<Props, 'perfil'>) {
   const [copia, setCopia] = useState<EstadoDaCopia>('pronto')
   const [json, setJson] = useState('')
+
+  // "Copiado" dura 2 s; trocar de aba antes disso desmonta a aba, e o timer vai junto.
+  useEffect(() => {
+    if (copia !== 'copiado') return
+    const volta = setTimeout(() => setCopia('pronto'), 2000)
+    return () => clearTimeout(volta)
+  }, [copia])
   // Transmitindo, o cru é o que sai; só assistindo, é o que chega da primeira tela.
   const amostra = (ultima(telemetria.emissor) ?? ultima([...telemetria.recebidas.values()][0] ?? [])) as
     | Record<string, unknown>
@@ -154,7 +161,6 @@ function Detalhes({ telemetria, nomeDe }: Omit<Props, 'perfil'>) {
       if (!navigator.clipboard) throw new Error('sem área de transferência')
       await navigator.clipboard.writeText(texto)
       setCopia('copiado')
-      setTimeout(() => setCopia('pronto'), 2000)
     } catch {
       // Sem permissão ou sem API (http, iframe): o campo selecionável é o caminho que sempre funciona.
       setJson(texto)

@@ -30,6 +30,7 @@ const AMOSTRA = {
   decoderEmHardware: false,
   rtt: 40,
   protocolo: 'udp' as const,
+  redeMedida: true,
 }
 
 describe('relato do espectador', () => {
@@ -63,6 +64,11 @@ describe('relato do espectador', () => {
     const relato = desempacotarRelato(bytes({ ...AMOSTRA, v: 1, freezes: { quantidade: 'a' }, quadrosDescartados: -1 }))
     expect(relato?.freezes).toEqual({ quantidade: 0, duracaoMs: 0 })
     expect(relato?.quadrosDescartados).toBe(0)
+  })
+
+  it('relato sem dizer se mediu a rede é tratado como não medida', () => {
+    const { redeMedida: _omitido, ...semRede } = AMOSTRA
+    expect(desempacotarRelato(bytes({ ...semRede, v: 1 }))?.redeMedida).toBe(false)
   })
 
   it('sem emMs usável, carimba a chegada', () => {
