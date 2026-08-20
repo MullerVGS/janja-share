@@ -49,4 +49,17 @@ describe('Freio — janela deslizante com relógio injetado', () => {
     const freio = new Freio()
     expect(freio.permite('ip-1', 5, 1000)).toBe(true)
   })
+
+  it('varre chaves ociosas há muito mais que qualquer janela do app — não vaza memória para sempre', () => {
+    let agora = 0
+    const freio = new Freio(() => agora)
+
+    freio.permite('ip-velho', 10, 1000)
+    expect(freio.tamanho).toBe(1)
+
+    agora = 10 * 60_000 + 1 // bem além de qualquer janela usada no app (60s/30s)
+    freio.permite('ip-novo', 10, 1000) // qualquer chamada dispara a varredura
+
+    expect(freio.tamanho).toBe(1) // 'ip-velho' foi varrido; só 'ip-novo' ficou
+  })
 })
