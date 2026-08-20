@@ -55,6 +55,18 @@ describe('useCliqueOuDuplo', () => {
     expect(aoClicar).not.toHaveBeenCalled()
   })
 
+  it('deslocamento de exatamente 5 px ainda conta como clique — o limite é "maior que"', () => {
+    const aoClicar = vi.fn()
+    render(<Alvo aoClicar={aoClicar} aoClicarDuplo={vi.fn()} />)
+    const alvo = screen.getByTestId('alvo')
+
+    fireEvent.pointerDown(alvo, { pointerId: 1, clientX: 0, clientY: 0 })
+    fireEvent.pointerUp(alvo, { pointerId: 1, clientX: 5, clientY: 0 })
+    act(() => vi.advanceTimersByTime(250))
+
+    expect(aoClicar).toHaveBeenCalledTimes(1)
+  })
+
   it('desmontar com um clique pendente não dispara nada', () => {
     const aoClicar = vi.fn()
     const { unmount } = render(<Alvo aoClicar={aoClicar} aoClicarDuplo={vi.fn()} />)
