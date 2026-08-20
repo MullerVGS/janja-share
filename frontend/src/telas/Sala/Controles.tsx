@@ -20,7 +20,36 @@ interface Props {
   painelAberto: boolean
   alternarChat(): void
   alternarPainel(): void
+  /** Onde a falha de microfone/câmera vira faixa na tela; `null` limpa a faixa anterior. */
+  aoFalhar(mensagem: string | null): void
   aoSair(): void
+}
+
+const DISPOSITIVOS = {
+  microfone: { esse: 'o microfone', aEsse: 'ao microfone' },
+  camera: { esse: 'a câmera', aEsse: 'à câmera' },
+} as const
+
+/**
+ * A frase que a pessoa lê quando abrir microfone ou câmera não dá certo. `null` é o único caso
+ * de desistência silenciosa: `AbortError` é a troca interrompida no meio, não uma decisão.
+ *
+ * Diferente do compartilhamento de tela, aqui `NotAllowedError` NÃO é silêncio: não existe
+ * seletor nativo para cancelar — é a permissão negada, e ela persiste. Sem faixa, o botão
+ * ficaria morto para sempre sem nunca dizer por quê, que é exatamente o defeito que isto
+ * conserta. O nome do erro é a parte estável do `DOMException`; a `message` muda com o
+ * navegador e com o idioma do sistema.
+ */
+function fraseDaFalha(falha: unknown, qual: keyof typeof DISPOSITIVOS): string | null {
+  const { esse, aEsse } = DISPOSITIVOS[qual]
+  const nome = falha instanceof Error ? falha.name : ''
+  if (nome === 'AbortError') return null
+  if (nome === 'NotAllowedError' || nome === 'SecurityError')
+    return `O navegador bloqueou o acesso ${aEsse}. Libere a permissão na barra de endereço e tente de novo.`
+  if (nome === 'NotFoundError' || nome === 'OverconstrainedError')
+    return `Não encontrei ${esse} neste computador.`
+  if (nome === 'NotReadableError') return `Outro programa está usando ${esse}. Feche-o e tente de novo.`
+  return falha instanceof Error && falha.message ? falha.message : `Não foi possível abrir ${esse}.`
 }
 
 function Botao({
@@ -64,6 +93,7 @@ export function Controles({
   painelAberto,
   alternarChat,
   alternarPainel,
+  aoFalhar,
   aoSair,
 }: Props) {
   const [mudandoMicrofone, setMudandoMicrofone] = useState(false)
@@ -74,9 +104,12 @@ export function Controles({
 
   async function alternarMicrofone() {
     if (!sala) return
+    aoFalhar(null)
     setMudandoMicrofone(true)
     try {
       await sala.localParticipant.setMicrophoneEnabled(!microfoneLigado)
+    } catch (falha) {
+      aoFalhar(fraseDaFalha(falha, 'microfone'))
     } finally {
       setMudandoMicrofone(false)
     }
@@ -84,9 +117,12 @@ export function Controles({
 
   async function alternarCamera() {
     if (!sala) return
+    aoFalhar(null)
     setMudandoCamera(true)
     try {
       await sala.localParticipant.setCameraEnabled(!cameraLigada)
+    } catch (falha) {
+      aoFalhar(fraseDaFalha(falha, 'camera'))
     } finally {
       setMudandoCamera(false)
     }

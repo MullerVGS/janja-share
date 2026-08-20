@@ -1,9 +1,10 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RoomEvent, type Room } from 'livekit-client'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { desempacotar, empacotar } from '../src/sala/chat'
-import { TOPICO_DO_CHAT } from '../src/sala/useChat'
+import { TOPICO_DO_CHAT, useChat } from '../src/sala/useChat'
 import { Chat } from '../src/telas/Sala/Chat'
 import { montar } from './apoio/montar'
 
@@ -48,9 +49,27 @@ class SalaFalsa {
   }
 }
 
+/**
+ * O arranjo da tela da sala em miniatura: o `useChat` mora fora do painel e a conversa desce por
+ * prop, com o painel podendo fechar sem levar o hook junto. É esse arranjo que está sob teste —
+ * montar o <Chat> sozinho não teria conversa nenhuma para mostrar.
+ */
+function PainelDeChat({ sala, nome }: { sala: Room | null; nome: string }) {
+  const chat = useChat(sala, nome)
+  const [aberto, setAberto] = useState(true)
+  return (
+    <>
+      <button type="button" onClick={() => setAberto((estava) => !estava)}>
+        alternar painel
+      </button>
+      {aberto && <Chat chat={chat} />}
+    </>
+  )
+}
+
 function montarChat(nome = 'Ana') {
   const sala = new SalaFalsa()
-  const resultado = montar(<Chat sala={sala as unknown as Room} nome={nome} />)
+  const resultado = montar(<PainelDeChat sala={sala as unknown as Room} nome={nome} />)
   return { sala, resultado }
 }
 
@@ -115,12 +134,30 @@ describe('chat da sala', () => {
     expect(screen.getAllByRole('article')).toHaveLength(1)
   })
 
-  it('desassina o data channel ao sair da tela', () => {
+  it('desassina o data channel ao sair da sala', () => {
     const { sala, resultado } = montarChat()
     expect(sala.quantosOuvintes()).toBe(1)
 
     resultado.unmount()
     expect(sala.quantosOuvintes()).toBe(0)
+  })
+
+  it('fechar e reabrir o painel não perde a conversa nem o ouvinte do data channel', async () => {
+    const usuario = userEvent.setup()
+    const { sala } = montarChat()
+    sala.receber({ nome: 'Bia', texto: 'cheguei', ts: Date.now() })
+    expect(await screen.findByText('cheguei')).toBeInTheDocument()
+
+    await usuario.click(screen.getByRole('button', { name: 'alternar painel' }))
+    expect(screen.queryByText('cheguei')).not.toBeInTheDocument()
+    // O ouvinte continua de pé com o painel fechado: o que é dito enquanto ninguém olha não
+    // se perde.
+    expect(sala.quantosOuvintes()).toBe(1)
+    sala.receber({ nome: 'Bia', texto: 'ainda estou aqui', ts: Date.now() })
+
+    await usuario.click(screen.getByRole('button', { name: 'alternar painel' }))
+    expect(await screen.findByText('cheguei')).toBeInTheDocument()
+    expect(screen.getByText('ainda estou aqui')).toBeInTheDocument()
   })
 
   it('avisa quando o envio falha, sem engolir a mensagem escrita', async () => {

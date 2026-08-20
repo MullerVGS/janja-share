@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { Room } from 'livekit-client'
 import { LIMITE_DO_TEXTO } from '../../sala/chat'
-import { useChat } from '../../sala/useChat'
+import type { Chat as ConversaDaSala } from '../../sala/useChat'
 import estilos from './Chat.module.css'
 
 function hora(ts: number): string {
@@ -11,9 +10,12 @@ function hora(ts: number): string {
 /**
  * Chat lateral efêmero. Sem histórico por decisão de projeto: quem entra vê a sala do jeito que
  * ela está, não o que foi dito antes — e é por isso que o cabeçalho avisa em vez de esconder.
+ *
+ * A conversa chega por prop porque o `useChat` mora na tela da sala: este painel abre e fecha, e
+ * o que foi dito não pode depender de ele estar aberto.
  */
-export function Chat({ sala, nome }: { sala: Room | null; nome: string }) {
-  const { mensagens, enviar, falhaAoEnviar } = useChat(sala, nome)
+export function Chat({ chat }: { chat: ConversaDaSala }) {
+  const { mensagens, enviar, falhaAoEnviar } = chat
   const [rascunho, setRascunho] = useState('')
   const lista = useRef<HTMLDivElement>(null)
 

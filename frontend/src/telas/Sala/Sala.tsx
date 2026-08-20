@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
 import { Link, useNavigate } from 'react-router-dom'
 import { montarPalco } from '../../sala/palco'
+import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
 import { useSala } from '../../sala/useSala'
 import { useSessao } from '../../sessao/sessao'
@@ -27,10 +28,15 @@ export function Sala() {
   const navegar = useNavigate()
   const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const compartilhamento = useCompartilhamento(sala)
+  // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
+  // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
+  // mostrava "Nada dito ainda." enquanto os outros continuavam falando.
+  const chat = useChat(sala, credenciais?.nome ?? '')
 
   const [fixada, setFixada] = useState<string | null>(null)
   const [chatAberto, setChatAberto] = useState(true)
   const [painelAberto, setPainelAberto] = useState(false)
+  const [erroDeDispositivo, setErroDeDispositivo] = useState<string | null>(null)
 
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou.
   const palco = useMemo(() => montarPalco(sala), [sala, versao])
@@ -112,6 +118,12 @@ export function Sala() {
         </div>
       )}
 
+      {erroDeDispositivo && (
+        <div className={estilos.faixaDeErro}>
+          <Aviso tom="erro">{erroDeDispositivo}</Aviso>
+        </div>
+      )}
+
       <div className={estilos.corpo}>
         <main className={estilos.centro}>
           <Palco palco={palco} fixada={fixada} aoFixar={setFixada} />
@@ -120,7 +132,7 @@ export function Sala() {
         {lateralAberta && (
           <aside className={estilos.lateral}>
             {painelAberto && <PainelDeQualidade compartilhamento={compartilhamento} />}
-            {chatAberto && <Chat sala={sala} nome={credenciais.nome} />}
+            {chatAberto && <Chat chat={chat} />}
           </aside>
         )}
       </div>
@@ -132,6 +144,7 @@ export function Sala() {
         painelAberto={painelAberto}
         alternarChat={() => setChatAberto((aberto) => !aberto)}
         alternarPainel={() => setPainelAberto((aberto) => !aberto)}
+        aoFalhar={setErroDeDispositivo}
         aoSair={sair}
       />
 
