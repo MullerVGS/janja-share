@@ -12,6 +12,15 @@ describe('aplicarGesto: roda', () => {
     expect(afastado.escala).toBeCloseTo(1, 5)
   })
 
+  it('delta 0 (rolagem horizontal, ou inércia entregando deltaY 0) não muda nada', () => {
+    // Trackpad com rolagem de dois dedos manda WheelEvent.deltaY === 0 em boa parte dos
+    // eventos; se `delta < 0` e "o resto afasta" fossem os dois únicos ramos, uma sequência
+    // desses eventos empurraria a escala até o piso sem ninguém ter pedido zoom nenhum.
+    const partida: Zoom = { escala: 1.5, x: 10, y: -5 }
+    const resultado = aplicarGesto(partida, { tipo: 'roda', delta: 0, cursor: { x: 400, y: 225 } }, QUADRO_16X9)
+    expect(resultado).toEqual(partida)
+  })
+
   it('satura em 5 depois de aproximar muitas vezes, sem lançar', () => {
     let zoom: Zoom = ZOOM_INICIAL
     for (let i = 0; i < 50; i += 1) {
@@ -28,23 +37,60 @@ describe('aplicarGesto: roda', () => {
     expect(zoom.escala).toBeCloseTo(0.5, 5)
   })
 
-  it('o ponto sob o cursor não se move', () => {
-    // Cursor fixo no canto superior esquerdo do quadro (0,0), que é onde a imagem também
-    // começa em ZOOM_INICIAL (encaixada, sem deslocamento) — ancorar ali não deve mexer no
-    // canto, mesmo depois de várias rodadas de zoom.
-    let zoom: Zoom = ZOOM_INICIAL
-    for (let i = 0; i < 5; i += 1) {
-      zoom = aplicarGesto(zoom, { tipo: 'roda', delta: -1, cursor: { x: 0, y: 0 } }, QUADRO_16X9)
-    }
+  it('o ponto sob o cursor não se move, mesmo quando os dois eixos já passam do quadro', () => {
+    // Cenário do revisor: partindo de {escala:2, x:100, y:-50} com o cursor em (600,350), a
+    // imagem já excede o quadro nos dois eixos (dw=1600, dh=900 contra 800×450). Isso importa
+    // porque QUADRO_16X9 tem a mesma proporção da imagem (1920×1080): com a partida em
+    // ZOOM_INICIAL e o cursor em (0,0) ou no centro, u=v=0 ou 0,5 e o termo de escala some da
+    // conta — uma implementação que ancorasse no centro do quadro (errada) passaria igual.
+    // Aqui não: só ancorar de fato no cursor bate com os números.
+    const partida: Zoom = { escala: 2, x: 100, y: -50 }
+    const cursor = { x: 600, y: 350 }
 
-    // encaixe = min(800/1920, 450/1080) = 0.41666...; topo da imagem em x = (800 - dw)/2 + x.
+    const encaixe = Math.min(QUADRO_16X9.quadro.largura / QUADRO_16X9.imagem.largura, QUADRO_16X9.quadro.altura / QUADRO_16X9.imagem.altura)
+    const antesLargura = QUADRO_16X9.imagem.largura * encaixe * partida.escala
+    const antesAltura = QUADRO_16X9.imagem.altura * encaixe * partida.escala
+    const topoAntesX = (QUADRO_16X9.quadro.largura - antesLargura) / 2 + partida.x
+    const topoAntesY = (QUADRO_16X9.quadro.altura - antesAltura) / 2 + partida.y
+    // A fração (0..1) da imagem que estava sob o cursor antes do gesto.
+    const u = (cursor.x - topoAntesX) / antesLargura
+    const v = (cursor.y - topoAntesY) / antesAltura
+
+    const resultado = aplicarGesto(partida, { tipo: 'roda', delta: -1, cursor }, QUADRO_16X9)
+
+    // Números exatos, conferidos na mão pelo revisor (toBeCloseTo por causa de ponto flutuante,
+    // não porque o valor esperado seja aproximado).
+    expect(resultado.escala).toBeCloseTo(2.2, 5)
+    expect(resultado.x).toBeCloseTo(90, 5)
+    expect(resultado.y).toBeCloseTo(-67.5, 5)
+
+    // E a propriedade em si: a mesma fração da imagem, na escala nova, cai de volta no cursor.
+    const depoisLargura = QUADRO_16X9.imagem.largura * encaixe * resultado.escala
+    const depoisAltura = QUADRO_16X9.imagem.altura * encaixe * resultado.escala
+    const topoDepoisX = (QUADRO_16X9.quadro.largura - depoisLargura) / 2 + resultado.x
+    const topoDepoisY = (QUADRO_16X9.quadro.altura - depoisAltura) / 2 + resultado.y
+    expect(topoDepoisX + u * depoisLargura).toBeCloseTo(cursor.x, 5)
+    expect(topoDepoisY + v * depoisAltura).toBeCloseTo(cursor.y, 5)
+  })
+
+  it('depois de afastar, o deslocamento é preso ao novo limite (menor que o de antes)', () => {
+    // Começa exatamente no limite positivo de escala 3 (800/450 de deslocamento, ver o teste
+    // de "deslocamento preso às bordas"). Afastar reduz a escala e, com ela, o limite — sem um
+    // re-clamp depois da ancoragem, o deslocamento ficaria "vazando" além da nova borda.
+    const partida: Zoom = { escala: 3, x: 800, y: 450 }
+    const resultado = aplicarGesto(partida, { tipo: 'roda', delta: 1, cursor: { x: 400, y: 225 } }, QUADRO_16X9)
+
     const encaixe = Math.min(800 / 1920, 450 / 1080)
-    const dw = 1920 * encaixe * zoom.escala
-    const dh = 1080 * encaixe * zoom.escala
-    const topoX = (800 - dw) / 2 + zoom.x
-    const topoY = (450 - dh) / 2 + zoom.y
-    expect(topoX).toBeCloseTo(0, 5)
-    expect(topoY).toBeCloseTo(0, 5)
+    const dw = 1920 * encaixe * resultado.escala
+    const dh = 1080 * encaixe * resultado.escala
+    const limiteX = (dw - 800) / 2
+    const limiteY = (dh - 450) / 2
+
+    expect(resultado.escala).toBeCloseTo(3 / 1.1, 5)
+    // Sem o re-clamp, x ficaria por volta de 727 e y por volta de 409 — os dois acima do novo
+    // limite calculado aqui.
+    expect(resultado.x).toBeCloseTo(limiteX, 5)
+    expect(resultado.y).toBeCloseTo(limiteY, 5)
   })
 })
 
@@ -102,10 +148,13 @@ describe('aplicarGesto: umPorUm', () => {
   })
 
   it('imagem menor que o quadro: escala cai abaixo de 1 (o encaixe já a tinha ampliado)', () => {
-    const medidas: Medidas = { quadro: { largura: 1280, altura: 720 }, imagem: { largura: 640, altura: 360 } }
-    // encaixe = min(1280/640, 720/360) = 2; escala = 1/2 = 0.5
+    // 800×450 num quadro 1200×900: encaixe = min(1200/800, 900/450) = min(1.5, 2) = 1.5;
+    // escala = 1/1.5 = 0.6666... — longe dos dois saturadores (0,5 e 5), então o valor só
+    // pode vir de ter rodado esse cálculo, não de um clamp escondendo o ramo errado (como
+    // aconteceria com uma fixture cujo 1/encaixe caísse bem em cima de 0,5).
+    const medidas: Medidas = { quadro: { largura: 1200, altura: 900 }, imagem: { largura: 800, altura: 450 } }
     const resultado = aplicarGesto(ZOOM_INICIAL, { tipo: 'umPorUm' }, medidas)
-    expect(resultado.escala).toBeCloseTo(0.5, 5)
+    expect(resultado.escala).toBeCloseTo(2 / 3, 5)
   })
 })
 
@@ -127,5 +176,13 @@ describe('aplicarGesto: imagem sem metadados (0×0)', () => {
     const zoom: Zoom = { escala: 2, x: 5, y: 5 }
     const resultado = aplicarGesto(zoom, { tipo: 'umPorUm' }, SEM_METADADOS)
     expect(resultado).toEqual(zoom)
+  })
+})
+
+describe('aplicarGesto: quadro sem medida ainda (0×0)', () => {
+  it('quadro 0×0 (antes do primeiro layout) também devolve o zoom intacto — sem isso, 1:1 salta pro teto 5', () => {
+    const medidas: Medidas = { quadro: { largura: 0, altura: 0 }, imagem: { largura: 1920, altura: 1080 } }
+    const zoom: Zoom = { escala: 1.5, x: 3, y: -2 }
+    expect(aplicarGesto(zoom, { tipo: 'umPorUm' }, medidas)).toEqual(zoom)
   })
 })

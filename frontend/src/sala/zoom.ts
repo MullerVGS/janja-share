@@ -33,12 +33,13 @@ function saturarEscala(escala: number): number {
 
 /**
  * O fator entre o pixel da imagem e o pixel do quadro quando ela está toda encaixada
- * (`escala: 1`). `null` quando a imagem ainda não tem metadados (`0×0`) — dividir por zero
- * aqui é real, não hipotético, e é o chamador que decide devolver o zoom intacto nesse caso.
+ * (`escala: 1`). `null` quando não dá para calcular ainda: a imagem sem metadados (`0×0`,
+ * antes do vídeo carregar) ou o quadro sem medida (`0×0`, antes do primeiro layout) — os dois
+ * dividiriam por zero, e é o chamador que decide devolver o zoom intacto nesse caso.
  */
 function encaixe(medidas: Medidas): number | null {
   const { imagem, quadro } = medidas
-  if (imagem.largura <= 0 || imagem.altura <= 0) return null
+  if (imagem.largura <= 0 || imagem.altura <= 0 || quadro.largura <= 0 || quadro.altura <= 0) return null
   return Math.min(quadro.largura / imagem.largura, quadro.altura / imagem.altura)
 }
 
@@ -70,6 +71,8 @@ function prenderNasBordas(zoom: Zoom, medidas: Medidas, fator: number): Zoom {
  * esquerdo dela antes e depois do zoom, e resolver o deslocamento que mantém o mesmo ponto fixo.
  */
 function aplicarRoda(zoom: Zoom, gesto: Extract<Gesto, { tipo: 'roda' }>, medidas: Medidas, fator: number): Zoom {
+  if (gesto.delta === 0) return zoom // rolagem horizontal ou inércia entregam deltaY 0; não é gesto de zoom
+
   const escalaNova = saturarEscala(zoom.escala * (gesto.delta < 0 ? PASSO_RODA : 1 / PASSO_RODA))
 
   const antes = tamanhoDesenhado(medidas, fator, zoom.escala)
@@ -94,7 +97,7 @@ export function aplicarGesto(zoom: Zoom, gesto: Gesto, medidas: Medidas): Zoom {
   if (gesto.tipo === 'caber') return ZOOM_INICIAL
 
   const fator = encaixe(medidas)
-  if (fator === null) return zoom // sem metadados da imagem ainda: nada a fazer, sem NaN
+  if (fator === null) return zoom // sem imagem ou sem quadro medido ainda: nada a fazer, sem NaN
 
   switch (gesto.tipo) {
     case 'roda':
