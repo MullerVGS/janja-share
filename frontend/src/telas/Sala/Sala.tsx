@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
 import { chavesDasTelasPublicadas, montarPalco } from '../../sala/palco'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
+import { useFocoDeTeclado } from '../../sala/useFocoDeTeclado'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
 import { useSala } from '../../sala/useSala'
@@ -53,7 +54,7 @@ export function Sala() {
   const [lidasNoChat, setLidasNoChat] = useState(0)
   const [erroDeDispositivo, setErroDeDispositivo] = useState<string | null>(null)
   const [foco, setFoco] = useState<EstadoDoFoco>(FOCO_INICIAL)
-  const [focoDeTeclado, setFocoDeTeclado] = useState(false)
+  const interfaceFlutuante = useRef<HTMLDivElement>(null)
 
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou.
   const palco = useMemo(() => montarPalco(sala), [sala, versao])
@@ -64,6 +65,7 @@ export function Sala() {
 
   // Nunca some com a gaveta aberta ou com o teclado dentro da interface: sumir é para quem
   // largou o mouse parado, não para quem está no meio de alguma coisa.
+  const focoDeTeclado = useFocoDeTeclado(interfaceFlutuante)
   const interfaceVisivel = useAutoOcultar(gaveta.aberta || focoDeTeclado)
 
   const telasAntes = useRef<string[]>([])
@@ -104,8 +106,13 @@ export function Sala() {
     if (compartilhamento.ativo) mostrarAba('qualidade')
   }, [compartilhamento.ativo])
 
+  // A aba que a gaveta de fato mostra. A Qualidade só existe transmitindo, e parar leva quem
+  // estava nela para o Chat — derivado aqui, e não dentro da gaveta, porque o contador de não
+  // lidas e o botão do chat na barra precisam enxergar a mesma aba que ela desenha.
+  const abaDaGaveta: Aba = gaveta.aba === 'qualidade' && !compartilhamento.ativo ? 'chat' : gaveta.aba
+
   // Não lidas = o que chegou enquanto o chat não estava à mostra. Com ele à mostra, tudo é lido.
-  const chatVisivel = gaveta.aberta && gaveta.aba === 'chat'
+  const chatVisivel = gaveta.aberta && abaDaGaveta === 'chat'
   useEffect(() => {
     if (chatVisivel) setLidasNoChat(chat.mensagens.length)
   }, [chatVisivel, chat.mensagens.length])
@@ -137,12 +144,6 @@ export function Sala() {
     navegar('/', { replace: true })
   }
 
-  // O teclado só sai da interface quando vai para fora dela: entre dois botões dela o
-  // `relatedTarget` ainda está dentro, e a trava do auto-ocultar continua valendo.
-  function aoSairOFoco(evento: FocusEvent<HTMLDivElement>) {
-    if (!evento.currentTarget.contains(evento.relatedTarget)) setFocoDeTeclado(false)
-  }
-
   return (
     <div className={estilos.sala}>
       <Palco
@@ -156,10 +157,9 @@ export function Sala() {
       />
 
       <div
+        ref={interfaceFlutuante}
         className={estilos.interface}
         data-interface={interfaceVisivel ? 'visivel' : 'oculta'}
-        onFocus={() => setFocoDeTeclado(true)}
-        onBlur={aoSairOFoco}
       >
         <div className={estilos.alto}>
           <Cabecalho
@@ -204,7 +204,7 @@ export function Sala() {
 
       <Gaveta
         aberta={gaveta.aberta}
-        aba={gaveta.aba}
+        aba={abaDaGaveta}
         aoTrocarAba={escolherAba}
         transmitindo={compartilhamento.ativo}
         largura={larguraDaGaveta}

@@ -40,11 +40,12 @@ describe('gaveta da sala', () => {
     expect(screen.getByText('painel de chat')).not.toBeVisible()
   })
 
-  it('a aba de Qualidade só existe enquanto você transmite; parar de transmitir devolve ao Chat', () => {
+  it('a aba de Qualidade só existe enquanto você transmite', () => {
     const { resultado } = montarGaveta({ aba: 'qualidade' })
     expect(screen.getByText('painel de qualidade')).toBeVisible()
 
-    resultado.rerender(<Gaveta {...montarProps({ aba: 'qualidade', transmitindo: false })} />)
+    // Quem corrige a aba ao parar de transmitir é a Sala; aqui ela chega já corrigida.
+    resultado.rerender(<Gaveta {...montarProps({ aba: 'chat', transmitindo: false })} />)
 
     expect(screen.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Chat', 'Transmissão'])
     expect(screen.queryByText('painel de qualidade')).not.toBeInTheDocument()

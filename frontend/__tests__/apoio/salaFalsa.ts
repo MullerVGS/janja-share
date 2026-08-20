@@ -59,11 +59,31 @@ export function participanteFalso(identity: string, name: string | undefined, pu
 }
 export type ParticipanteFalso = ReturnType<typeof participanteFalso>
 
+type Ouvinte = (...dados: unknown[]) => void
+
+/** Os ouvintes de cada sala falsa, para o teste poder disparar o que o SDK dispararia. */
+const ouvintes = new WeakMap<object, Map<string, Set<Ouvinte>>>()
+
 export function salaFalsa(eu: ParticipanteFalso, outros: ParticipanteFalso[] = []): Room {
-  return {
+  const meus = new Map<string, Set<Ouvinte>>()
+  const sala = {
     localParticipant: eu,
     remoteParticipants: new Map(outros.map((participante) => [participante.identity, participante])),
-    on: vi.fn(),
-    off: vi.fn(),
-  } as unknown as Room
+    on(evento: string, ouvinte: Ouvinte) {
+      if (!meus.has(evento)) meus.set(evento, new Set())
+      meus.get(evento)?.add(ouvinte)
+      return this
+    },
+    off(evento: string, ouvinte: Ouvinte) {
+      meus.get(evento)?.delete(ouvinte)
+      return this
+    },
+  }
+  ouvintes.set(sala, meus)
+  return sala as unknown as Room
+}
+
+/** O que o SDK entregaria àquele evento — `DataReceived`, por exemplo. */
+export function emitirNaSala(sala: Room, evento: string, ...dados: unknown[]): void {
+  for (const ouvinte of ouvintes.get(sala as unknown as object)?.get(evento) ?? []) ouvinte(...dados)
 }

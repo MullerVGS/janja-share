@@ -51,10 +51,11 @@ export function Gaveta({
   const coluna = useRef<HTMLElement>(null)
   const arrastando = useRef<number | null>(null)
 
+  // A Qualidade só tem o que dizer transmitindo. Quem corrige a aba quando ela some é a `Sala`,
+  // que também responde pelo contador de não lidas e pelo botão do chat na barra — duas donas
+  // para a mesma aba fariam a gaveta mostrar o chat enquanto a barra jurava que ele estava
+  // fechado, e o contador subiria com a pessoa olhando para as mensagens.
   const abas = ABAS.filter((opcao) => opcao.valor !== 'qualidade' || transmitindo)
-  // Parar de transmitir leva a aba de Qualidade junto; quem estava nela cai no Chat, e não num
-  // painel vazio que não existe mais.
-  const ativa: Aba = abas.some((opcao) => opcao.valor === aba) ? aba : 'chat'
 
   function aplicar(pedida: number): number {
     const limitada = limitarLargura(pedida, window.innerWidth)
@@ -132,7 +133,7 @@ export function Gaveta({
             type="button"
             role="tab"
             id={`aba-${opcao.valor}`}
-            aria-selected={ativa === opcao.valor}
+            aria-selected={aba === opcao.valor}
             aria-controls={`painel-${opcao.valor}`}
             className={estilos.aba}
             onClick={() => aoTrocarAba(opcao.valor)}
@@ -147,12 +148,12 @@ export function Gaveta({
         ))}
       </div>
 
-      {ativa === 'qualidade' && (
+      {aba === 'qualidade' && (
         <div className={estilos.painel} role="tabpanel" id="painel-qualidade" aria-labelledby="aba-qualidade">
           {qualidade}
         </div>
       )}
-      {ativa === 'transmissao' && (
+      {aba === 'transmissao' && (
         <div className={estilos.painel} role="tabpanel" id="painel-transmissao" aria-labelledby="aba-transmissao">
           {transmissao}
         </div>
@@ -162,7 +163,7 @@ export function Gaveta({
         role="tabpanel"
         id="painel-chat"
         aria-labelledby="aba-chat"
-        hidden={ativa !== 'chat'}
+        hidden={aba !== 'chat'}
       >
         {chat}
       </div>

@@ -1,13 +1,15 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Track, type Room } from 'livekit-client'
+import { RoomEvent, Track, type Room } from 'livekit-client'
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CHAVE_DAS_PREFERENCIAS, lerPreferencias } from '../src/preferencias'
 import { Sala } from '../src/telas/Sala/Sala'
+import { empacotar } from '../src/sala/chat'
+import { TOPICO_DO_CHAT } from '../src/sala/useChat'
 import { montar } from './apoio/montar'
-import { participanteFalso, publicacaoFalsa, salaFalsa } from './apoio/salaFalsa'
+import { emitirNaSala, participanteFalso, publicacaoFalsa, salaFalsa } from './apoio/salaFalsa'
 import { credenciaisFalsas, guardarSessao } from './apoio/sessaoFalsa'
 
 /** O que os hooks do SDK devolvem; o teste mexe aqui e re-renderiza. */
@@ -58,6 +60,15 @@ function Cenario() {
         }}
       >
         simular compartilhar
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          falso.compartilhando = false
+          mexer()
+        }}
+      >
+        simular parar
       </button>
       <button type="button" onClick={mexer}>
         mexer no palco
@@ -130,6 +141,37 @@ describe('sala: a gaveta e as preferências', () => {
 
     expect(screen.getByRole('tab', { name: 'Transmissão' })).toHaveAttribute('aria-selected', 'true')
     expect(lerPreferencias().abaDaLateral).toBe('transmissao')
+  })
+
+  it('parar de compartilhar leva a aba de Qualidade junto, e a sala inteira enxerga a mesma aba', async () => {
+    const usuario = userEvent.setup()
+    falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'))
+    montarSala()
+
+    await usuario.click(screen.getByRole('button', { name: 'simular compartilhar' }))
+    expect(screen.getByRole('tab', { name: 'Qualidade' })).toHaveAttribute('aria-selected', 'true')
+
+    await usuario.click(screen.getByRole('button', { name: 'simular parar' }))
+
+    expect(screen.queryByRole('tab', { name: 'Qualidade' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Chat/ })).toHaveAttribute('aria-selected', 'true')
+    // A barra tem de concordar com a gaveta: o chat está à mostra.
+    expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-pressed', 'true')
+
+    // E, com o chat à mostra, mensagem que chega já nasce lida — nada de contador mentiroso.
+    act(() => {
+      emitirNaSala(
+        falso.sala as Room,
+        RoomEvent.DataReceived,
+        empacotar({ nome: 'Bia', texto: 'oi', ts: Date.now() }),
+        undefined,
+        undefined,
+        TOPICO_DO_CHAT,
+      )
+    })
+
+    expect(screen.getByText('oi')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/não lidas/)).not.toBeInTheDocument()
   })
 
   it('o botão da barra abre a gaveta no chat e persiste; de novo, fecha', async () => {
@@ -266,13 +308,36 @@ describe('sala: a interface que se esconde', () => {
     expect(flutuante(container)).toHaveAttribute('data-interface', 'visivel')
   })
 
-  it('com o teclado dentro dela, também não some', () => {
+  it('clicar num botão com o mouse não a trava acesa — foco de mouse não é foco de teclado', () => {
     const { container } = montarSala()
-    act(() => screen.getByRole('button', { name: 'Sair da sala' }).focus())
+    const botao = screen.getByRole('button', { name: 'Abrir microfone' })
+
+    fireEvent.pointerDown(botao)
+    act(() => botao.focus())
+    fireEvent.click(botao)
+
+    act(() => vi.advanceTimersByTime(2500))
+    expect(flutuante(container)).toHaveAttribute('data-interface', 'oculta')
+  })
+
+  it('o teclado dentro dela trava; e destrava quando o botão focado some do DOM', () => {
+    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
+    falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [bia])
+    const { container } = montarSala()
+
+    fireEvent.keyDown(document, { key: 'Tab' })
+    const miniatura = screen.getByRole('button', { name: 'Pôr você no palco' })
+    act(() => miniatura.focus())
 
     act(() => vi.advanceTimersByTime(10_000))
-
     expect(flutuante(container)).toHaveAttribute('data-interface', 'visivel')
+
+    // Apertar a miniatura promove a peça e tira o próprio botão do DOM. O Chrome não emite
+    // `focusout` para elemento focado que sai, e sem reconferir a interface ficaria acesa.
+    fireEvent.click(miniatura)
+
+    act(() => vi.advanceTimersByTime(2500))
+    expect(flutuante(container)).toHaveAttribute('data-interface', 'oculta')
   })
 })
 
