@@ -1,0 +1,49 @@
+.tela {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--e8) var(--e5) var(--e10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e5);
+}
+
+.cabecalho {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--e4);
+}
+
+.marca {
+  font-size: var(--titulo-md);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--menta);
+}
+
+.campoNome {
+  width: min(220px, 40vw);
+}
+
+.carregando {
+  color: var(--texto-fraquissimo);
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e4);
+  padding: var(--e8) 0;
+  text-align: center;
+  color: var(--texto-fraco);
+}

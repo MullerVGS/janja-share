@@ -1,0 +1,89 @@
+.linha {
+  display: flex;
+  align-items: center;
+  gap: var(--e4);
+  padding: var(--e3) var(--e4);
+  border-radius: var(--raio-md);
+  border: 1px solid var(--linha);
+  background: var(--superficie);
+}
+
+.linha[data-vazia] {
+  opacity: 0.55;
+}
+
+.linha[data-cheia] {
+  opacity: 0.8;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+}
+
+.nome {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cadeado {
+  flex: none;
+  color: var(--texto-fraquissimo);
+  display: inline-flex;
+}
+
+.telas {
+  flex: none;
+  font-size: var(--texto-sm);
+  color: var(--texto-fraco);
+}
+
+.pessoas {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.vazio {
+  font-size: var(--texto-sm);
+  color: var(--texto-fraquissimo);
+  font-style: italic;
+}
+
+.avatares {
+  display: flex;
+}
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--texto-xs);
+  font-weight: 700;
+  color: var(--fundo);
+  border: 2px solid var(--superficie);
+  margin-left: -8px;
+}
+
+.avatar:first-child {
+  margin-left: 0;
+}
+
+.formulario {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--e2);
+}
+
+.aviso {
+  flex: none;
+  max-width: 220px;
+}

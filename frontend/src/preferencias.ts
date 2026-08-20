@@ -8,7 +8,6 @@ import { ehAjuste, type Ajuste } from './telas/Sala/assistir'
  *
  * A leitura é tolerante campo a campo — um valor estranho vira o padrão daquele campo, não o
  * descarte do conjunto. Só a versão errada zera tudo: é o jeito de mudar o formato sem migração.
- * O nome da pessoa fica fora: ele vem do convite, não é preferência.
  */
 export const CHAVE_DAS_PREFERENCIAS = 'share.preferencias'
 const VERSAO = 1
@@ -24,6 +23,8 @@ export interface Preferencias {
   volumes: Volumes
   /** Como as telas dos outros aparecem no quadro. */
   ajuste: Ajuste
+  /** Como os outros te veem. Editável no topo do Início. */
+  nome: string
 }
 
 export const PREFERENCIAS_PADRAO: Preferencias = {
@@ -33,6 +34,7 @@ export const PREFERENCIAS_PADRAO: Preferencias = {
   automatico: true,
   volumes: {},
   ajuste: 'caber',
+  nome: '',
 }
 
 type Leitor<T> = (valor: unknown) => T | undefined
@@ -45,6 +47,7 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   automatico: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   volumes: lerVolumes,
   ajuste: (valor) => (ehAjuste(valor) ? valor : undefined),
+  nome: (valor) => (typeof valor === 'string' ? valor : undefined),
 }
 
 const CAMPOS = Object.keys(LEITORES) as (keyof Preferencias)[]

@@ -2,6 +2,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Track, type Room } from 'livekit-client'
 import { useState } from 'react'
+import { Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHAVE_DAS_PREFERENCIAS, lerPreferencias } from '../src/preferencias'
 import { Sala } from '../src/telas/Sala/Sala'
@@ -59,7 +60,12 @@ function Cenario() {
 function montarSala() {
   const daquiAUmaHora = Date.now() + 60 * 60 * 1000
   guardarSessao(credenciaisFalsas(daquiAUmaHora), daquiAUmaHora)
-  return montar(<Cenario />, '/sala')
+  return montar(
+    <Routes>
+      <Route path="/sala/:slug" element={<Cenario />} />
+    </Routes>,
+    '/sala/share',
+  )
 }
 
 afterEach(() => {
@@ -130,5 +136,34 @@ describe('sala: o ajuste das telas', () => {
 
     expect(container.querySelector('[data-ajuste]')).toHaveAttribute('data-ajuste', 'pixelAPixel')
     expect(lerPreferencias().ajuste).toBe('pixelAPixel')
+  })
+})
+
+describe('sala: sem credenciais para o slug', () => {
+  it('rota /sala/:slug sem sessão guardada redireciona para o início — sem tela intermediária', () => {
+    montar(
+      <Routes>
+        <Route path="/sala/:slug" element={<Sala />} />
+        <Route path="/" element={<div>início</div>} />
+      </Routes>,
+      '/sala/inexistente',
+    )
+
+    expect(screen.getByText('início')).toBeInTheDocument()
+  })
+
+  it('sessão guardada para outro slug não vaza para esta sala', () => {
+    const daquiAUmaHora = Date.now() + 60 * 60 * 1000
+    guardarSessao(credenciaisFalsas(daquiAUmaHora, 'Ana', 'outra-sala'), daquiAUmaHora)
+
+    montar(
+      <Routes>
+        <Route path="/sala/:slug" element={<Sala />} />
+        <Route path="/" element={<div>início</div>} />
+      </Routes>,
+      '/sala/share',
+    )
+
+    expect(screen.getByText('início')).toBeInTheDocument()
   })
 })

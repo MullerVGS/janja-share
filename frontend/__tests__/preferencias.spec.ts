@@ -101,4 +101,14 @@ describe('preferências', () => {
     localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, ajuste: 'esticado' }))
     expect(lerPreferencias().ajuste).toBe('caber')
   })
+
+  it('o nome de exibição fica guardado; o padrão é vazio e um valor que não é string volta a ele', () => {
+    expect(PREFERENCIAS_PADRAO.nome).toBe('')
+
+    gravarPreferencias({ nome: 'Ana' })
+    expect(lerPreferencias().nome).toBe('Ana')
+
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, nome: 42 }))
+    expect(lerPreferencias().nome).toBe('')
+  })
 })

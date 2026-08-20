@@ -183,3 +183,12 @@ export function IconeCerto(props: Props) {
     </Traco>
   )
 }
+
+export function IconeCadeado(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+      <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" />
+    </Traco>
+  )
+}

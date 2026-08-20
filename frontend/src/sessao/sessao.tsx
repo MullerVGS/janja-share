@@ -1,21 +1,19 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import type { Credenciais } from '../api/convites'
+import type { Credenciais } from '../api/salas'
 
 /**
- * A sessão da sala: o que `POST /api/entrar` devolveu.
+ * A sessão do navegador: o que `POST /api/salas` ou `POST /api/salas/:slug/entrar` devolveram,
+ * guardado **por slug** — o app abre várias salas em abas diferentes, e cada uma tem seu próprio
+ * passe.
  *
- * Fica em `sessionStorage` porque `POST /api/entrar` **consome um uso do convite** — deixar a
- * sessão só na memória do React faria um F5 custar um uso, e um convite de cinco usos morreria
- * em cinco recarregamentos. O JWT do LiveKit já vale horas; enquanto ele valer, recarregar
- * reaproveita em vez de bater na porta de novo.
- *
- * `sessionStorage` e não `localStorage`: o direito de publicar na sala morre com a aba, não fica
- * no disco de um notebook emprestado.
+ * Fica em `sessionStorage`, não `localStorage`: o direito de publicar numa sala morre com a
+ * aba, não fica no disco de um notebook emprestado. O JWT do LiveKit já vale horas; enquanto ele
+ * valer, recarregar reaproveita em vez de bater na porta de novo.
  */
 interface Sessao {
-  credenciais: Credenciais | null
+  credenciaisDe(slug: string): Credenciais | null
   guardar(credenciais: Credenciais): void
-  encerrar(): void
+  encerrar(slug: string): void
 }
 
 export const CHAVE_DA_SESSAO = 'share.sessao'
@@ -23,16 +21,15 @@ export const CHAVE_DA_SESSAO = 'share.sessao'
 /** O contrato promete TTL de 8h; isto é só a rede de segurança de um token sem `exp` legível. */
 const VALIDADE_SUPOSTA_MS = 8 * 60 * 60 * 1000
 
-/**
- * Sessão que morreria no meio da conexão não serve para reaproveitar. A margem é curta de
- * propósito: cada minuto descartado aqui é um uso de convite gasto à toa.
- */
+/** Sessão que morreria no meio da conexão não serve para reaproveitar. */
 const MARGEM_MS = 30_000
 
 interface SessaoGuardada {
   credenciais: Credenciais
   expiraEm: number
 }
+
+type MapaDeSessoes = Record<string, SessaoGuardada>
 
 /**
  * Quando o JWT do LiveKit morre, segundo ele mesmo.
@@ -53,63 +50,77 @@ function expiracaoDoToken(jwt: string): number | null {
   }
 }
 
-/** Lê e valida o que está guardado; qualquer coisa fora do formato ou vencida vira `null`. */
-export function lerSessaoGuardada(agora: number = Date.now()): Credenciais | null {
-  let guardada: SessaoGuardada
-  try {
-    const cru = sessionStorage.getItem(CHAVE_DA_SESSAO)
-    if (!cru) return null
-    guardada = JSON.parse(cru) as SessaoGuardada
-  } catch {
-    return null
-  }
-
-  if (typeof guardada?.expiraEm !== 'number' || typeof guardada.credenciais?.token !== 'string') return null
-  if (guardada.expiraEm - MARGEM_MS <= agora) {
-    esquecerSessao()
-    return null
-  }
-  return guardada.credenciais
+function ehCredenciais(valor: unknown): valor is Credenciais {
+  if (valor === null || typeof valor !== 'object') return false
+  const { token, slug } = valor as Partial<Credenciais>
+  return typeof token === 'string' && typeof slug === 'string'
 }
 
-function anotarSessao(credenciais: Credenciais): void {
-  const guardada: SessaoGuardada = {
-    credenciais,
-    expiraEm: expiracaoDoToken(credenciais.token) ?? Date.now() + VALIDADE_SUPOSTA_MS,
-  }
-  try {
-    sessionStorage.setItem(CHAVE_DA_SESSAO, JSON.stringify(guardada))
-  } catch {
-    // Navegador com armazenamento bloqueado ainda funciona — só volta a gastar um uso por F5.
-  }
+function ehSessaoGuardada(valor: unknown): valor is SessaoGuardada {
+  if (valor === null || typeof valor !== 'object') return false
+  const { credenciais, expiraEm } = valor as Partial<SessaoGuardada>
+  return typeof expiraEm === 'number' && ehCredenciais(credenciais)
 }
 
-function esquecerSessao(): void {
+/**
+ * Lê o mapa guardado, filtrando o que não serve: entradas malformadas e sessões vencidas.
+ *
+ * O formato anterior era um único `{credenciais, expiraEm}`, sem chave de slug por cima — e
+ * por acaso tem a mesma forma de uma `SessaoGuardada` isolada. Essa coincidência identifica o formato aqui:
+ * ele passa no teste de "é uma sessão guardada válida" no nível errado (o objeto todo, não uma
+ * entrada dele), e por isso é descartado por inteiro, não migrado.
+ */
+function lerMapaGuardado(agora: number): MapaDeSessoes {
+  let cru: unknown
   try {
-    sessionStorage.removeItem(CHAVE_DA_SESSAO)
+    cru = JSON.parse(sessionStorage.getItem(CHAVE_DA_SESSAO) ?? 'null')
   } catch {
-    // idem
+    return {}
+  }
+  if (cru === null || typeof cru !== 'object' || Array.isArray(cru)) return {}
+  if (ehSessaoGuardada(cru)) return {}
+
+  const mapa: MapaDeSessoes = {}
+  for (const [slug, valor] of Object.entries(cru as Record<string, unknown>)) {
+    if (ehSessaoGuardada(valor) && valor.expiraEm - MARGEM_MS > agora) mapa[slug] = valor
+  }
+  return mapa
+}
+
+function escreverMapa(mapa: MapaDeSessoes): void {
+  try {
+    sessionStorage.setItem(CHAVE_DA_SESSAO, JSON.stringify(mapa))
+  } catch {
+    // Navegador com armazenamento bloqueado ainda funciona — só volta a pedir a senha por F5.
   }
 }
 
 const ContextoDaSessao = createContext<Sessao | null>(null)
 
 export function ProvedorDeSessao({ children }: { children: ReactNode }) {
-  const [credenciais, setCredenciais] = useState<Credenciais | null>(() => lerSessaoGuardada())
+  const [mapa, setMapa] = useState<MapaDeSessoes>(() => lerMapaGuardado(Date.now()))
 
   const valor = useMemo<Sessao>(
     () => ({
-      credenciais,
-      guardar: (novas) => {
-        anotarSessao(novas)
-        setCredenciais(novas)
+      credenciaisDe: (slug) => mapa[slug]?.credenciais ?? null,
+      guardar: (credenciais) => {
+        const proximo: MapaDeSessoes = {
+          ...mapa,
+          [credenciais.slug]: {
+            credenciais,
+            expiraEm: expiracaoDoToken(credenciais.token) ?? Date.now() + VALIDADE_SUPOSTA_MS,
+          },
+        }
+        escreverMapa(proximo)
+        setMapa(proximo)
       },
-      encerrar: () => {
-        esquecerSessao()
-        setCredenciais(null)
+      encerrar: (slug) => {
+        const { [slug]: _fora, ...proximo } = mapa
+        escreverMapa(proximo)
+        setMapa(proximo)
       },
     }),
-    [credenciais],
+    [mapa],
   )
 
   return <ContextoDaSessao value={valor}>{children}</ContextoDaSessao>

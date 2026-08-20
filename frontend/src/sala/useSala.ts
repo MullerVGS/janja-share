@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ConnectionState, Room, RoomEvent } from 'livekit-client'
-import type { Credenciais } from '../api/convites'
+import type { Credenciais } from '../api/salas'
 
 /**
  * Conecta na sala e mantém a UI em dia com o SDK.

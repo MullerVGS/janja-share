@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
-import { Link, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
 import { montarPalco } from '../../sala/palco'
@@ -22,7 +22,6 @@ import { Palco } from './Palco'
 import { Qualidade } from './Qualidade'
 import { resumirTransmissao } from './resumo'
 import { Transmissao } from './Transmissao'
-import entrada from '../Entrada.module.css'
 import estilos from './Sala.module.css'
 
 const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
@@ -33,7 +32,9 @@ const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
 }
 
 export function Sala() {
-  const { credenciais, encerrar } = useSessao()
+  const { slug = '' } = useParams()
+  const { credenciaisDe, encerrar } = useSessao()
+  const credenciais = credenciaisDe(slug)
   const navegar = useNavigate()
   const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const telemetria = useTelemetria(sala)
@@ -101,30 +102,16 @@ export function Sala() {
     if (fixada !== null && !palco.telas.some((tela) => tela.chave === fixada)) setFixada(null)
   }, [fixada, palco.telas])
 
-  if (!credenciais) {
-    return (
-      <div className={entrada.tela}>
-        <div className={entrada.caixa}>
-          <div className={entrada.marca}>share</div>
-          <div className={entrada.cartao}>
-            <h1 className={entrada.titulo}>Sua sessão não está mais aqui</h1>
-            <p className={entrada.legenda}>
-              A sessão sobrevive a um F5, mas morre quando a aba fecha — e o passe da sala tem prazo.
-              Abra o link de convite de novo para voltar.
-            </p>
-            <Link to="/">Voltar ao início</Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Sala com senha exige passar pela porta de novo — sem credenciais guardadas para este slug,
+  // não há tela intermediária de aviso, só a volta silenciosa para o início.
+  if (!credenciais) return <Navigate to="/" replace />
 
   const frase = FRASE_DA_CONEXAO[conexao]
   const nomeDe = (identidade: string) =>
     palco.pessoas.find((pessoa) => pessoa.identidade === identidade)?.nome ?? identidade
 
   function sair() {
-    encerrar()
+    encerrar(slug)
     navegar('/', { replace: true })
   }
 
@@ -132,7 +119,7 @@ export function Sala() {
     <div className={estilos.sala}>
       <header className={estilos.topo}>
         <span className={estilos.marca}>share</span>
-        <span className={estilos.nomeDaSala}>{credenciais.sala}</span>
+        <span className={estilos.nomeDaSala}>{credenciais.nomeDaSala}</span>
         <span
           className={estilos.pulso}
           data-conectado={conexao === ConnectionState.Connected || undefined}

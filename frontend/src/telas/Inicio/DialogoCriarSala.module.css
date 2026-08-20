@@ -1,0 +1,5 @@
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
