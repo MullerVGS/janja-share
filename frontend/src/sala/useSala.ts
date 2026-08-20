@@ -47,7 +47,9 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
     if (!credenciais) return
 
     const nova = new Room({
-      adaptiveStream: true,
+      // adaptiveStream pausa o vídeo de aba em segundo plano (mata o PiP) e, sem simulcast, não
+      // tem camada para escolher — não traz nada aqui.
+      adaptiveStream: false,
       // Dynacast desliga no servidor as camadas que ninguém está assistindo — numa sala de
       // cinco pessoas com várias telas no ar, é o que evita subir uplink para ninguém.
       dynacast: true,
