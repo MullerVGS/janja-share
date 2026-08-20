@@ -34,11 +34,11 @@ export function mensagemDoErro(erro: unknown): string {
 }
 
 /**
- * O corpo de erro vem do backend, mas quem está entre ele e o navegador (reverse proxy, reverse proxy)
- * também responde — e sem o contrato. Por isso o caminho de fallback nunca inventa um código
+ * O corpo de erro vem do backend, mas intermediários HTTP também podem responder sem seguir
+ * o contrato. Por isso o caminho de fallback nunca inventa um código
  * de domínio: `resposta_estranha` diz exatamente o que houve.
  */
-export function erroDeCorpo(status: number, corpo: unknown): ErroDaApi {
+function erroDeCorpo(status: number, corpo: unknown): ErroDaApi {
   if (corpo !== null && typeof corpo === 'object' && 'erro' in corpo) {
     const { erro } = corpo as { erro: unknown }
     if (typeof erro === 'string') return new ErroDaApi(status, erro)
@@ -51,7 +51,7 @@ export function erroDeCorpo(status: number, corpo: unknown): ErroDaApi {
  * (o que os testes usam) recusa caminho relativo — sem isto o erro apareceria como falha de
  * rede em vez de URL mal formada.
  */
-export function urlDaApi(caminho: string): string {
+function urlDaApi(caminho: string): string {
   const origem = typeof globalThis.location === 'undefined' ? '' : globalThis.location.origin
   return `${origem}${caminho}`
 }

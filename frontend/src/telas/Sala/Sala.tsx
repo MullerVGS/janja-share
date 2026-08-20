@@ -57,7 +57,7 @@ export function Sala() {
               A sessão da sala vive só na memória desta aba — recarregar a página, fechá-la ou abrir a sala
               em outra aba a perde. Abra o link de convite de novo para voltar.
             </p>
-            <Link to="/">Entendi</Link>
+            <Link to="/">Voltar ao início</Link>
           </div>
         </div>
       </div>

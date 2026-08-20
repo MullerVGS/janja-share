@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import estilos from './Aviso.module.css'
 
-type Tom = 'erro' | 'sucesso' | 'neutro'
+type Tom = 'erro' | 'neutro'
 
 export function Aviso({ tom, children }: { tom: Tom; children: ReactNode }) {
   return (

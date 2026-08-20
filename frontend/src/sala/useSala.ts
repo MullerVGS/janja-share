@@ -62,12 +62,22 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
     setConexao(ConnectionState.Connecting)
     setErro(null)
 
+    // Uma sala descartada não fala mais pela UI. Sem esta guarda, o `connect` interrompido pela
+    // limpeza (o StrictMode monta duas vezes em desenvolvimento) pintaria um erro de conexão
+    // por cima da sala nova, que está conectando bem.
+    let vivo = true
+
     nova
       .connect(credenciais.urlSfu, credenciais.token)
-      .then(() => setAudioLiberado(nova.canPlaybackAudio))
-      .catch((falha: unknown) => setErro(falha instanceof Error ? falha.message : String(falha)))
+      .then(() => {
+        if (vivo) setAudioLiberado(nova.canPlaybackAudio)
+      })
+      .catch((falha: unknown) => {
+        if (vivo) setErro(falha instanceof Error ? falha.message : String(falha))
+      })
 
     return () => {
+      vivo = false
       nova.removeAllListeners()
       void nova.disconnect()
       setSala(null)

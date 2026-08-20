@@ -102,6 +102,9 @@ export function alturaDaResolucao(resolucao: Resolucao): number | null {
  * Só a altura entra: restringir largura junto brigaria com a proporção do monitor
  * compartilhado. `max` e não `ideal` porque a intenção é teto, não alvo — uma tela 16:10 de
  * 1600px de altura deve descer para 1080, e uma de 900px deve ficar onde está.
+ *
+ * Em "Nativa" a altura simplesmente não aparece, e é assim que se volta atrás: o
+ * `applyConstraints` troca o conjunto inteiro de restrições, então o que é omitido é liberado.
  */
 export function restricoesDoPerfil(perfil: PerfilDeQualidade): MediaTrackConstraints {
   const altura = alturaDaResolucao(perfil.resolucao)

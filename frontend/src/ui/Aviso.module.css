@@ -11,12 +11,6 @@
   color: #ffd9d9;
 }
 
-.sucesso {
-  background: var(--menta-fraca);
-  border-color: rgba(94, 234, 212, 0.35);
-  color: #c9fff4;
-}
-
 .neutro {
   background: var(--superficie);
   border-color: var(--linha);
