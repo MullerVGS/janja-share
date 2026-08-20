@@ -1,14 +1,17 @@
-import { IsOptional } from 'class-validator'
+import { IsOptional, IsString } from 'class-validator'
 
 /**
- * Sem decoradores de tipo/formato: o contrato reserva códigos de erro próprios para o nome da
- * sala (nome_da_sala_invalido) e o nome da pessoa (nome_invalido) — a checagem real mora nos
- * use cases (shared/slug.ts, salas/nome.ts), não aqui. `@IsOptional()` só existe para os campos
- * sobreviverem ao `whitelist: true` do ValidationPipe global, que descarta qualquer propriedade
- * sem NENHUM decorador de class-validator.
+ * `nome` e `seuNome` ficam soltos (`@IsOptional()` sem `@IsString()`): o contrato reserva
+ * códigos de erro próprios para os dois (nome_da_sala_invalido, nome_invalido) e a checagem
+ * real mora nos use cases (shared/slug.ts, salas/nome.ts) — inclusive o tipo, porque
+ * `validarNome`/`validarNomeDaSala` já tratam "não é string" como inválido com o código certo.
+ *
+ * `senha` é diferente: não tem código de erro próprio, então não pode passar por um use case
+ * pra virar `nome_invalido` por engano. `@IsString()` recusa `{"senha": 1234}` (PIN numérico,
+ * erro fácil de cliente) com `400 validacao` em vez de `201` e uma sala aberta em silêncio.
  */
 export class CriarSalaDto {
   @IsOptional() nome?: unknown
-  @IsOptional() senha?: unknown
+  @IsOptional() @IsString() senha?: string
   @IsOptional() seuNome?: unknown
 }

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req } from '@nestjs/common'
 import { Request } from 'express'
 import { ipDoPedido } from '../../shared/ip'
+import { slugDaSala } from '../../shared/slug'
 import { CriarSalaDto } from '../dto/criar-sala.dto'
 import { EntrarSalaDto } from '../dto/entrar-sala.dto'
 import { CriarSalaUseCase } from '../useCases/criarSala/CriarSalaUseCase'
@@ -28,9 +29,13 @@ export class SalasController {
 
   // Nest usa 201 por padrão em @Post(); aqui não é criação de recurso — a sala já existe,
   // só está sendo consumida (mesma razão do antigo POST /api/entrar).
+  //
+  // O :slug da URL passa por slugDaSala antes de usar: sem isso, "Jogatina" (maiúscula) daria
+  // 404 mesmo com a sala "jogatina" viva — o mesmo nome que create/listagem tratam como uma
+  // coisa só.
   @Post(':slug/entrar')
   @HttpCode(HttpStatus.OK)
-  entrarNaSala(@Param('slug') slug: string, @Body() dto: EntrarSalaDto, @Req() req: Request) {
-    return this.entrar.execute(slug, dto.senha, dto.seuNome, ipDoPedido(req))
+  entrarNaSala(@Param('slug') slugBruto: string, @Body() dto: EntrarSalaDto, @Req() req: Request) {
+    return this.entrar.execute(slugDaSala(slugBruto), dto.senha, dto.seuNome, ipDoPedido(req))
   }
 }

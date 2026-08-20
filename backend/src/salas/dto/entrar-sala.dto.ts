@@ -1,7 +1,7 @@
-import { IsOptional } from 'class-validator'
+import { IsOptional, IsString } from 'class-validator'
 
-/** Ver o comentário de CriarSalaDto — mesmo motivo para os decoradores soltos. */
+/** Ver o comentário de CriarSalaDto — mesmo motivo para `senha` ter `@IsString()` e `seuNome` não. */
 export class EntrarSalaDto {
-  @IsOptional() senha?: unknown
+  @IsOptional() @IsString() senha?: string
   @IsOptional() seuNome?: unknown
 }
