@@ -96,16 +96,17 @@ describe('sala: lateral e preferências', () => {
     expect(lerPreferencias().abaDaLateral).toBe('transmissao')
   })
 
-  it('o botão da barra abre a aba e persiste; de novo na mesma aba, fecha a lateral', async () => {
+  it('o botão da barra abre a aba e persiste; de novo na mesma aba, fecha a gaveta', async () => {
     const usuario = userEvent.setup()
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, abaDaLateral: 'transmissao' }))
     montarSala()
 
-    await usuario.click(screen.getByRole('button', { name: 'Qualidade da tela' }))
-    expect(screen.getByRole('tab', { name: 'Qualidade' })).toHaveAttribute('aria-selected', 'true')
-    expect(lerPreferencias().abaDaLateral).toBe('qualidade')
+    await usuario.click(screen.getByRole('button', { name: 'Chat' }))
+    expect(screen.getByRole('tab', { name: /Chat/ })).toHaveAttribute('aria-selected', 'true')
+    expect(lerPreferencias().abaDaLateral).toBe('chat')
 
-    await usuario.click(screen.getByRole('button', { name: 'Qualidade da tela' }))
-    expect(screen.getByRole('complementary', { hidden: true })).not.toBeVisible()
+    await usuario.click(screen.getByRole('button', { name: 'Chat' }))
+    expect(screen.getByRole('complementary', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
   })
 })
 

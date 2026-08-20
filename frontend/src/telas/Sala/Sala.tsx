@@ -16,7 +16,7 @@ import { Botao } from '../../ui/Botao'
 import type { Ajuste } from './assistir'
 import { Chat } from './Chat'
 import { Controles } from './Controles'
-import { Lateral } from './Lateral'
+import { Gaveta } from './Gaveta'
 import { AudioDaSala } from './Midia'
 import { Palco } from './Palco'
 import { Qualidade } from './Qualidade'
@@ -173,10 +173,11 @@ export function Sala() {
           />
         </main>
 
-        <Lateral
+        <Gaveta
           aberta={lateral.aberta}
           aba={lateral.aba}
           aoTrocarAba={escolherAba}
+          transmitindo={compartilhamento.ativo}
           largura={larguraDaLateral}
           aoRedimensionar={redimensionarLateral}
           naoLidasNoChat={naoLidasNoChat}

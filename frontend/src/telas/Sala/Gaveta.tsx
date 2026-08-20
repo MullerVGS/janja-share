@@ -1,12 +1,14 @@
 import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { ABAS, LARGURA_MINIMA_DA_LATERAL, limitarLargura, type Aba } from '../../sala/lateral'
 import type { Resumo } from './resumo'
-import estilos from './Lateral.module.css'
+import estilos from './Gaveta.module.css'
 
 interface Props {
   aberta: boolean
   aba: Aba
   aoTrocarAba(aba: Aba): void
+  /** A aba de Qualidade só tem o que dizer com tela sua no ar; sem isso ela nem aparece. */
+  transmitindo: boolean
   largura: number
   /** Chamado uma vez ao fim do arraste (ou por tecla), com a largura já dentro dos limites. */
   aoRedimensionar(largura: number): void
@@ -21,19 +23,23 @@ interface Props {
 const PASSO_DO_TECLADO = 16
 
 /**
- * A coluna da direita: resumo da transmissão, abas e o painel da aba ativa.
+ * A gaveta da direita: resumo da transmissão, abas e o painel da aba ativa. Ela desliza por
+ * cima do palco — nesta sala nada divide espaço com a imagem, tudo passa por cima e sai.
  *
  * Fica montada mesmo fechada, e o chat fica montado mesmo em outra aba: o rascunho escrito e a
- * rolagem não podem sumir porque a pessoa foi olhar um gráfico. Qualidade e Transmissão montam
- * só quando visíveis — a Transmissão redesenha a 1 Hz, e não vale pagar isso escondida.
+ * rolagem não podem sumir porque a pessoa foi olhar um gráfico. Fechada, sai da árvore de
+ * acessibilidade e do caminho do teclado (`inert`) — montada não é o mesmo que alcançável.
+ * Qualidade e Transmissão montam só quando visíveis: a Transmissão redesenha a 1 Hz, e não
+ * vale pagar isso escondida.
  *
  * A largura anda por variável CSS escrita direto no elemento durante o arraste; o React só
  * fica sabendo quando a pessoa solta.
  */
-export function Lateral({
+export function Gaveta({
   aberta,
   aba,
   aoTrocarAba,
+  transmitindo,
   largura,
   aoRedimensionar,
   naoLidasNoChat,
@@ -45,9 +51,14 @@ export function Lateral({
   const coluna = useRef<HTMLElement>(null)
   const arrastando = useRef<number | null>(null)
 
+  const abas = ABAS.filter((opcao) => opcao.valor !== 'qualidade' || transmitindo)
+  // Parar de transmitir leva a aba de Qualidade junto; quem estava nela cai no Chat, e não num
+  // painel vazio que não existe mais.
+  const ativa: Aba = abas.some((opcao) => opcao.valor === aba) ? aba : 'chat'
+
   function aplicar(pedida: number): number {
     const limitada = limitarLargura(pedida, window.innerWidth)
-    coluna.current?.style.setProperty('--largura-lateral', `${limitada}px`)
+    coluna.current?.style.setProperty('--largura-da-gaveta', `${limitada}px`)
     return limitada
   }
 
@@ -58,7 +69,7 @@ export function Lateral({
 
   function arrastar(evento: PointerEvent<HTMLDivElement>) {
     if (arrastando.current !== evento.pointerId) return
-    // A lateral encosta na borda direita: a largura é o que sobra da janela à direita do ponteiro.
+    // A gaveta encosta na borda direita: a largura é o que sobra da janela à direita do ponteiro.
     aplicar(window.innerWidth - evento.clientX)
   }
 
@@ -79,15 +90,17 @@ export function Lateral({
   return (
     <aside
       ref={coluna}
-      className={estilos.lateral}
-      hidden={!aberta}
-      style={{ ['--largura-lateral' as string]: `${largura}px` }}
+      className={estilos.gaveta}
+      data-aberta={aberta || undefined}
+      aria-hidden={aberta ? undefined : true}
+      inert={!aberta}
+      style={{ ['--largura-da-gaveta' as string]: `${largura}px` }}
     >
       <div
         className={estilos.divisor}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Largura da lateral"
+        aria-label="Largura do painel"
         aria-valuenow={largura}
         aria-valuemin={LARGURA_MINIMA_DA_LATERAL}
         tabIndex={0}
@@ -113,13 +126,13 @@ export function Lateral({
       )}
 
       <div className={estilos.abas} role="tablist" aria-label="Painéis da sala">
-        {ABAS.map((opcao) => (
+        {abas.map((opcao) => (
           <button
             key={opcao.valor}
             type="button"
             role="tab"
             id={`aba-${opcao.valor}`}
-            aria-selected={aba === opcao.valor}
+            aria-selected={ativa === opcao.valor}
             aria-controls={`painel-${opcao.valor}`}
             className={estilos.aba}
             onClick={() => aoTrocarAba(opcao.valor)}
@@ -134,12 +147,12 @@ export function Lateral({
         ))}
       </div>
 
-      {aba === 'qualidade' && (
+      {ativa === 'qualidade' && (
         <div className={estilos.painel} role="tabpanel" id="painel-qualidade" aria-labelledby="aba-qualidade">
           {qualidade}
         </div>
       )}
-      {aba === 'transmissao' && (
+      {ativa === 'transmissao' && (
         <div className={estilos.painel} role="tabpanel" id="painel-transmissao" aria-labelledby="aba-transmissao">
           {transmissao}
         </div>
@@ -149,7 +162,7 @@ export function Lateral({
         role="tabpanel"
         id="painel-chat"
         aria-labelledby="aba-chat"
-        hidden={aba !== 'chat'}
+        hidden={ativa !== 'chat'}
       >
         {chat}
       </div>

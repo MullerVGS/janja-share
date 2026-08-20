@@ -1,10 +1,10 @@
-/** As abas da lateral da sala, na ordem em que aparecem. */
+/** As abas da gaveta da sala, na ordem em que aparecem — o chat primeiro, que é o uso comum. */
 export type Aba = 'qualidade' | 'transmissao' | 'chat'
 
 export const ABAS: readonly { valor: Aba; rotulo: string }[] = [
+  { valor: 'chat', rotulo: 'Chat' },
   { valor: 'qualidade', rotulo: 'Qualidade' },
   { valor: 'transmissao', rotulo: 'Transmissão' },
-  { valor: 'chat', rotulo: 'Chat' },
 ]
 
 export function ehAba(valor: unknown): valor is Aba {

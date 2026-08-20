@@ -1,16 +1,30 @@
-.lateral {
-  position: relative;
-  flex: none;
-  width: var(--largura-lateral, var(--largura-barra));
+/* Por cima do palco, encostada na direita: nesta sala nada divide espaço com a imagem. */
+.gaveta {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  width: min(var(--largura-da-gaveta, var(--largura-barra)), 100%);
   display: flex;
   flex-direction: column;
   min-height: 0;
   border-left: 1px solid var(--linha);
   background: var(--fundo-2);
+  box-shadow: var(--sombra-lg);
+  transition: transform 0.18s ease, visibility 0.18s;
 }
 
-.lateral[hidden] {
-  display: none;
+.gaveta:not([data-aberta]) {
+  transform: translateX(100%);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gaveta {
+    transition: none;
+  }
 }
 
 .divisor {
@@ -154,15 +168,8 @@
 }
 
 @media (max-width: 820px) {
-  .lateral {
-    position: absolute;
-    inset: auto 0 var(--altura-controles) 0;
-    width: auto;
-    max-height: 62%;
-    border-left: none;
-    border-top: 1px solid var(--linha);
-    box-shadow: var(--sombra-lg);
-    z-index: 2;
+  .gaveta {
+    width: 100%;
   }
 
   .divisor {
