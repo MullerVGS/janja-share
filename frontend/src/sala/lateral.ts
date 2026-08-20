@@ -17,3 +17,14 @@ export const LARGURA_MINIMA_DA_LATERAL = 300
 export function limitarLargura(pedida: number, larguraDaJanela: number): number {
   return Math.max(LARGURA_MINIMA_DA_LATERAL, Math.min(Math.round(pedida), Math.floor(larguraDaJanela / 2)))
 }
+
+export interface EstadoDaLateral {
+  aberta: boolean
+  aba: Aba
+}
+
+/** O botão da barra é um interruptor da sua aba: abre nela, e fecha se ela já está à mostra. */
+export function alternarAba(estado: EstadoDaLateral, aba: Aba): EstadoDaLateral {
+  if (estado.aberta && estado.aba === aba) return { ...estado, aberta: false }
+  return { aberta: true, aba }
+}

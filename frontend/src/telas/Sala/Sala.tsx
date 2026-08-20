@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
 import { Link, useNavigate } from 'react-router-dom'
+import { gravarPreferencias, lerPreferencias } from '../../preferencias'
+import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
 import { montarPalco } from '../../sala/palco'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
@@ -12,9 +14,12 @@ import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
 import { Chat } from './Chat'
 import { Controles } from './Controles'
+import { Lateral } from './Lateral'
 import { AudioDaSala } from './Midia'
 import { PainelDeQualidade } from './PainelDeQualidade'
 import { Palco } from './Palco'
+import { resumirTransmissao } from './resumo'
+import { Transmissao } from './Transmissao'
 import entrada from '../Entrada.module.css'
 import estilos from './Sala.module.css'
 
@@ -37,18 +42,44 @@ export function Sala() {
   const chat = useChat(sala, credenciais?.nome ?? '')
 
   const [fixada, setFixada] = useState<string | null>(null)
-  const [chatAberto, setChatAberto] = useState(true)
-  const [painelAberto, setPainelAberto] = useState(false)
+  const [preferencias] = useState(lerPreferencias)
+  const [lateral, setLateral] = useState<EstadoDaLateral>({ aberta: true, aba: preferencias.abaDaLateral })
+  const [larguraDaLateral, setLarguraDaLateral] = useState(preferencias.larguraDaLateral)
+  const [lidasNoChat, setLidasNoChat] = useState(0)
   const [erroDeDispositivo, setErroDeDispositivo] = useState<string | null>(null)
 
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou.
   const palco = useMemo(() => montarPalco(sala), [sala, versao])
+  const amostraDoEmissor = ultima(telemetria.emissor)
 
-  // Começar a compartilhar abre o painel de qualidade: é exatamente o momento em que ele tem
-  // o que dizer, e deixá-lo escondido faria o ajuste virar um segredo do app.
+  function mostrarAba(aba: Aba) {
+    setLateral({ aberta: true, aba })
+    gravarPreferencias({ abaDaLateral: aba })
+  }
+
+  function alternarLateral(aba: Aba) {
+    const proximo = alternarAba(lateral, aba)
+    setLateral(proximo)
+    gravarPreferencias({ abaDaLateral: proximo.aba })
+  }
+
+  function redimensionarLateral(largura: number) {
+    setLarguraDaLateral(largura)
+    gravarPreferencias({ larguraDaLateral: largura })
+  }
+
+  // Começar a compartilhar abre a aba de qualidade: é exatamente o momento em que ela tem o
+  // que dizer, e deixá-la escondida faria o ajuste virar um segredo do app.
   useEffect(() => {
-    if (compartilhamento.ativo) setPainelAberto(true)
+    if (compartilhamento.ativo) mostrarAba('qualidade')
   }, [compartilhamento.ativo])
+
+  // Não lidas = o que chegou enquanto o chat não estava à mostra. Com ele à mostra, tudo é lido.
+  const chatVisivel = lateral.aberta && lateral.aba === 'chat'
+  useEffect(() => {
+    if (chatVisivel) setLidasNoChat(chat.mensagens.length)
+  }, [chatVisivel, chat.mensagens.length])
+  const naoLidasNoChat = chatVisivel ? 0 : Math.max(0, chat.mensagens.length - lidasNoChat)
 
   // A tela fixada pode sair do ar a qualquer momento; o foco não pode ficar apontando para o vazio.
   useEffect(() => {
@@ -73,8 +104,9 @@ export function Sala() {
     )
   }
 
-  const lateralAberta = chatAberto || painelAberto
   const frase = FRASE_DA_CONEXAO[conexao]
+  const nomeDe = (identidade: string) =>
+    palco.pessoas.find((pessoa) => pessoa.identidade === identidade)?.nome ?? identidade
 
   function sair() {
     encerrar()
@@ -132,23 +164,25 @@ export function Sala() {
           <Palco palco={palco} fixada={fixada} aoFixar={setFixada} />
         </main>
 
-        {lateralAberta && (
-          <aside className={estilos.lateral}>
-            {painelAberto && (
-              <PainelDeQualidade compartilhamento={compartilhamento} amostra={ultima(telemetria.emissor)} />
-            )}
-            {chatAberto && <Chat chat={chat} />}
-          </aside>
-        )}
+        <Lateral
+          aberta={lateral.aberta}
+          aba={lateral.aba}
+          aoTrocarAba={mostrarAba}
+          largura={larguraDaLateral}
+          aoRedimensionar={redimensionarLateral}
+          naoLidasNoChat={naoLidasNoChat}
+          resumo={compartilhamento.ativo ? resumirTransmissao(amostraDoEmissor, compartilhamento.relatorio) : null}
+          qualidade={<PainelDeQualidade compartilhamento={compartilhamento} amostra={amostraDoEmissor} />}
+          transmissao={<Transmissao telemetria={telemetria} perfil={compartilhamento.perfil} nomeDe={nomeDe} />}
+          chat={<Chat chat={chat} />}
+        />
       </div>
 
       <Controles
         sala={sala}
         compartilhamento={compartilhamento}
-        chatAberto={chatAberto}
-        painelAberto={painelAberto}
-        alternarChat={() => setChatAberto((aberto) => !aberto)}
-        alternarPainel={() => setPainelAberto((aberto) => !aberto)}
+        abaAberta={lateral.aberta ? lateral.aba : null}
+        aoAlternarAba={alternarLateral}
         aoFalhar={setErroDeDispositivo}
         aoSair={sair}
       />

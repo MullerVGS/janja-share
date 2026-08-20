@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import type { Room } from 'livekit-client'
+import type { Aba } from '../../sala/lateral'
 import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import {
   IconeAjustes,
@@ -16,10 +17,10 @@ import estilos from './Controles.module.css'
 interface Props {
   sala: Room | null
   compartilhamento: Compartilhamento
-  chatAberto: boolean
-  painelAberto: boolean
-  alternarChat(): void
-  alternarPainel(): void
+  /** A aba à mostra na lateral; `null` com a lateral fechada. */
+  abaAberta: Aba | null
+  /** Abre a lateral nessa aba, ou a fecha se ela já está à mostra. */
+  aoAlternarAba(aba: Aba): void
   /** Onde a falha de microfone/câmera vira faixa na tela; `null` limpa a faixa anterior. */
   aoFalhar(mensagem: string | null): void
   aoSair(): void
@@ -89,10 +90,8 @@ function Botao({
 export function Controles({
   sala,
   compartilhamento,
-  chatAberto,
-  painelAberto,
-  alternarChat,
-  alternarPainel,
+  abaAberta,
+  aoAlternarAba,
   aoFalhar,
   aoSair,
 }: Props) {
@@ -159,11 +158,11 @@ export function Controles({
 
       <span className={estilos.separador} />
 
-      <Botao rotulo="Qualidade da tela" ligado={painelAberto} aoClicar={alternarPainel}>
+      <Botao rotulo="Qualidade da tela" ligado={abaAberta === 'qualidade'} aoClicar={() => aoAlternarAba('qualidade')}>
         <IconeAjustes />
       </Botao>
 
-      <Botao rotulo="Chat" ligado={chatAberto} aoClicar={alternarChat}>
+      <Botao rotulo="Chat" ligado={abaAberta === 'chat'} aoClicar={() => aoAlternarAba('chat')}>
         <IconeChat />
       </Botao>
 

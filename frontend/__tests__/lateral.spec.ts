@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ABAS, LARGURA_MINIMA_DA_LATERAL, limitarLargura } from '../src/sala/lateral'
+import { ABAS, alternarAba, LARGURA_MINIMA_DA_LATERAL, limitarLargura } from '../src/sala/lateral'
 
 describe('lateral', () => {
   it('tem as três abas, nesta ordem', () => {
@@ -15,5 +15,13 @@ describe('lateral', () => {
 
   it('numa janela estreita o mínimo vence a metade', () => {
     expect(limitarLargura(500, 400)).toBe(300)
+  })
+})
+
+describe('alternar aba pelos controles', () => {
+  it('fechada, abre na aba pedida; aberta em outra aba, troca; aberta na mesma, fecha', () => {
+    expect(alternarAba({ aberta: false, aba: 'chat' }, 'qualidade')).toEqual({ aberta: true, aba: 'qualidade' })
+    expect(alternarAba({ aberta: true, aba: 'chat' }, 'qualidade')).toEqual({ aberta: true, aba: 'qualidade' })
+    expect(alternarAba({ aberta: true, aba: 'qualidade' }, 'qualidade')).toEqual({ aberta: false, aba: 'qualidade' })
   })
 })
