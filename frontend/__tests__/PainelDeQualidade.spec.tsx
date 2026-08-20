@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { MEDIDA_VAZIA } from '../src/sala/medidor'
 import { PERFIL_PADRAO, PRESETS, type PerfilDeQualidade, type RelatorioDeAplicacao } from '../src/sala/qualidade'
 import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { PainelDeQualidade } from '../src/telas/Sala/PainelDeQualidade'
@@ -11,7 +10,6 @@ function compartilhamentoFalso(parcial: Partial<Compartilhamento> = {}): Compart
     ativo: true,
     perfil: PERFIL_PADRAO,
     definirPerfil: vi.fn(),
-    medida: MEDIDA_VAZIA,
     relatorio: null,
     erro: null,
     ocupado: false,
@@ -22,7 +20,7 @@ function compartilhamentoFalso(parcial: Partial<Compartilhamento> = {}): Compart
 
 function montarPainel(parcial: Partial<Compartilhamento> = {}) {
   const compartilhamento = compartilhamentoFalso(parcial)
-  render(<PainelDeQualidade compartilhamento={compartilhamento} />)
+  render(<PainelDeQualidade compartilhamento={compartilhamento} amostra={null} />)
   return compartilhamento
 }
 

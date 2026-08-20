@@ -6,6 +6,8 @@ import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
 import { useSala } from '../../sala/useSala'
 import { useSessao } from '../../sessao/sessao'
+import { ultima } from '../../telemetria/historico'
+import { useTelemetria } from '../../telemetria/useTelemetria'
 import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
 import { Chat } from './Chat'
@@ -28,6 +30,7 @@ export function Sala() {
   const navegar = useNavigate()
   const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const compartilhamento = useCompartilhamento(sala)
+  const telemetria = useTelemetria(sala)
   // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
   // mostrava "Nada dito ainda." enquanto os outros continuavam falando.
@@ -131,7 +134,9 @@ export function Sala() {
 
         {lateralAberta && (
           <aside className={estilos.lateral}>
-            {painelAberto && <PainelDeQualidade compartilhamento={compartilhamento} />}
+            {painelAberto && (
+              <PainelDeQualidade compartilhamento={compartilhamento} amostra={ultima(telemetria.emissor)} />
+            )}
             {chatAberto && <Chat chat={chat} />}
           </aside>
         )}

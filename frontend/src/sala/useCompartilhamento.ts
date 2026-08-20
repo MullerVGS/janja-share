@@ -9,10 +9,6 @@ import {
   type PerfilDeQualidade,
   type RelatorioDeAplicacao,
 } from './qualidade'
-import { medirSaida, MEDIDA_VAZIA, type AmostraDeSaida, type MedidaDeSaida } from './medidor'
-
-/** De quanto em quanto tempo o medidor lê o `getStats()`. */
-const INTERVALO_DO_MEDIDOR_MS = 1000
 
 /**
  * Espera antes de aplicar um perfil novo. É o que permite arrastar o slider de bitrate sem
@@ -72,7 +68,6 @@ export interface Compartilhamento {
   ativo: boolean
   perfil: PerfilDeQualidade
   definirPerfil(perfil: PerfilDeQualidade): void
-  medida: MedidaDeSaida
   /** O que de fato pegou no último ajuste; `null` enquanto não há transmissão. */
   relatorio: RelatorioDeAplicacao | null
   erro: string | null
@@ -87,7 +82,6 @@ export function useCompartilhamento(sala: Room | null): Compartilhamento {
 
   const [perfil, definirPerfil] = useState<PerfilDeQualidade>(PERFIL_PADRAO)
   const [relatorio, setRelatorio] = useState<RelatorioDeAplicacao | null>(null)
-  const [medida, setMedida] = useState<MedidaDeSaida>(MEDIDA_VAZIA)
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
@@ -106,32 +100,6 @@ export function useCompartilhamento(sala: Room | null): Compartilhamento {
     // `sid` identifica a publicação; `publicacao.track` é lido na hora para pegar o sender que
     // costuma aparecer alguns milissegundos depois dela.
   }, [sid, perfil, publicacao])
-
-  useEffect(() => {
-    if (!sid) {
-      setMedida(MEDIDA_VAZIA)
-      return
-    }
-    let anterior: AmostraDeSaida | null = null
-    let vivo = true
-
-    const ler = async () => {
-      const remetente = publicacao?.track?.sender
-      if (!remetente) return
-      const relatorioDeEstatisticas = await remetente.getStats()
-      if (!vivo) return
-      const { medida: nova, amostra } = medirSaida(relatorioDeEstatisticas, anterior)
-      anterior = amostra
-      setMedida(nova)
-    }
-
-    void ler()
-    const relogio = setInterval(() => void ler(), INTERVALO_DO_MEDIDOR_MS)
-    return () => {
-      vivo = false
-      clearInterval(relogio)
-    }
-  }, [sid, publicacao])
 
   const alternar = useCallback(async () => {
     if (!sala) return
@@ -156,5 +124,5 @@ export function useCompartilhamento(sala: Room | null): Compartilhamento {
     }
   }, [sala, publicacao, perfil])
 
-  return { ativo: Boolean(publicacao), perfil, definirPerfil, medida, relatorio, erro, ocupado, alternar }
+  return { ativo: Boolean(publicacao), perfil, definirPerfil, relatorio, erro, ocupado, alternar }
 }
