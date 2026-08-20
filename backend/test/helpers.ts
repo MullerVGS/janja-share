@@ -1,16 +1,17 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common'
+import { INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { DataSource } from 'typeorm'
 import { AppModule } from '../src/app.module'
-import { ErroApiFilter, ErroInternoFilter } from '../src/shared/erros'
+import { configurarApp } from '../src/bootstrap'
 
-export async function criarApp(): Promise<INestApplication> {
+/**
+ * `dirPublico` é repassado a configurarApp() — só usado pelo spa.e2e-spec.ts, que precisa de
+ * um bundle de verdade num diretório temporário para exercitar a fronteira SPA×API.
+ */
+export async function criarApp(dirPublico?: string): Promise<INestApplication> {
   const mod = await Test.createTestingModule({ imports: [AppModule] }).compile()
   const app = mod.createNestApplication()
-  app.setGlobalPrefix('api')
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
-  // Mesma ordem de main.ts: fallback (ErroInternoFilter) primeiro, específico (ErroApiFilter) depois.
-  app.useGlobalFilters(new ErroInternoFilter(), new ErroApiFilter())
+  configurarApp(app, dirPublico)
   await app.init()
   await app.get(DataSource).runMigrations()
   return app

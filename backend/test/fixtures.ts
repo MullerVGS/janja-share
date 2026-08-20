@@ -22,3 +22,27 @@ export async function criarConviteDeTeste(
   const token = String(res.body.link).split('/c/')[1]
   return { id: res.body.id, token }
 }
+
+export interface RotaAdmin {
+  metodo: 'get' | 'post' | 'delete' | 'put' | 'patch'
+  caminho: string
+}
+
+/**
+ * Lê o router do Express por baixo do Nest e devolve toda rota registrada sob /api/admin —
+ * não uma lista mantida à mão (que teria exatamente o mesmo defeito do @UseGuards() opt-in
+ * que este round corrigiu: alguém esquece de atualizá-la quando um endpoint novo nasce).
+ */
+export function rotasAdmin(app: INestApplication): RotaAdmin[] {
+  const instancia = app.getHttpAdapter().getInstance() as { router?: { stack: unknown[] } }
+  const pilha = instancia.router?.stack ?? []
+  const rotas: RotaAdmin[] = []
+  for (const camada of pilha as { route?: { path: string; methods: Record<string, boolean> } }[]) {
+    const rota = camada.route
+    if (!rota || typeof rota.path !== 'string' || !rota.path.startsWith('/api/admin')) continue
+    for (const metodo of Object.keys(rota.methods)) {
+      rotas.push({ metodo: metodo as RotaAdmin['metodo'], caminho: rota.path })
+    }
+  }
+  return rotas
+}

@@ -1,7 +1,9 @@
 import { INestApplication } from '@nestjs/common'
 import request from 'supertest'
-import { criarConviteDeTeste } from './fixtures'
+import { criarConviteDeTeste, rotasAdmin } from './fixtures'
 import { criarApp, dataSource } from './helpers'
+
+const HOST_ERRADO = 'share.example.com'
 
 describe('/api/admin/*', () => {
   let app: INestApplication
@@ -15,9 +17,24 @@ describe('/api/admin/*', () => {
     await app.close()
   })
 
-  it('Host diferente de HOST_ADMIN devolve 404 em toda rota admin', async () => {
-    await request(app.getHttpServer()).get('/api/admin/convites').set('Host', 'share.example.com').expect(404)
-    await request(app.getHttpServer()).get('/api/admin/sala').set('Host', 'share.example.com').expect(404)
+  it('toda rota mapeada em /api/admin/* devolve 404 com Host errado — o mesmo corpo de uma rota inexistente', async () => {
+    const rotas = rotasAdmin(app)
+    // Se a introspecção do router quebrar (troca de HTTP adapter, por exemplo), o teste falha
+    // aqui em vez de passar vazio e sem testar nada.
+    expect(rotas.length).toBeGreaterThanOrEqual(4)
+
+    const rotaInexistente = await request(app.getHttpServer()).get('/api/isto-nao-existe-de-verdade').set('Host', HOST_ERRADO)
+    expect(rotaInexistente.status).toBe(404)
+
+    for (const { metodo, caminho } of rotas) {
+      const caminhoConcreto = caminho.replace(':id', '00000000-0000-0000-0000-000000000000')
+      const res = await request(app.getHttpServer())[metodo](caminhoConcreto).set('Host', HOST_ERRADO)
+      expect(res.status).toBe(404)
+      // Corpo idêntico ao de uma rota que nem existe — o guard não pode "vazar" um formato
+      // de erro diferente que denuncie, por exclusão, que a rota está ali.
+      expect(res.body).toEqual(rotaInexistente.body)
+      expect(res.headers['content-type']).toEqual(rotaInexistente.headers['content-type'])
+    }
   })
 
   it('Host === HOST_ADMIN devolve 200 e lista convites', async () => {
@@ -50,6 +67,21 @@ describe('/api/admin/*', () => {
       .delete('/api/admin/convites/00000000-0000-0000-0000-000000000000')
       .set('Host', process.env.HOST_ADMIN!)
       .expect(404)
+  })
+
+  it('rótulo só com espaços é trimado e rejeitado (400), não vira convite em branco', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/admin/convites')
+      .set('Host', process.env.HOST_ADMIN!)
+      .send({ rotulo: '   ', validadeHoras: 24, usosMax: 1 })
+    expect(res.status).toBe(400)
+
+    const res2 = await request(app.getHttpServer())
+      .post('/api/admin/convites')
+      .set('Host', process.env.HOST_ADMIN!)
+      .send({ rotulo: '  Pessoal  ', validadeHoras: 24, usosMax: 1 })
+      .expect(201)
+    expect(res2.body.rotulo).toBe('Pessoal')
   })
 
   it('GET /api/admin/sala nunca quebra mesmo com o SFU fora do ar', async () => {

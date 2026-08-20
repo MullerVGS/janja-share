@@ -4,6 +4,50 @@ import request from 'supertest'
 import { criarConviteDeTeste } from './fixtures'
 import { criarApp, dataSource } from './helpers'
 
+describe('GET /api/convites/:token', () => {
+  let app: INestApplication
+
+  beforeAll(async () => {
+    app = await criarApp()
+  })
+
+  afterAll(async () => {
+    await dataSource(app).destroy()
+    await app.close()
+  })
+
+  it('convite válido: 200 com o rótulo, e não consome uso', async () => {
+    const { token } = await criarConviteDeTeste(app, { rotulo: 'Pessoal', usosMax: 1 })
+
+    const res = await request(app.getHttpServer()).get(`/api/convites/${token}`).expect(200)
+    expect(res.body).toEqual({ valido: true, rotulo: 'Pessoal' })
+
+    // ainda dá para entrar depois — a pré-checagem não gastou o único uso.
+    await request(app.getHttpServer()).post('/api/entrar').send({ convite: token, nome: 'Ana' }).expect(200)
+  })
+
+  it('convite inexistente: 404 convite_invalido', async () => {
+    const res = await request(app.getHttpServer()).get('/api/convites/nao-existe').expect(404)
+    expect(res.body).toEqual({ erro: 'convite_invalido' })
+  })
+
+  it('convite esgotado: 410 convite_esgotado', async () => {
+    const { token } = await criarConviteDeTeste(app, { usosMax: 1 })
+    await request(app.getHttpServer()).post('/api/entrar').send({ convite: token, nome: 'Primeiro' }).expect(200)
+
+    const res = await request(app.getHttpServer()).get(`/api/convites/${token}`).expect(410)
+    expect(res.body).toEqual({ erro: 'convite_esgotado' })
+  })
+
+  it('convite revogado: 410 convite_revogado', async () => {
+    const { id, token } = await criarConviteDeTeste(app)
+    await request(app.getHttpServer()).delete(`/api/admin/convites/${id}`).set('Host', process.env.HOST_ADMIN!).expect(204)
+
+    const res = await request(app.getHttpServer()).get(`/api/convites/${token}`).expect(410)
+    expect(res.body).toEqual({ erro: 'convite_revogado' })
+  })
+})
+
 describe('POST /api/entrar', () => {
   let app: INestApplication
 
