@@ -1,4 +1,5 @@
 import { ehAba, LARGURA_MINIMA_DA_LATERAL, type Aba } from './sala/lateral'
+import { ehPerfil, PERFIL_PADRAO, type PerfilDeQualidade } from './sala/qualidade'
 
 /**
  * Preferências da pessoa neste navegador: um único objeto versionado em `localStorage`.
@@ -13,11 +14,17 @@ const VERSAO = 1
 export interface Preferencias {
   larguraDaLateral: number
   abaDaLateral: Aba
+  /** O pedido da pessoa — o que o governador usa como teto. */
+  perfil: PerfilDeQualidade
+  /** A chave do governador. */
+  automatico: boolean
 }
 
 export const PREFERENCIAS_PADRAO: Preferencias = {
   larguraDaLateral: 340,
   abaDaLateral: 'chat',
+  perfil: PERFIL_PADRAO,
+  automatico: true,
 }
 
 type Leitor<T> = (valor: unknown) => T | undefined
@@ -26,7 +33,11 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   larguraDaLateral: (valor) =>
     typeof valor === 'number' && Number.isFinite(valor) && valor >= LARGURA_MINIMA_DA_LATERAL ? valor : undefined,
   abaDaLateral: (valor) => (ehAba(valor) ? valor : undefined),
+  perfil: (valor) => (ehPerfil(valor) ? valor : undefined),
+  automatico: (valor) => (typeof valor === 'boolean' ? valor : undefined),
 }
+
+const CAMPOS = Object.keys(LEITORES) as (keyof Preferencias)[]
 
 export function lerPreferencias(): Preferencias {
   let cru: unknown
@@ -39,9 +50,14 @@ export function lerPreferencias(): Preferencias {
   const guardado = cru as Record<string, unknown>
   if (guardado.versao !== VERSAO) return { ...PREFERENCIAS_PADRAO }
 
-  const campo = <C extends keyof Preferencias>(nome: C): Preferencias[C] =>
-    LEITORES[nome](guardado[nome]) ?? PREFERENCIAS_PADRAO[nome]
-  return { larguraDaLateral: campo('larguraDaLateral'), abaDaLateral: campo('abaDaLateral') }
+  const preferencias = { ...PREFERENCIAS_PADRAO }
+  for (const nome of CAMPOS) ler(preferencias, nome, guardado[nome])
+  return preferencias
+}
+
+function ler<C extends keyof Preferencias>(destino: Preferencias, nome: C, valor: unknown) {
+  const lido = LEITORES[nome](valor)
+  if (lido !== undefined) destino[nome] = lido
 }
 
 export function gravarPreferencias(parcial: Partial<Preferencias>): Preferencias {

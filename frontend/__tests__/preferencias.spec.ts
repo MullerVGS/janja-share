@@ -5,6 +5,7 @@ import {
   lerPreferencias,
   PREFERENCIAS_PADRAO,
 } from '../src/preferencias'
+import { PERFIL_PADRAO, PRESET_DO_CONTEUDO } from '../src/sala/qualidade'
 
 afterEach(() => localStorage.clear())
 
@@ -51,5 +52,25 @@ describe('preferências', () => {
 
     localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, larguraDaLateral: 380, abaDaLateral: 'sótão' }))
     expect(lerPreferencias()).toEqual({ ...PREFERENCIAS_PADRAO, larguraDaLateral: 380 })
+  })
+
+  it('o perfil de qualidade e a chave do automático vêm guardados; o padrão é o preset Texto com automático ligado', () => {
+    expect(PREFERENCIAS_PADRAO.perfil).toBe(PERFIL_PADRAO)
+    expect(PREFERENCIAS_PADRAO.automatico).toBe(true)
+
+    const perfil = { ...PRESET_DO_CONTEUDO.movimento, resolucao: '720p' as const, tetoKbps: 12_000 }
+    gravarPreferencias({ perfil, automatico: false })
+    expect(lerPreferencias()).toMatchObject({ perfil, automatico: false })
+  })
+
+  it('perfil inválido ou de outro vocabulário vira o preset Texto; automático estranho vira ligado', () => {
+    localStorage.setItem(
+      CHAVE_DAS_PREFERENCIAS,
+      JSON.stringify({ versao: 1, perfil: { resolucao: '1080p', fps: 15, prioridade: 'nitidez', tetoKbps: 2500 }, automatico: 'sim' }),
+    )
+    expect(lerPreferencias()).toMatchObject({ perfil: PERFIL_PADRAO, automatico: true })
+
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, perfil: { ...PERFIL_PADRAO, tetoKbps: 999_999 } }))
+    expect(lerPreferencias().perfil).toEqual(PERFIL_PADRAO)
   })
 })
