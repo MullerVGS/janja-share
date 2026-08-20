@@ -83,8 +83,28 @@ function girar(elemento: HTMLElement, deltaY: number): WheelEvent {
   return evento
 }
 
+/** O `Element.animate` não existe no jsdom, e o `getBoundingClientRect` mede sempre zero. */
+const medidaDeVerdade = Element.prototype.getBoundingClientRect
+
+function medirTudoComo(retangulo: { left: number; top: number; width: number; height: number }) {
+  Element.prototype.getBoundingClientRect = () => retangulo as DOMRect
+}
+
+function gravarAnimacoes(): Keyframe[][] {
+  const gravadas: Keyframe[][] = []
+  Element.prototype.animate = ((quadros: Keyframe[]) => {
+    gravadas.push(quadros)
+    return {} as Animation
+  }) as Element['animate']
+  return gravadas
+}
+
 beforeEach(() => vi.useFakeTimers())
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  Element.prototype.getBoundingClientRect = medidaDeVerdade
+  Reflect.deleteProperty(Element.prototype, 'animate')
+})
 
 describe('palco: a grade', () => {
   it('lista tudo que existe na sala — as telas e as pessoas', () => {
@@ -174,6 +194,37 @@ describe('palco: tela cheia', () => {
     const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true })
     expect(imagemDe(resultado)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ver em 1:1' })).toBeInTheDocument()
+  })
+})
+
+describe('palco: a peça cresce e encolhe', () => {
+  it('sair do foco anima a peça do tamanho que ela tinha até o que ela passou a ter', () => {
+    const animacoes = gravarAnimacoes()
+    medirTudoComo({ left: 0, top: 0, width: 600, height: 300 })
+    const pecas = [peca('Bia', { ehTela: true })]
+    const resultado = render(<Palquinho pecas={pecas} emFoco />)
+
+    medirTudoComo({ left: 10, top: 10, width: 300, height: 150 })
+    resultado.rerender(<Palquinho pecas={pecas} emFoco={false} />)
+
+    expect(animacoes).toHaveLength(1)
+    expect(animacoes[0]?.[0]).toMatchObject({
+      transform: 'translate(-10px, -10px) scale(2, 2)',
+      transformOrigin: 'top left',
+    })
+    expect(animacoes[0]?.[1]).toMatchObject({ transform: 'none' })
+  })
+
+  it('re-render sem troca de modo não anima nada', () => {
+    const animacoes = gravarAnimacoes()
+    medirTudoComo({ left: 0, top: 0, width: 600, height: 300 })
+    const pecas = [peca('Bia', { ehTela: true })]
+    const resultado = render(<Palquinho pecas={pecas} emFoco />)
+
+    medirTudoComo({ left: 10, top: 10, width: 300, height: 150 })
+    resultado.rerender(<Palquinho pecas={pecas} emFoco />)
+
+    expect(animacoes).toHaveLength(0)
   })
 })
 

@@ -8,6 +8,7 @@ import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
 import { IconeMicrofoneMudo } from '../../ui/Icone'
 import { usePiP, useTelaCheia } from './assistir'
+import { useCrescerEEncolher } from './transicao'
 import { Video } from './Midia'
 import { Pilula } from './Pilula'
 import estilos from './Palco.module.css'
@@ -73,6 +74,9 @@ function Quadro({
   const video = useRef<HTMLVideoElement>(null)
   const telaCheia = useTelaCheia(quadro)
   const pip = usePiP(video)
+  // A peça que entra na grade cresce pela animação de montagem; a que estava em foco não remonta,
+  // e é esta que a faz encolher em vez de saltar.
+  useCrescerEEncolher(quadro, emFoco)
 
   const { aplicar } = zoom
   const aoGesto = useCallback(
