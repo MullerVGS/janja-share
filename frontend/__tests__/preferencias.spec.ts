@@ -91,4 +91,14 @@ describe('preferências', () => {
     localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, volumes: 'alto' }))
     expect(lerPreferencias().volumes).toEqual({})
   })
+
+  it('o ajuste das telas fica guardado; o padrão é caber e um valor estranho volta a ele', () => {
+    expect(PREFERENCIAS_PADRAO.ajuste).toBe('caber')
+
+    gravarPreferencias({ ajuste: 'pixelAPixel' })
+    expect(lerPreferencias().ajuste).toBe('pixelAPixel')
+
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, ajuste: 'esticado' }))
+    expect(lerPreferencias().ajuste).toBe('caber')
+  })
 })

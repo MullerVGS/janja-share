@@ -1,7 +1,28 @@
+import { useRef } from 'react'
 import { iniciais, type Palco as EstadoDoPalco, type Peca } from '../../sala/palco'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
 import { VOLUME_CHEIO, type TipoDeAudio } from '../../sala/volumes'
-import { IconeFixar, IconeMicrofoneMudo, IconeSom, IconeSomMudo } from '../../ui/Icone'
+import {
+  IconeCaber,
+  IconeFixar,
+  IconeJanelinha,
+  IconeMicrofoneMudo,
+  IconePixelAPixel,
+  IconeSairDaTelaCheia,
+  IconeSom,
+  IconeSomMudo,
+  IconeTelaCheia,
+} from '../../ui/Icone'
+import {
+  AJUSTES,
+  outroAjuste,
+  temPiP,
+  temTelaCheia,
+  useArraste,
+  usePiP,
+  useTelaCheia,
+  type Ajuste,
+} from './assistir'
 import { Video } from './Midia'
 import estilos from './Palco.module.css'
 
@@ -11,6 +32,9 @@ interface Props {
   fixada: string | null
   aoFixar(chave: string | null): void
   volumes: ControleDeVolumes
+  /** Como as telas aparecem: cabendo no quadro ou no tamanho original. Vale para todas. */
+  ajuste: Ajuste
+  aoAjustar(ajuste: Ajuste): void
 }
 
 /**
@@ -57,30 +81,58 @@ function Quadro({
   fixada,
   aoFixar,
   volumes,
+  ajuste,
+  aoAjustar,
   miniatura = false,
 }: {
   peca: Peca
   fixada: string | null
   aoFixar(chave: string | null): void
   volumes: ControleDeVolumes
+  ajuste: Ajuste
+  aoAjustar(ajuste: Ajuste): void
   miniatura?: boolean
 }) {
   const estaFixada = fixada === peca.chave
+  const quadro = useRef<HTMLDivElement>(null)
+  const video = useRef<HTMLVideoElement>(null)
+  const telaCheia = useTelaCheia(quadro)
+  const pip = usePiP(video)
+  const arraste = useArraste(peca.ehTela && ajuste === 'pixelAPixel')
 
   return (
     <div
+      ref={quadro}
       className={[estilos.quadro, miniatura ? estilos.miniatura : '', peca.falando ? estilos.falando : '']
         .filter(Boolean)
         .join(' ')}
       data-tela={peca.ehTela || undefined}
+      data-cheia={telaCheia.cheia || undefined}
     >
-      {peca.publicacao ? (
-        <Video publicacao={peca.publicacao} className={estilos.video} espelhar={peca.proprio && !peca.ehTela} />
-      ) : (
-        <div className={estilos.semVideo}>
-          <span className={estilos.iniciais}>{iniciais(peca.nome)}</span>
-        </div>
-      )}
+      {/* A moldura é a área da imagem: é ela que rola quando a tela vai maior que o quadro, e é
+          nela que o duplo clique cai — os botões e a etiqueta ficam de fora, e por isso seguem
+          clicáveis em tela cheia. */}
+      <div
+        className={estilos.moldura}
+        data-ajuste={peca.ehTela ? ajuste : undefined}
+        onDoubleClick={peca.ehTela ? telaCheia.alternar : undefined}
+        {...arraste}
+      >
+        {peca.publicacao ? (
+          <Video
+            publicacao={peca.publicacao}
+            className={estilos.video}
+            espelhar={peca.proprio && !peca.ehTela}
+            referencia={video}
+          />
+        ) : (
+          <div className={estilos.semVideo}>
+            <span className={estilos.iniciais}>{iniciais(peca.nome)}</span>
+          </div>
+        )}
+      </div>
+
+      {pip.emPiP && <span className={estilos.emPiP}>em PiP</span>}
 
       <div className={estilos.etiqueta}>
         {!peca.ehTela && !peca.microfoneLigado && (
@@ -96,15 +148,55 @@ function Quadro({
       </div>
 
       {peca.ehTela && (
-        <button
-          type="button"
-          className={estilos.fixar}
-          aria-pressed={estaFixada}
-          title={estaFixada ? 'soltar do foco' : 'fixar em foco'}
-          onClick={() => aoFixar(estaFixada ? null : peca.chave)}
-        >
-          <IconeFixar tamanho={15} />
-        </button>
+        <div className={estilos.acoes}>
+          <button
+            type="button"
+            className={estilos.acao}
+            aria-pressed={ajuste === 'pixelAPixel'}
+            aria-label={`Ver em ${AJUSTES[outroAjuste(ajuste)].rotulo.toLowerCase()}`}
+            title={AJUSTES[outroAjuste(ajuste)].explicacao}
+            onClick={() => aoAjustar(outroAjuste(ajuste))}
+          >
+            {ajuste === 'pixelAPixel' ? <IconeCaber tamanho={15} /> : <IconePixelAPixel tamanho={15} />}
+          </button>
+
+          {temPiP() && (
+            <button
+              type="button"
+              className={estilos.acao}
+              aria-pressed={pip.emPiP}
+              aria-label={pip.emPiP ? 'Trazer da janelinha' : 'Ver na janelinha'}
+              title={pip.emPiP ? 'trazer de volta da janelinha' : 'ver na janelinha flutuante'}
+              onClick={pip.alternar}
+            >
+              <IconeJanelinha tamanho={15} />
+            </button>
+          )}
+
+          {temTelaCheia() && (
+            <button
+              type="button"
+              className={estilos.acao}
+              aria-pressed={telaCheia.cheia}
+              aria-label={telaCheia.cheia ? 'Sair da tela cheia' : 'Ver em tela cheia'}
+              title={telaCheia.cheia ? 'sair da tela cheia' : 'ver em tela cheia (ou dê um duplo clique)'}
+              onClick={telaCheia.alternar}
+            >
+              {telaCheia.cheia ? <IconeSairDaTelaCheia tamanho={15} /> : <IconeTelaCheia tamanho={15} />}
+            </button>
+          )}
+
+          <button
+            type="button"
+            className={estilos.acao}
+            aria-pressed={estaFixada}
+            aria-label={estaFixada ? 'Soltar do foco' : 'Fixar em foco'}
+            title={estaFixada ? 'soltar do foco' : 'fixar em foco'}
+            onClick={() => aoFixar(estaFixada ? null : peca.chave)}
+          >
+            <IconeFixar tamanho={15} />
+          </button>
+        </div>
       )}
 
       {/* O próprio som não se regula daqui: quem manda não se ouve. */}
@@ -120,7 +212,7 @@ function Quadro({
  * havendo telas, o palco é delas e as pessoas descem para a tira; sem tela nenhuma, o palco é
  * das pessoas. Compartilhar tela é a razão de existir desta sala — o layout diz isso.
  */
-export function Palco({ palco, fixada, aoFixar, volumes }: Props) {
+export function Palco({ palco, fixada, aoFixar, volumes, ajuste, aoAjustar }: Props) {
   const emDestaque = fixada === null ? undefined : palco.telas.find((tela) => tela.chave === fixada)
 
   let principais: Peca[]
@@ -145,7 +237,15 @@ export function Palco({ palco, fixada, aoFixar, volumes }: Props) {
     <div className={estilos.palco}>
       <div className={estilos.principal} data-modo={modo}>
         {principais.map((peca) => (
-          <Quadro key={peca.chave} peca={peca} fixada={fixada} aoFixar={aoFixar} volumes={volumes} />
+          <Quadro
+            key={peca.chave}
+            peca={peca}
+            fixada={fixada}
+            aoFixar={aoFixar}
+            volumes={volumes}
+            ajuste={ajuste}
+            aoAjustar={aoAjustar}
+          />
         ))}
         {principais.length === 0 && <p className={estilos.vazio}>Você é a primeira pessoa aqui.</p>}
       </div>
@@ -153,7 +253,16 @@ export function Palco({ palco, fixada, aoFixar, volumes }: Props) {
       {tira.length > 0 && (
         <div className={estilos.tira}>
           {tira.map((peca) => (
-            <Quadro key={peca.chave} peca={peca} fixada={fixada} aoFixar={aoFixar} volumes={volumes} miniatura />
+            <Quadro
+              key={peca.chave}
+              peca={peca}
+              fixada={fixada}
+              aoFixar={aoFixar}
+              volumes={volumes}
+              ajuste={ajuste}
+              aoAjustar={aoAjustar}
+              miniatura
+            />
           ))}
         </div>
       )}

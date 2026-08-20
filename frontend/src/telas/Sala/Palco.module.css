@@ -64,6 +64,24 @@
   aspect-ratio: 16 / 9;
 }
 
+/* A área da imagem. Em "caber" ela só emoldura; em "pixel a pixel" vira o mirante por onde se
+   anda numa tela maior que o quadro. */
+.moldura {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.moldura[data-ajuste='pixelAPixel'] {
+  overflow: auto;
+  cursor: grab;
+  scrollbar-width: thin;
+}
+
+.moldura[data-ajuste='pixelAPixel']:active {
+  cursor: grabbing;
+}
+
 .video {
   width: 100%;
   height: 100%;
@@ -71,6 +89,16 @@
      barra de abas, o terminal e o menu que a pessoa queria mostrar. */
   object-fit: contain;
   background: var(--palco);
+}
+
+/* Tamanho natural: um `<video>` sem largura nem altura é desenhado em `videoWidth × videoHeight`,
+   que é exatamente o pixel a pixel — sem precisar medir nada em JavaScript. */
+.moldura[data-ajuste='pixelAPixel'] .video {
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  object-fit: none;
 }
 
 .semVideo {
@@ -169,10 +197,15 @@
   width: 52px;
 }
 
-.fixar {
+.acoes {
   position: absolute;
   top: var(--e2);
   right: var(--e2);
+  display: flex;
+  gap: var(--e1);
+}
+
+.acao {
   display: flex;
   cursor: pointer;
   padding: 6px;
@@ -182,14 +215,34 @@
   color: var(--texto-fraco);
 }
 
-.fixar:hover {
+.acao:hover {
   color: var(--texto);
 }
 
-.fixar[aria-pressed='true'] {
+.acao[aria-pressed='true'] {
   color: var(--menta);
   border-color: rgba(94, 234, 212, 0.4);
   background: var(--menta-fraca);
+}
+
+/* O vídeo está tocando noutra janela: sem este aviso, o quadro parece só ter congelado. */
+.emPiP {
+  position: absolute;
+  top: var(--e2);
+  left: var(--e2);
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--menta-fraca);
+  color: var(--menta);
+  font-size: var(--texto-xs);
+  font-weight: 600;
+}
+
+/* Em tela cheia o quadro é a janela inteira: a proporção fixa daria tarja preta dos dois lados. */
+.quadro[data-cheia] {
+  aspect-ratio: auto;
+  border: none;
+  border-radius: 0;
 }
 
 .vazio {

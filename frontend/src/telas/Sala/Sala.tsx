@@ -13,6 +13,7 @@ import { ultima } from '../../telemetria/historico'
 import { useTelemetria } from '../../telemetria/useTelemetria'
 import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
+import { type Ajuste } from './assistir'
 import { Chat } from './Chat'
 import { Controles } from './Controles'
 import { Lateral } from './Lateral'
@@ -46,6 +47,7 @@ export function Sala() {
 
   const [fixada, setFixada] = useState<string | null>(null)
   const [preferencias] = useState(lerPreferencias)
+  const [ajuste, setAjuste] = useState<Ajuste>(preferencias.ajuste)
   const [lateral, setLateral] = useState<EstadoDaLateral>({ aberta: true, aba: preferencias.abaDaLateral })
   const [larguraDaLateral, setLarguraDaLateral] = useState(preferencias.larguraDaLateral)
   const [lidasNoChat, setLidasNoChat] = useState(0)
@@ -69,6 +71,11 @@ export function Sala() {
     const proximo = alternarAba(lateral, aba)
     setLateral(proximo)
     gravarPreferencias({ abaDaLateral: proximo.aba })
+  }
+
+  function escolherAjuste(escolhido: Ajuste) {
+    setAjuste(escolhido)
+    gravarPreferencias({ ajuste: escolhido })
   }
 
   function redimensionarLateral(largura: number) {
@@ -169,7 +176,14 @@ export function Sala() {
 
       <div className={estilos.corpo}>
         <main className={estilos.centro}>
-          <Palco palco={palco} fixada={fixada} aoFixar={setFixada} volumes={volumes} />
+          <Palco
+            palco={palco}
+            fixada={fixada}
+            aoFixar={setFixada}
+            volumes={volumes}
+            ajuste={ajuste}
+            aoAjustar={escolherAjuste}
+          />
         </main>
 
         <Lateral

@@ -118,3 +118,17 @@ describe('sala: volume local ponta a ponta', () => {
     expect(lerPreferencias().volumes).toEqual({ Bia: { tela: 30 } })
   })
 })
+
+describe('sala: o ajuste das telas', () => {
+  it('escolher pixel a pixel muda a moldura e fica guardado para a próxima sessão', async () => {
+    const usuario = userEvent.setup()
+    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
+    falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [bia])
+    const { container } = montarSala()
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver em pixel a pixel' }))
+
+    expect(container.querySelector('[data-ajuste]')).toHaveAttribute('data-ajuste', 'pixelAPixel')
+    expect(lerPreferencias().ajuste).toBe('pixelAPixel')
+  })
+})

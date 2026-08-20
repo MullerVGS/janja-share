@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { Track, type RemoteAudioTrack, type Room, type TrackPublication } from 'livekit-client'
 import { nomeDoParticipante } from '../../sala/palco'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
@@ -14,26 +14,30 @@ export function Video({
   publicacao,
   className,
   espelhar = false,
+  referencia,
 }: {
   publicacao?: TrackPublication
   className?: string
   espelhar?: boolean
+  /** Para quem precisa do elemento em si — a janelinha do PiP sai daqui. */
+  referencia?: RefObject<HTMLVideoElement | null>
 }) {
-  const referencia = useRef<HTMLVideoElement>(null)
+  const proprio = useRef<HTMLVideoElement>(null)
+  const elementoDoVideo = referencia ?? proprio
   const faixa = publicacao?.track
 
   useEffect(() => {
-    const elemento = referencia.current
+    const elemento = elementoDoVideo.current
     if (!faixa || !elemento) return
     faixa.attach(elemento)
     return () => {
       faixa.detach(elemento)
     }
-  }, [faixa])
+  }, [faixa, elementoDoVideo])
 
   return (
     <video
-      ref={referencia}
+      ref={elementoDoVideo}
       className={className}
       autoPlay
       playsInline
