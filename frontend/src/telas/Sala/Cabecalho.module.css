@@ -10,16 +10,20 @@
   box-shadow: var(--sombra-md);
 }
 
+/* Preenchido = conectado; oco = não. A forma (não só a cor) carrega o estado — quem não
+   distingue verde de vermelho ainda vê o preenchimento mudar. */
 .pulso {
   flex: none;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--texto-fraquissimo);
+  background: transparent;
+  border: 1.5px solid var(--texto-fraquissimo);
 }
 
 .pulso[data-conectado] {
   background: var(--conectado);
+  border-color: var(--conectado);
   animation: shPulsar 2.4s ease-in-out infinite;
 }
 

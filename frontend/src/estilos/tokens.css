@@ -32,21 +32,30 @@
 
   /* — acentos —
      Ação é a cor de "isto é interativo, isto é meu, isto está no ar": marca, links, foco,
-     botão primário, publicação de tela. Conectado é status ao vivo — conexão da sala e quem
-     está falando agora — papel novo que o Discord separa da ação (verde, não azul).
-     Atenção é limitado (CPU/banda, governador segurando). Perigo é parar/sair/erro.
-     Turquesa é a segunda identidade nos gráficos e no chat — sem papel de status. */
+     botão primário, publicação de tela. Conectado é status ao vivo — conexão da sala, quem
+     está falando agora e a transmissão sem limitação (o "ok" do resumo) — papel que o Discord
+     separa da ação (verde, não azul). Atenção é limitado (CPU/banda, governador segurando).
+     Perigo é parar/sair/erro. Turquesa é a segunda identidade nos gráficos e no chat — sem
+     papel de status.
+
+     Os quatro hexes de `--acao`/`--perigo`/`--atencao`/`--conectado` são cor de botão, anel e
+     marca — o Discord não usa essas mesmas cores como texto de corpo (blurple de botão não é
+     azul de link). Cada uma tem uma variante `-texto`, mais clara, para todo lugar onde a cor
+     vira letra a ser lida: passa 4,5:1 (AA) nas superfícies onde aparece; a cor "de vitrine"
+     continua reservada pra fundo sólido, borda e anel. */
   --acao: #5865f2;
   --acao-forte: #4752c4;
   --acao-fraca: rgba(88, 101, 242, 0.14);
   --acao-media: rgba(88, 101, 242, 0.32);
+  --acao-texto: #8fa1ff;
   --conectado: #23a55a;
+  --conectado-texto: #5fd68e;
   --atencao: #d08011;
   --atencao-fraca: rgba(208, 128, 17, 0.14);
+  --atencao-texto: #f0c26b;
   --perigo: #da373c;
   --perigo-fraca: rgba(218, 55, 60, 0.14);
   --perigo-media: rgba(218, 55, 60, 0.32);
-  /* Tom claro de `--perigo`, só para texto legível sobre `--perigo-fraca` (Aviso de erro). */
   --perigo-texto: #ffd6d8;
   --turquesa: #0d9488;
 

@@ -32,7 +32,7 @@
   padding: var(--e2) var(--e3);
   border-radius: var(--raio-sm);
   background: var(--perigo-fraca);
-  color: var(--perigo);
+  color: var(--perigo-texto);
   font-size: var(--texto-sm);
 }
 

@@ -53,7 +53,7 @@
 .valorDoTeto {
   font-family: var(--fonte-mono);
   font-size: var(--texto-sm);
-  color: var(--acao);
+  color: var(--acao-texto);
 }
 
 .slider {
@@ -96,7 +96,7 @@
 
 .estadoDoAuto[data-segurando] {
   background: var(--atencao-fraca);
-  color: var(--atencao);
+  color: var(--atencao-texto);
   font-family: var(--fonte-mono);
 }
 
@@ -116,7 +116,7 @@
 .recusaGrave {
   margin: 0;
   font-size: var(--texto-sm);
-  color: var(--perigo);
+  color: var(--perigo-texto);
   background: var(--perigo-fraca);
   border-radius: var(--raio-sm);
   padding: var(--e2) var(--e3);

@@ -59,7 +59,7 @@
 }
 
 .propria .autor {
-  color: var(--acao);
+  color: var(--acao-texto);
 }
 
 .hora {
@@ -79,7 +79,7 @@
   margin: 0;
   padding: 0 var(--e4) var(--e2);
   font-size: var(--texto-sm);
-  color: var(--perigo);
+  color: var(--perigo-texto);
 }
 
 .formulario {

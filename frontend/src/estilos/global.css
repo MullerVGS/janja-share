@@ -50,7 +50,7 @@ p {
 }
 
 a {
-  color: var(--acao);
+  color: var(--acao-texto);
   text-decoration: none;
   text-underline-offset: 3px;
 }

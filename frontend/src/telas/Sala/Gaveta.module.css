@@ -63,7 +63,7 @@
   padding: var(--e2) var(--e4);
   border: none;
   border-bottom: 1px solid var(--linha);
-  border-left: 3px solid var(--acao);
+  border-left: 3px solid var(--conectado);
   background: var(--superficie);
   color: var(--texto-fraco);
   font-family: var(--fonte-mono);
@@ -99,15 +99,15 @@
 
 .estadoDoResumo {
   flex: none;
-  color: var(--acao);
+  color: var(--conectado-texto);
 }
 
 .resumo[data-tom='atencao'] .estadoDoResumo {
-  color: var(--atencao);
+  color: var(--atencao-texto);
 }
 
 .resumo[data-tom='problema'] .estadoDoResumo {
-  color: var(--perigo);
+  color: var(--perigo-texto);
 }
 
 .abas {
@@ -139,7 +139,7 @@
 }
 
 .aba[aria-selected='true'] {
-  color: var(--acao);
+  color: var(--acao-texto);
   border-bottom-color: var(--acao);
 }
 

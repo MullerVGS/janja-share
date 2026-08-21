@@ -39,5 +39,5 @@
 
 .opcao[aria-checked='true'] {
   background: var(--acao-fraca);
-  color: var(--acao);
+  color: var(--acao-texto);
 }

@@ -46,7 +46,7 @@
 
 .perigo {
   border-color: var(--perigo-fraca);
-  color: var(--perigo);
+  color: var(--perigo-texto);
   background: var(--perigo-fraca);
 }
 .perigo:hover:not(:disabled) {

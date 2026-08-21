@@ -158,7 +158,7 @@
   padding: 3px 9px;
   border-radius: var(--raio-pilula);
   background: var(--acao-fraca);
-  color: var(--acao);
+  color: var(--acao-texto);
   font-size: var(--texto-xs);
   font-weight: 600;
 }
