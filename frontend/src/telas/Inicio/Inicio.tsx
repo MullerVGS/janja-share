@@ -60,8 +60,15 @@ export function Inicio() {
       {/* Um poll de fundo pode falhar sem derrubar `data` (react-query mantém o último sucesso) —
           por isso o aviso fica por cima da lista, e não no lugar dela: um 503 passageiro não pode
           desmontar cada `SalaLinha` e levar junto a senha ou o nome que a pessoa já digitou. A
-          tela só-de-erro (sem lista nenhuma) só acontece quando ainda não há `data` nenhum. */}
-      {lista.isError && <Aviso tom="erro">{mensagemDoErro(lista.error)}</Aviso>}
+          tela só-de-erro (sem lista nenhuma) só acontece quando ainda não há `data` nenhum — e é
+          exatamente aí que falta dizer que o `refetchInterval` de 5s segue tentando: sem isso a
+          tela lê como morta, não como "ainda carregando". */}
+      {lista.isError && (
+        <Aviso tom="erro">
+          {mensagemDoErro(lista.error)}
+          {!lista.data && ' Tentando de novo…'}
+        </Aviso>
+      )}
 
       {lista.data && lista.data.length === 0 && (
         <div className={estilos.vazio}>

@@ -572,4 +572,38 @@ describe('useCompartilhamento: trocar de tela', () => {
 
     expect(sala.localParticipant.createScreenTracks).not.toHaveBeenCalled()
   })
+
+  it('trocandoTela fica true do início do unpublish até o fim do republish — é o aviso que Sala.tsx usa pra não expulsar o foco de quem estava vendo outra coisa (achado 9)', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, batida } = montar(sala)
+    await ligar()
+    expect(result.current.trocandoTela).toBe(false)
+
+    let promessa: Promise<void> | undefined
+    act(() => {
+      promessa = result.current.trocarDeTela()
+    })
+    expect(result.current.trocandoTela).toBe(false) // ainda dentro do seletor nativo (createScreenTracks)
+
+    await batida() // libera createScreenTracks; achou vídeo; liga trocandoTela; presa no unpublish
+    expect(result.current.trocandoTela).toBe(true)
+    expect(sala.video()).toBeDefined()
+
+    await batida() // libera o unpublish — a própria tela some da lista aqui
+    expect(result.current.trocandoTela).toBe(true)
+    expect(sala.video()).toBeUndefined()
+
+    await batida() // libera o republish do vídeo — a tela volta
+    expect(result.current.trocandoTela).toBe(true)
+    expect(sala.video()).toBeDefined()
+
+    await batida() // libera o publish do áudio da tela — fim da troca
+    expect(result.current.trocandoTela).toBe(false)
+
+    await act(async () => {
+      await promessa
+    })
+    expect(result.current.ativo).toBe(true)
+    expect(result.current.ocupado).toBe(false)
+  })
 })

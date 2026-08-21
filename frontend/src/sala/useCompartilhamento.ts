@@ -118,6 +118,14 @@ export interface Compartilhamento {
   reiniciar(): Promise<void>
   /** Reabre o seletor para escolher outra tela; cancelar deixa a de agora no ar. */
   trocarDeTela(): Promise<void>
+  /**
+   * True só durante o vaivém interno de unpublish+republish de `trocarDeTela` — a própria tela
+   * some e volta da lista de telas publicadas nesse meio-tempo. Existe para quem monta o palco
+   * (Sala.tsx) ignorar essa sumida/volta transitória: sem isso ela dispara duas vezes a
+   * heurística de "tela própria nova" de foco.ts — expulsa quem está vendo outra coisa quando a
+   * tela some, e rouba o foco de volta quando ela reaparece.
+   */
+  trocandoTela: boolean
 }
 
 function publicacaoDe(sala: Room, fonte: Track.Source): LocalTrackPublication | undefined {
@@ -157,6 +165,7 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
   const [erro, setErro] = useState<string | null>(null)
   const [mudando, setMudando] = useState(false)
   const [republicando, setRepublicando] = useState(false)
+  const [trocandoTela, setTrocandoTela] = useState(false)
   // O último pedido, para a republicação em curso saber se ficou para trás.
   const pedido = useRef(perfil)
 
@@ -336,6 +345,9 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
       // Seletor sem vídeo não é troca de tela; a de agora continua valendo mais que nada.
       const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
       if (video) {
+        // Da despublicação até aqui embaixo a própria tela some e volta da lista de telas
+        // publicadas — `trocandoTela` avisa quem monta o palco pra ignorar esse blip.
+        setTrocandoTela(true)
         await participante.setScreenShareEnabled(false)
         setCodecPendente(null)
         await participante.publishTrack(video, opcoesDePublicacao(perfil))
@@ -350,6 +362,7 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     } finally {
       pararOQueNaoFoiAoAr(sala, capturadas)
       setMudando(false)
+      setTrocandoTela(false)
     }
   }, [sala, perfil])
 
@@ -386,5 +399,6 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     alternar,
     reiniciar,
     trocarDeTela,
+    trocandoTela,
   }
 }

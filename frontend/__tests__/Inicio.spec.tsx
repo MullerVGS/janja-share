@@ -122,6 +122,13 @@ describe('início: lista de salas', () => {
     )
     expect(screen.queryByText(/nenhuma sala/i)).not.toBeInTheDocument()
   })
+
+  it('erro sem lista nenhuma diz que está tentando de novo — a tela fria não lê como morta', async () => {
+    servir({ 'GET /api/salas': { status: 503, corpo: { erro: 'sfu_indisponivel' } } })
+    montarInicio()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tentando de novo')
+  })
 })
 
 describe('início: poll de fundo (5s) que falha não apaga a lista nem o que a pessoa digitou', () => {

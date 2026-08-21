@@ -11,6 +11,14 @@
   transition: padding 0.16s ease;
 }
 
+/* Passado ~20 quadros a grade não cabe mais na altura da sala — sem rolagem própria, as linhas
+   de cima e de baixo ficam cortadas pelo `overflow: hidden` de `.sala`, sem jeito de alcançá-las
+   (a Tira só existe em foco). 30 pessoas sozinhas já estouram isso, ninguém precisa compartilhar
+   tela para o teto de lotação deixar de caber na tela. */
+.palco[data-modo='grade'] {
+  overflow-y: auto;
+}
+
 /* Em foco a peça vai de borda a borda: é o "quero ler o que está escrito ali". */
 .palco[data-modo='foco'] {
   grid-template-columns: 1fr;

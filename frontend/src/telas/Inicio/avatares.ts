@@ -5,7 +5,9 @@
  * uma loteria. O hash é determinístico de propósito.
  */
 
-const MATIZES = ['--acao', '--atencao', '--perigo', '--turquesa'] as const
+// Sem `--perigo`: nesta paleta vermelho é parar/sair/erro em todo lugar — um avatar dessa cor
+// lê como estado de alarme ao lado do nome de alguém que não fez nada de errado.
+const MATIZES = ['--acao', '--atencao', '--conectado', '--turquesa'] as const
 
 export function iniciaisDoNome(nome: string): string {
   const termos = nome.trim().split(/\s+/).filter(Boolean)
