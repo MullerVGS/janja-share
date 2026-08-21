@@ -25,7 +25,9 @@ export class EntrarNaSalaUseCase {
   ) {}
 
   async execute(slug: string, senhaBruta: unknown, seuNomeBruto: unknown, ip: string): Promise<Credenciais> {
-    if (!this.freio.permite(`entrar:${ip}`, LIMITE_POR_MINUTO, JANELA_MINUTO_MS)) throw new Espere()
+    if (!this.freio.permite(`entrar:${ip}`, LIMITE_POR_MINUTO, JANELA_MINUTO_MS)) {
+      throw new Espere()
+    }
 
     const seuNome = validarNome(seuNomeBruto)
 
@@ -40,7 +42,9 @@ export class EntrarNaSalaUseCase {
       const senha = typeof senhaBruta === 'string' ? senhaBruta : ''
       if (!(await confere(senha, hash))) {
         // Só a tentativa ERRADA consome o freio — acertar de primeira nunca penaliza.
-        if (!this.freio.permite(`senha:${ip}:${slug}`, LIMITE_SENHAS_ERRADAS, JANELA_SENHA_MS)) throw new Espere()
+        if (!this.freio.permite(`senha:${ip}:${slug}`, LIMITE_SENHAS_ERRADAS, JANELA_SENHA_MS)) {
+          throw new Espere()
+        }
         throw new SenhaIncorreta()
       }
     }

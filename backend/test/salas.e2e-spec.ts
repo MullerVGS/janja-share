@@ -332,9 +332,11 @@ describe('salas/', () => {
       }
 
       // a 6ª errada (a acertada não contou) é que estoura
+      const aviso = jest.spyOn(console, 'warn').mockImplementation(() => {})
       const sexta = await request(app.getHttpServer()).post('/api/salas/protegida/entrar').set('X-Forwarded-For', ip).send({ senha: 'errada', seuNome: 'Ana' })
       expect(sexta.status).toBe(429)
       expect(sexta.body).toEqual({ erro: 'espere' })
+      aviso.mockRestore()
     })
 
     it('sala cheia (30 pessoas) devolve 409 sala_cheia', async () => {

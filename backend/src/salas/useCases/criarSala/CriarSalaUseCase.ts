@@ -25,7 +25,9 @@ export class CriarSalaUseCase {
   ) {}
 
   async execute(nomeBruto: unknown, senhaBruta: unknown, seuNomeBruto: unknown, ip: string): Promise<Credenciais> {
-    if (!this.freio.permite(`criar-sala:${ip}`, LIMITE_POR_MINUTO, JANELA_MINUTO_MS)) throw new Espere()
+    if (!this.freio.permite(`criar-sala:${ip}`, LIMITE_POR_MINUTO, JANELA_MINUTO_MS)) {
+      throw new Espere()
+    }
 
     const nomeDaSala = validarNomeDaSala(nomeBruto)
     const slug = slugDaSala(nomeDaSala)

@@ -13,7 +13,13 @@ export class SalasRepository {
     return sala?.senhaHash ?? null
   }
 
-  /** Todo slug que hoje tem senha guardada — a tabela é pequena (teto de 20 salas), então uma leitura cheia basta. */
+  /**
+   * Todo slug que hoje tem senha guardada. O teto de 20 salas é de salas VIVAS — esta tabela
+   * guarda uma linha por slug protegido já criado, apagada só quando aquele exato slug nasce de
+   * novo (ver CriarSalaUseCase); ela cresce com o tempo, não com a lotação atual. Uma leitura
+   * cheia ainda basta porque a escala do app é de amigos, não porque a tabela é pequena por
+   * contrato.
+   */
   async listarSlugsComSenha(): Promise<Set<string>> {
     const linhas = await this.salas.find({ select: ['slug'] })
     return new Set(linhas.map((l) => l.slug))

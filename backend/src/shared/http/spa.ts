@@ -14,9 +14,8 @@ export function dirPublicoPadrao(): string {
 // Tolerante a barra(s) repetida(s) antes de "api" (`//api/...`) e a caixa (`/API/...`): o
 // Express casa rota ignorando os dois, então este fallback — que roda como middleware cru,
 // ANTES do router do Nest — precisa reconhecer a mesma coisa como "API" ou vira uma forma de
-// contornar o prefixo /api inteiro (e, com ele, a guarda de admin). Um `startsWith` simples
-// deixava passar `/API/admin/convites` como se fosse rota de cliente, devolvendo a casca HTML
-// no lugar do JSON — ou, pior, da guarda.
+// contornar o prefixo /api inteiro. Um `startsWith` simples deixava passar `/API/salas` como se
+// fosse rota de cliente, devolvendo a casca HTML no lugar do JSON de erro.
 const PREFIXO_API = /^\/+api(\/|$)/i
 const TEM_EXTENSAO = /\.[a-z0-9]+$/i
 
