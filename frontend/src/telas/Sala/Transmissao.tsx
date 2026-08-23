@@ -101,16 +101,18 @@ function GraficosDoEmissor({
         piso={perfil.fps}
         formatar={fps}
       />
+      {/* O eixo é das duas séries, e o teto fica de fora dele: comparar o que sai com a banda
+          medida é o produto inteiro do governador, e a banda passar do teto é a *condição* para
+          ele subir — grampear uma das duas no topo esconderia exatamente a folga que decide. */}
       <Grafico
         titulo="Bitrate"
         series={[
           { nome: 'saindo', valores: historico.map((a) => a.kbps), cor: 'acao', destaque: true },
-          { nome: 'disponível estimada', valores: historico.map((a) => a.bandaDisponivelKbps), cor: 'turquesa', foraDoEixo: true },
+          { nome: 'disponível estimada', valores: historico.map((a) => a.bandaDisponivelKbps), cor: 'turquesa' },
         ]}
-        referencias={[{ nome: 'teto', valor: perfil.tetoKbps }]}
+        referencias={[{ nome: 'teto', valor: perfil.tetoKbps, foraDoEixo: true }]}
         faixas={limitacoes}
         marcas={marcas}
-        piso={perfil.tetoKbps}
         formatar={formatarKbps}
       />
       <Grafico

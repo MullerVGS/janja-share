@@ -11,16 +11,18 @@ export interface SerieDoGrafico {
   cor: CorDaSerie
   /** A série que o gráfico é sobre: ganha o valor atual no cabeçalho. */
   destaque?: boolean
-  /**
-   * Não puxa o eixo: acima do teto a linha cola no topo, e o valor real fica na leitura. É
-   * para a banda disponível estimada, que pode ser dez vezes o teto pedido e achataria o resto.
-   */
-  foraDoEixo?: boolean
 }
 
 export interface Referencia {
   nome: string
   valor: number
+  /**
+   * Não manda no eixo: a marca cola no topo e o número de verdade fica na legenda. É para o
+   * teto do governador, que sobe sozinho e é dez vezes o tráfego real de uma tela parada —
+   * dentro do domínio ele achataria a série no chão e reescalaria o eixo a cada degrau, o que
+   * faz a linha de bitrate *encolher* na tela justamente enquanto o governador acerta.
+   */
+  foraDoEixo?: boolean
 }
 
 /** Uma amostra em que algo aconteceu — o governador agiu — com a frase que o ponteiro revela. */
@@ -59,8 +61,8 @@ export function Grafico({ titulo, series, referencias = [], faixas = [], piso = 
   const quantidade = Math.max(0, ...series.map((serie) => serie.valores.length))
   const xs = posicoesX(quantidade, TETO_DO_HISTORICO, LARGURA)
   const dominio = dominioY(
-    series.filter((serie) => !serie.foraDoEixo).map((serie) => serie.valores),
-    referencias.map((referencia) => referencia.valor),
+    series.map((serie) => serie.valores),
+    referencias.filter((referencia) => !referencia.foraDoEixo).map((referencia) => referencia.valor),
     piso,
   )
   const destaque = series.find((serie) => serie.destaque) ?? series[0]
@@ -135,28 +137,28 @@ export function Grafico({ titulo, series, referencias = [], faixas = [], piso = 
             />
           ))}
 
-          {referencias.map((referencia) => (
-            <line
-              key={referencia.nome}
-              className={estilos.referencia}
-              x1={0}
-              x2={LARGURA}
-              y1={yDe(referencia.valor, dominio, ALTURA)}
-              y2={yDe(referencia.valor, dominio, ALTURA)}
-            />
-          ))}
+          {referencias.map((referencia) => {
+            // Só uma referência `foraDoEixo` pode passar do topo — as outras entraram no domínio.
+            const grampeada = referencia.valor > dominio.maximo
+            const y = yDe(grampeada ? dominio.maximo : referencia.valor, dominio, ALTURA)
+            return (
+              <line
+                key={referencia.nome}
+                className={estilos.referencia}
+                data-grampeada={grampeada || undefined}
+                x1={0}
+                x2={LARGURA}
+                y1={y}
+                y2={y}
+              />
+            )
+          })}
 
           {series.map((serie) => (
             <path
               key={serie.nome}
               className={`${estilos.linha} ${estilos[serie.cor]} ${serie.destaque ? estilos.destaque : ''}`}
-              d={caminho(
-                serie.foraDoEixo ? serie.valores.map((valor) => (valor === null ? null : Math.min(valor, dominio.maximo))) : serie.valores,
-                xs,
-                dominio,
-                ALTURA,
-                degraus,
-              )}
+              d={caminho(serie.valores, xs, dominio, ALTURA, degraus)}
             />
           ))}
 

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DecisaoDoGovernador } from '../src/sala/governador'
@@ -60,15 +60,21 @@ function espectador(parcial: Partial<Espectador> = {}): Espectador {
   }
 }
 
-function montarTransmissao(telemetria: Telemetria, decisoes: DecisaoDoGovernador[] = []) {
+function montarTransmissao(telemetria: Telemetria, decisoes: DecisaoDoGovernador[] = [], perfilEfetivo = PERFIL_PADRAO) {
   return render(
     <Transmissao
       telemetria={telemetria}
-      perfilEfetivo={PERFIL_PADRAO}
+      perfilEfetivo={perfilEfetivo}
       decisoes={decisoes}
       nomeDe={(identidade) => identidade.split('-')[0] ?? identidade}
     />,
   )
+}
+
+/** As marcas do eixo Y daquele gráfico, como a pessoa as lê. */
+function eixoDe(container: HTMLElement, titulo: string): (string | null)[] {
+  const figura = within(container).getByRole('img', { name: titulo }).closest('figure') as HTMLElement
+  return [...figura.querySelectorAll('span[style]')].map((span) => span.textContent)
 }
 
 afterEach(() => vi.useRealTimers())
@@ -111,6 +117,49 @@ describe('aba Transmissão', () => {
     expect(robustez).toHaveTextContent('NACK 7')
     // Rótulo e valor são coisas distintas: o valor é só o número.
     expect(within(robustez).getByText('keyframes').nextSibling).toHaveTextContent(/^4$/)
+  })
+
+  /**
+   * O gráfico de Bitrate é a única janela do dono para conferir o governador em live real. Com o
+   * teto dentro do domínio ele mentia em três direções ao mesmo tempo: achatava o tráfego no
+   * chão, grampeava a banda medida no topo (escondendo a folga que é a condição de subir) e
+   * reescalava o eixo a cada degrau — fazendo a linha *encolher* enquanto o governador acertava.
+   */
+  describe('gráfico de Bitrate: o eixo é das séries, o teto é marca', () => {
+    const COM_TETO_ALTO = { ...PERFIL_PADRAO, tetoKbps: 12_000 }
+    const historico = [emissor({ kbps: 300, bandaDisponivelKbps: 400 })]
+
+    it('escala pelo tráfego e pela banda medida, não pelo teto conquistado', () => {
+      const { container } = montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: historico }, [], COM_TETO_ALTO)
+      // tetoRedondo(400) = 500; com o teto de 12 Mb/s no domínio isso seria tetoRedondo(12000) = 20 Mb/s.
+      expect(eixoDe(container, 'Bitrate')).toEqual(['250 kb/s', '500 kb/s'])
+    })
+
+    it('a banda disponível é desenhada no eixo como a outra série — comparar as duas é o produto', () => {
+      const { container } = montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: historico }, [], COM_TETO_ALTO)
+      const figura = within(container).getByRole('img', { name: 'Bitrate' }).closest('figure') as HTMLElement
+      const [saindo, banda] = [...figura.querySelectorAll('path')].map((linha) => linha.getAttribute('d'))
+      // 300 de 500 e 400 de 500: alturas distintas, e nenhuma colada no topo (y = 0).
+      expect(saindo).toMatch(/^M[\d.]+ 38\.4$/)
+      expect(banda).toMatch(/^M[\d.]+ 19\.2$/)
+    })
+
+    it('o teto vira marca grampeada no topo, e o número segue legível na legenda', () => {
+      const { container } = montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: historico }, [], COM_TETO_ALTO)
+      const figura = within(container).getByRole('img', { name: 'Bitrate' }).closest('figure') as HTMLElement
+      expect(figura.querySelector('line[data-grampeada]')?.getAttribute('y1')).toBe('0')
+      expect(within(figura).getByRole('list')).toHaveTextContent('teto 12,0 Mb/s')
+    })
+
+    it('o degrau seguinte do governador não reescala o eixo', () => {
+      const { container } = montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: historico }, [], COM_TETO_ALTO)
+      const antes = eixoDe(container, 'Bitrate')
+
+      cleanup()
+      const depois = montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: historico }, [], { ...PERFIL_PADRAO, tetoKbps: 24_000 })
+
+      expect(eixoDe(depois.container, 'Bitrate')).toEqual(antes)
+    })
   })
 
   it('rede não medida aparece com todas as letras, tanto no cartão quanto no Como chega', () => {

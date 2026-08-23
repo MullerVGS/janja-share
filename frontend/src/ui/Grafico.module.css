@@ -75,6 +75,15 @@
   vector-effect: non-scaling-stroke;
 }
 
+/* Grampeada no topo: a referência está acima de tudo que o gráfico desenha. Cor e traço
+   próprios porque ali já mora a linha da grade — sem isso ela some dentro dela, e o teto do
+   governador ficaria invisível justamente na hora em que ele importa. */
+.referencia[data-grampeada] {
+  stroke: var(--atencao);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 4;
+}
+
 .linha {
   fill: none;
   stroke-width: 1.5;

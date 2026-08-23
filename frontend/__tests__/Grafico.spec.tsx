@@ -65,23 +65,57 @@ describe('gráfico', () => {
   })
 })
 
-describe('série fora do eixo', () => {
-  it('não puxa o domínio: o eixo fica no teto das outras séries e a linha cola no topo', () => {
-    const { container } = render(
+describe('referência fora do eixo', () => {
+  function montarComTeto(teto: number) {
+    return render(
       <Grafico
         titulo="Bitrate"
         series={[
           { nome: 'saindo', valores: [1000, 1200], cor: 'acao', destaque: true },
-          { nome: 'disponível', valores: [50_000, 50_000], cor: 'turquesa', foraDoEixo: true },
+          { nome: 'disponível', valores: [1500, 1600], cor: 'turquesa' },
         ]}
-        referencias={[{ nome: 'teto', valor: 2500 }]}
-        piso={2500}
+        referencias={[{ nome: 'teto', valor: teto, foraDoEixo: true }]}
         formatar={(valor) => `${valor}`}
       />,
     )
-    const eixo = container.querySelectorAll('span[style]')
-    expect([...eixo].map((span) => span.textContent)).toEqual(['1250', '2500'])
-    const linhas = container.querySelectorAll('path')
-    expect(linhas[1]?.getAttribute('d')).toMatch(/^M[\d.]+ 0L[\d.]+ 0$/)
+  }
+
+  it('não manda no domínio: o eixo é das séries e a marca do teto cola no topo', () => {
+    const { container } = montarComTeto(50_000)
+
+    const eixo = [...container.querySelectorAll('span[style]')].map((span) => span.textContent)
+    expect(eixo).toEqual(['1000', '2000']) // tetoRedondo(1600), não tetoRedondo(50 000)
+    const teto = container.querySelector('line[data-grampeada]')
+    expect(teto).not.toBeNull()
+    expect(teto?.getAttribute('y1')).toBe('0')
+    // As duas séries continuam desenhadas dentro do eixo — nenhuma foi grampeada no topo.
+    const linhas = [...container.querySelectorAll('path')].map((linha) => linha.getAttribute('d'))
+    expect(linhas.every((d) => d?.includes(' 0L'))).toBe(false)
+    // O número de verdade não se perde: ele fica na legenda.
+    expect(screen.getByRole('list')).toHaveTextContent('teto 50000')
+  })
+
+  it('a escala não se move quando o teto sobe — é isso que faz a série encolher na tela', () => {
+    const { container, rerender } = montarComTeto(4000)
+    const antes = [...container.querySelectorAll('span[style]')].map((span) => span.textContent)
+
+    rerender(
+      <Grafico
+        titulo="Bitrate"
+        series={[
+          { nome: 'saindo', valores: [1000, 1200], cor: 'acao', destaque: true },
+          { nome: 'disponível', valores: [1500, 1600], cor: 'turquesa' },
+        ]}
+        referencias={[{ nome: 'teto', valor: 12_000, foraDoEixo: true }]}
+        formatar={(valor) => `${valor}`}
+      />,
+    )
+
+    expect([...container.querySelectorAll('span[style]')].map((span) => span.textContent)).toEqual(antes)
+  })
+
+  it('referência que cabe no domínio continua sendo linha de verdade, não grampeada', () => {
+    const { container } = montarComTeto(1200)
+    expect(container.querySelector('line[data-grampeada]')).toBeNull()
   })
 })
