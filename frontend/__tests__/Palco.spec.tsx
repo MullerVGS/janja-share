@@ -15,6 +15,7 @@ interface Cenario {
   volumes?: ControleDeVolumes
   /** A sala inteira começa com a interface visível; testar o oposto é escolha explícita do teste. */
   interfaceVisivel?: boolean
+  aoTentarDeNovo?: (identidade: string) => void
 }
 
 function Palquinho({
@@ -24,6 +25,7 @@ function Palquinho({
   aoFocar = vi.fn(),
   volumes = volumesFalsos(),
   interfaceVisivel = true,
+  aoTentarDeNovo = vi.fn(),
 }: Cenario) {
   const zoom = useZoom(pecas)
   return (
@@ -35,6 +37,7 @@ function Palquinho({
       volumes={volumes}
       interfaceVisivel={interfaceVisivel}
       zoom={zoom}
+      aoTentarDeNovo={aoTentarDeNovo}
     />
   )
 }
@@ -146,6 +149,54 @@ describe('palco: a etiqueta', () => {
 
     fireEvent.click(botao)
     expect(volumes.alternarMudo).toHaveBeenCalledWith('Sadia', 'tela')
+  })
+})
+
+describe('palco: o aviso do cão de guarda', () => {
+  it('enquanto tenta, conta que a tela ainda não chegou — e não oferece botão nenhum', () => {
+    montarPalco({ pecas: [peca('Sadia', { ehTela: true, recepcao: 'retomando' })] })
+
+    expect(screen.getByRole('status')).toHaveTextContent('a tela de Sadia ainda não chegou aqui — tentando de novo…')
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+  })
+
+  /**
+   * `'desistiu'` é estado absorvente: o vigia não tenta uma quarta vez sozinho. Sem este botão o
+   * produto final do cão de guarda seria mandar o espectador pedir para o outro reiniciar a
+   * transmissão — exatamente a dependência que ele existe para eliminar (§4 do desenho).
+   */
+  it('depois de desistir, o botão rearma o vigia daquela tela — sem depender de quem transmite', () => {
+    const aoTentarDeNovo = vi.fn()
+    montarPalco({ pecas: [peca('Sadia', { ehTela: true, recepcao: 'desistiu' })], aoTentarDeNovo })
+
+    expect(screen.getByRole('status')).toHaveTextContent('a tela de Sadia nunca chegou aqui.')
+    // A frase antiga mandava pedir para a outra pessoa reiniciar: é o que o botão substitui.
+    expect(screen.getByRole('status')).not.toHaveTextContent(/reiniciar/i)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+
+    expect(aoTentarDeNovo).toHaveBeenCalledExactlyOnceWith('sadia')
+  })
+
+  it('em tela cheia o aviso continua desenhado — é status, não moldura', () => {
+    const telaCheia = habilitarTelaCheia()
+    const resultado = montarPalco({
+      pecas: [peca('Sadia', { ehTela: true, recepcao: 'desistiu' })],
+      emFoco: true,
+    })
+
+    clicarDuas(imagemDe(resultado))
+    expect(telaCheia.atual).not.toBeNull()
+
+    const aviso = screen.getByRole('status')
+    expect(aviso).toBeInTheDocument()
+    expect(getComputedStyle(aviso).display).not.toBe('none')
+    expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument()
+  })
+
+  it('tela que chega bem não tem aviso nenhum', () => {
+    montarPalco({ pecas: [peca('Sadia', { ehTela: true, recepcao: 'ok' })] })
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
 

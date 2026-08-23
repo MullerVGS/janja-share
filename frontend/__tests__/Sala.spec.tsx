@@ -32,7 +32,7 @@ vi.mock('../src/sala/useSala', async () => {
 // A telemetria tem relógio próprio a 1 Hz; nestes testes ela não tem nada a dizer.
 vi.mock('../src/telemetria/useTelemetria', async () => {
   const { TELEMETRIA_VAZIA } = await import('../src/telemetria/coletor')
-  return { useTelemetria: () => TELEMETRIA_VAZIA }
+  return { useTelemetria: () => ({ ...TELEMETRIA_VAZIA, rearmarRecepcao: vi.fn() }) }
 })
 
 vi.mock('../src/sala/useCompartilhamento', async () => {

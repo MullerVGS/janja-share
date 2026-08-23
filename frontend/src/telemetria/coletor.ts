@@ -46,14 +46,30 @@ export const TELEMETRIA_VAZIA: Telemetria = {
 }
 
 /**
+ * O que o coletor deixa na mão de quem o criou: o relógio se para, e o cão de guarda de uma
+ * tela se rearma. `recepcao.ts` continua puro — quem guarda os vigias é este módulo, e este é
+ * o único caminho de fora para dentro deles.
+ */
+export interface Coletor {
+  parar(): void
+  /**
+   * Põe o vigia daquela tela de volta em `VIGIA_NOVO` — é o "tentar de novo" do quadro que
+   * desistiu. `'desistiu'` é absorvente de propósito (três reassinaturas sem resposta não
+   * viram uma quarta sozinhas); sem esta porta, o produto final do cão de guarda seria uma
+   * mensagem mandando pedir para o outro reiniciar a transmissão.
+   */
+  rearmar(identidade: string): void
+}
+
+/**
  * O relógio único da telemetria: a cada segundo lê o sender da tela própria e o receiver de
  * cada tela assinada, anota as amostras e, a cada dois segundos, relata ao dono de cada tela
  * o que está chegando. Também escuta o data channel pelos relatos dos outros.
  *
  * Tudo é lido do `Room` na hora da leitura — publicar e despublicar não precisam avisar
- * ninguém. Devolve a função que para o relógio.
+ * ninguém.
  */
-export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => void): () => void {
+export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => void): Coletor {
   let estado = TELEMETRIA_VAZIA
   let vivo = true
   let lendo = false
@@ -269,9 +285,19 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   sala.on(RoomEvent.DataReceived, receber)
   const relogio = setInterval(() => void bater(), INTERVALO_MS)
 
-  return () => {
-    vivo = false
-    clearInterval(relogio)
-    sala.off(RoomEvent.DataReceived, receber)
+  return {
+    parar() {
+      vivo = false
+      clearInterval(relogio)
+      sala.off(RoomEvent.DataReceived, receber)
+    },
+
+    rearmar(identidade: string) {
+      // Só tela ainda assinada se rearma; quem já saiu não tem vigia a que voltar.
+      if (!vigias.has(identidade)) return
+      vigias.set(identidade, VIGIA_NOVO)
+      // Publicar na hora, sem esperar a batida: quem clicou tem de ver o aviso sair.
+      publicar({ ...estado, recepcao: recepcaoAtual() })
+    },
   }
 }

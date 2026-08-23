@@ -5,6 +5,7 @@ import { useCliqueOuDuplo } from '../../sala/useCliqueOuDuplo'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
 import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
+import { Botao } from '../../ui/Botao'
 import { IconeMicrofoneMudo } from '../../ui/Icone'
 import { usePiP, useTelaCheia } from './assistir'
 import { useCrescerEEncolher } from './transicao'
@@ -24,6 +25,8 @@ interface Props {
    * com `useAutoOcultar`; a pílula do quadro em foco segue o mesmo relógio, não o hover. */
   interfaceVisivel: boolean
   zoom: ControleDeZoom
+  /** Rearma o cão de guarda daquela tela — o botão do quadro que desistiu de receber. */
+  aoTentarDeNovo(identidade: string): void
 }
 
 /** A pílula em tela cheia some 2 s depois do último movimento, e o hover não a governa mais. */
@@ -70,6 +73,7 @@ function Quadro({
   volumes,
   interfaceVisivel,
   zoom,
+  aoTentarDeNovo,
 }: Omit<Props, 'pecas'> & { peca: Peca }) {
   const quadro = useRef<HTMLDivElement>(null)
   const moldura = useRef<HTMLDivElement>(null)
@@ -152,12 +156,21 @@ function Quadro({
 
       {peca.recepcao === 'retomando' && (
         <p className={estilos.avisoDaRecepcao} role="status">
-          a tela de {peca.nome} ainda não chegou aqui — tentando de novo…
+          <span className={estilos.textoDaRecepcao}>a tela de {peca.nome} ainda não chegou aqui — tentando de novo…</span>
         </p>
       )}
+      {/* Três reassinaturas sem resposta não viram uma quarta sozinhas — mas quem está olhando o
+          retângulo preto tem de poder mandar tentar de novo sem depender de quem transmite. */}
       {peca.recepcao === 'desistiu' && (
         <p className={estilos.avisoDaRecepcao} role="status">
-          a tela de {peca.nome} nunca chegou aqui. Peça para {peca.nome} reiniciar a transmissão.
+          <span className={estilos.textoDaRecepcao}>a tela de {peca.nome} nunca chegou aqui.</span>
+          <Botao
+            aparencia="fantasma"
+            className={estilos.tentarDeNovo}
+            onClick={() => aoTentarDeNovo(peca.identidade)}
+          >
+            Tentar de novo
+          </Botao>
         </p>
       )}
 
@@ -200,7 +213,7 @@ function Quadro({
  * quadro que estava na grade (mesma chave, mesmo pai), e é isso que impede o vídeo de piscar
  * ao entrar e sair do foco.
  */
-export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, interfaceVisivel, zoom }: Props) {
+export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, interfaceVisivel, zoom, aoTentarDeNovo }: Props) {
   return (
     <div className={estilos.palco} data-modo={emFoco ? 'foco' : 'grade'}>
       {pecas.map((peca) => (
@@ -213,6 +226,7 @@ export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, interfac
           volumes={volumes}
           interfaceVisivel={interfaceVisivel}
           zoom={zoom}
+          aoTentarDeNovo={aoTentarDeNovo}
         />
       ))}
       {pecas.length === 0 && <p className={estilos.vazio}>Você é a primeira pessoa aqui.</p>}

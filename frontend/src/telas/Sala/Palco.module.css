@@ -155,6 +155,10 @@
   right: 0;
   top: 0;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e2);
   margin: 0;
   padding: var(--e2) var(--e4);
   background: var(--atencao-fraca);
@@ -162,14 +166,21 @@
   font-size: var(--texto-sm);
   font-weight: 600;
   text-align: center;
+}
+
+/* O aviso NÃO some em tela cheia — ao contrário da etiqueta e da pílula, que são moldura. Ele é
+   status: tela cheia é exatamente onde a pessoa está encarando o retângulo preto sem explicação. */
+
+.textoDaRecepcao {
+  min-width: 0;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
 }
 
-/* Tela cheia é tela cheia: lá dentro só a pílula pode aparecer, e só quando pedida. */
-.quadro[data-cheia] .avisoDaRecepcao {
-  display: none;
+.tentarDeNovo {
+  flex: none;
+  color: var(--atencao-texto);
 }
 
 .etiqueta {

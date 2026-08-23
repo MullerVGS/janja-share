@@ -117,11 +117,11 @@ class SalaFalsa {
 function arrancar(sala: SalaFalsa) {
   let atual: Telemetria = TELEMETRIA_VAZIA
   let avisos = 0
-  const parar = criarColetor(sala as unknown as Room, (telemetria) => {
+  const coletor = criarColetor(sala as unknown as Room, (telemetria) => {
     atual = telemetria
     avisos += 1
   })
-  return { parar, atual: () => atual, avisos: () => avisos }
+  return { ...coletor, atual: () => atual, avisos: () => avisos }
 }
 
 async function passar(segundos: number) {
@@ -345,6 +345,39 @@ describe('coletor de telemetria', () => {
 
       expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
       expect(publicacao?.setSubscribed).not.toHaveBeenCalled()
+    })
+
+    /**
+     * `'desistiu'` é absorvente: sem esta porta, o produto final do cão de guarda seria uma
+     * mensagem mandando pedir para o outro reiniciar a transmissão — a dependência que a §4 do
+     * desenho abre dizendo que ia eliminar.
+     */
+    it('rearmar devolve o vigia de uma tela que desistiu ao começo — e uma reassinatura nova sai', async () => {
+      const sala = new SalaFalsa()
+      const publicacao = sala.entraAssistindoSemFaixa('bia-1a2b3c', 'Bia')
+      const { atual, rearmar } = arrancar(sala)
+
+      await passar(30)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('desistiu')
+      const tentativasAntes = publicacao.setSubscribed.mock.calls.length
+
+      rearmar('bia-1a2b3c')
+
+      // O aviso sai na hora do clique: quem apertou não espera a batida seguinte para ver efeito.
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('parada')
+      await passar(6)
+      expect(publicacao.setSubscribed.mock.calls.length).toBeGreaterThan(tentativasAntes)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('retomando')
+    })
+
+    it('rearmar quem não é tela assinada nenhuma não inventa vigia', async () => {
+      const sala = new SalaFalsa()
+      const { atual, rearmar } = arrancar(sala)
+      await passar(1)
+
+      rearmar('ninguem-aqui')
+
+      expect(atual().recepcao.has('ninguem-aqui')).toBe(false)
     })
 
     it('participante que sai tem o vigia descartado — a próxima leitura não acha rastro de quem não está mais na sala', async () => {

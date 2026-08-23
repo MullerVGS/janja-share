@@ -181,6 +181,7 @@ export function Sala() {
         volumes={volumes}
         interfaceVisivel={interfaceVisivel}
         zoom={zoom}
+        aoTentarDeNovo={telemetria.rearmarRecepcao}
       />
 
       <div
