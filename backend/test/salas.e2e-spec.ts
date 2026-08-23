@@ -184,6 +184,31 @@ describe('salas/', () => {
       expect(res.body).toEqual({ erro: 'muitas_salas' })
     })
 
+    /**
+     * Precedência entre dois erros que valem ao mesmo tempo. O use case valida o nome ANTES de
+     * pedir `listarSalasSemCache()` — decisão explícita: quem mandou um nome impossível recebe
+     * o código que diz o que fazer, e não um `muitas_salas` que some quando alguém sair de uma
+     * sala. Sem esta guarda, inverter as duas checagens num refactor não quebra nada.
+     */
+    it('nome inválido vence muitas_salas quando os dois valem — a ordem das checagens é contrato', async () => {
+      sfu.salasAtuais = Array.from({ length: 20 }, (_, i) => ({
+        slug: `sala-${i}`,
+        nomeNoSfu: `sala-${i}-x1`,
+        nome: `Sala ${i}`,
+        pessoas: [],
+        telasNoAr: 0,
+        cheia: false,
+      }))
+
+      const res = await request(app.getHttpServer())
+        .post('/api/salas')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ nome: '🎮', seuNome: 'Ana' })
+
+      expect(res.status).toBe(400)
+      expect(res.body).toEqual({ erro: 'nome_da_sala_invalido' })
+    })
+
     it('linha órfã do mesmo slug é sobrescrita — nome reusado não herda senha de sala morta', async () => {
       const ds = dataSource(app)
       await ds.query(`INSERT INTO salas (slug, senha_hash) VALUES ($1, $2)`, ['jogatina', await cifrar('senha-antiga')])
