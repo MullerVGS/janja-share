@@ -1,10 +1,18 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { Room } from 'livekit-client'
+import type { LocalTrackPublication, Room } from 'livekit-client'
 import { describe, expect, it, vi } from 'vitest'
 import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { Controles } from '../src/telas/Sala/Controles'
 import { compartilhamentoFalso } from './apoio/compartilhamentoFalso'
+
+/** A publicação do áudio da tela reduzida ao que a barra toca: mudo e a faixa. */
+function audioDaTelaFalso(mudo: boolean): LocalTrackPublication {
+  return {
+    isMuted: mudo,
+    track: { mediaStreamTrack: { id: 'som-da-tela' } as unknown as MediaStreamTrack },
+  } as unknown as LocalTrackPublication
+}
 
 /** O participante local reduzido ao que a barra toca: o estado de cada dispositivo e a troca. */
 function salaComDispositivos(parcial: { microfone?: boolean; camera?: boolean } = {}) {
@@ -59,6 +67,48 @@ describe('a barra flutuante', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Trocar de tela' }))
     expect(compartilhamento.trocarDeTela).toHaveBeenCalledOnce()
+  })
+
+  it('clicar em compartilhar/parar chama compartilhamento.alternar — o único lugar que aciona esse toggle', async () => {
+    const usuario = userEvent.setup()
+    const { sala } = salaComDispositivos()
+    const compartilhamento = compartilhamentoFalso() as Compartilhamento
+    montarBarra({ sala, compartilhamento })
+
+    await usuario.click(screen.getByRole('button', { name: 'Compartilhar tela' }))
+    expect(compartilhamento.alternar).toHaveBeenCalledOnce()
+  })
+
+  it('sem publicação de áudio, o botão da tela fica desabilitado e diz onde estava a escolha', () => {
+    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) })
+
+    const botao = screen.getByRole('button', { name: 'Áudio da tela — marque "compartilhar áudio" no seletor' })
+    expect(botao).toBeDisabled()
+    expect(botao).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('com áudio no ar: "Calar o áudio da tela", ligado, e o clique chama alternarAudioDaTela', async () => {
+    const usuario = userEvent.setup()
+    const compartilhamento = compartilhamentoFalso({
+      ativo: true,
+      audioDaTela: audioDaTelaFalso(false),
+    }) as Compartilhamento
+    montarBarra({ compartilhamento })
+
+    const botao = screen.getByRole('button', { name: 'Calar o áudio da tela' })
+    expect(botao).toHaveAttribute('aria-pressed', 'true')
+    expect(botao).toBeEnabled()
+
+    await usuario.click(botao)
+    expect(compartilhamento.alternarAudioDaTela).toHaveBeenCalledOnce()
+  })
+
+  it('com áudio mudo: "Devolver o áudio da tela", desligado', () => {
+    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true, audioDaTela: audioDaTelaFalso(true) }) })
+
+    const botao = screen.getByRole('button', { name: 'Devolver o áudio da tela' })
+    expect(botao).toHaveAttribute('aria-pressed', 'false')
+    expect(botao).toBeEnabled()
   })
 
   it('microfone e câmera pedem a troca ao SDK e se anunciam pelo estado', async () => {

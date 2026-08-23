@@ -51,6 +51,14 @@ export function Sala() {
     if (faixas) void compartilhamento.adotar(faixas)
   }, [conexao, compartilhamento])
 
+  // Se a conexão falhou (SFU fora, credencial ruim), a sala nunca chega a `Connected` e o efeito
+  // acima nunca roda — sem isto a captura só morreria pelo TTL de `capturaPendente`, 30s depois.
+  // Ler `erro` não é cleanup: o StrictMode não atrapalha aqui, a invocação dupla do dev roda o
+  // mesmo no-op duas vezes.
+  useEffect(() => {
+    if (erro) retirarCaptura()?.forEach((faixa) => faixa.stop())
+  }, [erro])
+
   // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
   // mostrava "Nada dito ainda." enquanto os outros continuavam falando.
