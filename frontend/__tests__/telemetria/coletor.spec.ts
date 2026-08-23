@@ -28,6 +28,37 @@ function receiverFalso() {
   return { getStats: statsQueAndam('inbound-rtp') }
 }
 
+/**
+ * Um receiver cujo bitrate nunca sai do zero — para simular a tela que nunca entrega nada, sem
+ * o crescimento de `statsQueAndam`. O `timestamp` segue o relógio (falso) real, não uma
+ * contagem de chamadas: uma leitura pode ficar de fora de uma batida (a janela do reassinar), e
+ * o relógio da amostra precisa continuar batendo com o do teste mesmo assim.
+ */
+function receiverParado() {
+  return {
+    getStats: vi.fn(async () => new Map([
+      ['s', { type: 'inbound-rtp', kind: 'video', timestamp: Date.now(), bytesReceived: 0, framesDecoded: 0, framesReceived: 0 }],
+    ])),
+  }
+}
+
+/** A publicação remota de uma tela: sobrevive ao respiro do `reassinar` — só `track` some e volta. */
+function publicacaoRemotaFalsa(receiver: ReturnType<typeof receiverFalso> | null) {
+  const publicacao: {
+    trackSid: string
+    track?: { receiver: ReturnType<typeof receiverFalso> }
+    setSubscribed: ReturnType<typeof vi.fn>
+  } = {
+    trackSid: `tela-${Math.random().toString(36).slice(2)}`,
+    track: receiver ? { receiver } : undefined,
+    setSubscribed: vi.fn(),
+  }
+  publicacao.setSubscribed.mockImplementation((assinado: boolean) => {
+    publicacao.track = assinado && receiver ? { receiver } : undefined
+  })
+  return publicacao
+}
+
 /** A sala reduzida ao que o coletor toca: publicações de tela, data channel e participantes. */
 class SalaFalsa {
   ouvintes = new Map<string, Set<Ouvinte>>()
@@ -58,12 +89,18 @@ class SalaFalsa {
     this.minhaTela = { trackSid: `t${Math.random()}`, track: { sender } }
   }
 
+  /** `receiver: null` é "não publica tela nenhuma" — a publicação nem existe para o coletor. */
   entraAssistindo(identidade: string, nome: string, receiver: ReturnType<typeof receiverFalso> | null = receiverFalso()) {
-    this.remoteParticipants.set(identidade, {
-      identity: identidade,
-      name: nome,
-      getTrackPublication: () => (receiver ? { track: { receiver } } : undefined),
-    })
+    const publicacao = receiver === null ? undefined : publicacaoRemotaFalsa(receiver)
+    this.remoteParticipants.set(identidade, { identity: identidade, name: nome, getTrackPublication: () => publicacao })
+    return publicacao
+  }
+
+  /** Publica a tela, mas a faixa nunca chega a se materializar — o late joiner cuja assinatura não pegou. */
+  entraAssistindoSemFaixa(identidade: string, nome: string) {
+    const publicacao = publicacaoRemotaFalsa(null)
+    this.remoteParticipants.set(identidade, { identity: identidade, name: nome, getTrackPublication: () => publicacao })
+    return publicacao
   }
 
   receber(payload: Uint8Array, identidade: string, nome: string, topico = TOPICO_DA_TELEMETRIA) {
@@ -92,7 +129,7 @@ async function passar(segundos: number) {
 }
 
 describe('coletor de telemetria', () => {
-  beforeEach(() => vi.useFakeTimers())
+  beforeEach(() => vi.useFakeTimers({ now: 0 }))
   afterEach(() => vi.useRealTimers())
 
   it('com a tela no ar, anota uma amostra por segundo; a segunda já tem taxa', async () => {
@@ -233,5 +270,94 @@ describe('coletor de telemetria', () => {
     await passar(3)
     expect(sala.quantosOuvintes()).toBe(0)
     expect(atual().emissor).toHaveLength(1)
+  })
+
+  describe('recepção: o vigia sobrevive à fiação do reassinar', () => {
+    it('publicação sem faixa nenhuma alimenta o vigia com null e dispara setSubscribed(false), depois (true)', async () => {
+      const sala = new SalaFalsa()
+      const publicacao = sala.entraAssistindoSemFaixa('bia-1a2b3c', 'Bia')
+      arrancar(sala)
+
+      await passar(6)
+
+      expect(publicacao.setSubscribed).toHaveBeenNthCalledWith(1, false)
+      expect(publicacao.setSubscribed).toHaveBeenNthCalledWith(2, true)
+    })
+
+    it('o vigia sobrevive à janela em que o próprio reassinar esvazia `track` — as tentativas não voltam a zero', async () => {
+      const sala = new SalaFalsa()
+      const receiver = receiverParado()
+      // Religar não é instantâneo: o SDK de verdade demora mais que os 250 ms do `reassinar`
+      // para a faixa voltar a existir — o suficiente para a batida seguinte (1 Hz) cair no meio
+      // do caminho e observar `track` ainda vazio. É exatamente essa janela que o bug apagava.
+      const publicacao: { trackSid: string; track?: { receiver: typeof receiver }; setSubscribed: ReturnType<typeof vi.fn> } = {
+        trackSid: 'tela-fixa',
+        track: { receiver },
+        setSubscribed: vi.fn(),
+      }
+      publicacao.setSubscribed.mockImplementation((assinado: boolean) => {
+        if (!assinado) {
+          publicacao.track = undefined
+          return
+        }
+        setTimeout(() => {
+          publicacao.track = { receiver }
+        }, 1500)
+      })
+      sala.remoteParticipants.set('bia-1a2b3c', { identity: 'bia-1a2b3c', name: 'Bia', getTrackPublication: () => publicacao })
+      const { atual } = arrancar(sala)
+
+      // Sem a correção, cada janela sem `track` apaga o vigia e zera as tentativas — e
+      // TENTATIVAS_MAXIMAS nunca seria alcançado, então 'desistiu' nunca apareceria.
+      await passar(30)
+
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('desistiu')
+    })
+
+    it('tela que entregou bytes e depois fica com bitrate zerado não dispara reassinatura — está parada de verdade, não é o bug', async () => {
+      const sala = new SalaFalsa()
+      const receiver = receiverFalso()
+      const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', receiver)
+      const { atual } = arrancar(sala)
+
+      await passar(2)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
+
+      // A mesma faixa (mesmo trackSid) passa a entregar bitrate zerado — os bytes acumulados
+      // congelam no valor que `statsQueAndam` já tinha alcançado na 2ª leitura (2 × 125 000).
+      receiver.getStats.mockImplementation(async () => new Map([
+        [
+          's',
+          {
+            type: 'inbound-rtp' as const,
+            kind: 'video',
+            timestamp: Date.now(),
+            bytesReceived: 250_000,
+            framesDecoded: 60,
+            framesReceived: 60,
+            frameWidth: 1920,
+            frameHeight: 1080,
+          },
+        ],
+      ]))
+
+      await passar(30)
+
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
+      expect(publicacao?.setSubscribed).not.toHaveBeenCalled()
+    })
+
+    it('participante que sai tem o vigia descartado — a próxima leitura não acha rastro de quem não está mais na sala', async () => {
+      const sala = new SalaFalsa()
+      sala.entraAssistindo('bia-1a2b3c', 'Bia')
+      const { atual } = arrancar(sala)
+
+      await passar(1)
+      expect(atual().recepcao.has('bia-1a2b3c')).toBe(true)
+
+      sala.remoteParticipants.delete('bia-1a2b3c')
+      await passar(1)
+      expect(atual().recepcao.has('bia-1a2b3c')).toBe(false)
+    })
   })
 })

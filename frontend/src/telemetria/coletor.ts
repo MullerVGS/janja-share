@@ -63,6 +63,11 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   let baseDoEmissor: BaseDoEmissor | null = null
   const basesRecebidas = new Map<string, BaseDoEspectador | null>()
   const vigias = new Map<string, Vigia>()
+  // A faixa que cada vigia está olhando. `reassinar` esvazia `publicacao.track` por uma janela
+  // do tamanho do intervalo entre batidas — sem isto, uma batida caindo nessa janela pareceria
+  // "a tela sumiu" e apagaria o vigia junto, resetando as tentativas a cada ciclo (nunca desiste)
+  // e reabrindo a vigilância de uma tela já confirmada em `'ok'` (o falso positivo de volta).
+  const sidsRecebidos = new Map<string, string>()
 
   const publicar = (proximo: Telemetria) => {
     estado = proximo
@@ -79,6 +84,14 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     if (!publicacao || !('setSubscribed' in publicacao)) return
     publicacao.setSubscribed(false)
     setTimeout(() => publicacao.setSubscribed(true), 250)
+  }
+
+  /** Avalia a leitura mais recente daquela tela e dispara a reassinatura quando for a vez. */
+  function avaliarEAgir(identidade: string, amostra: AmostraDoEspectador) {
+    const vigia = vigias.get(identidade) ?? VIGIA_NOVO
+    const passo = avaliarRecepcao(vigia, { emMs: amostra.emMs, kbps: amostra.kbps }, amostra.emMs)
+    vigias.set(identidade, passo.vigia)
+    if (passo.acao === 'reassinar') void reassinar(identidade)
   }
 
   async function lerEmissor(): Promise<Historico<AmostraDoEmissor>> {
@@ -119,13 +132,42 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   async function lerRecebidas(): Promise<Map<string, Historico<AmostraDoEspectador>>> {
     const recebidas = new Map<string, Historico<AmostraDoEspectador>>()
     const leituras: Promise<void>[] = []
+    const vistos = new Set<string>()
 
     for (const participante of sala.remoteParticipants.values()) {
-      const receiver = (participante.getTrackPublication(Track.Source.ScreenShare)?.track as RemoteTrack | undefined)
-        ?.receiver
-      if (!receiver) continue
+      // A publicação é o que existe de verdade; o `track` (e o `receiver` que ele expõe) pode
+      // estar temporariamente ausente — assinatura que ainda não se materializou, ou o respiro
+      // do `reassinar`. Chavear por publicação, não por `receiver`, é o que faz o vigia e as
+      // bases sobreviverem a essa ausência em vez de serem apagados a cada batida sem faixa.
+      const publicacao = participante.getTrackPublication(Track.Source.ScreenShare)
+      if (!publicacao) continue
       const identidade = participante.identity
+      vistos.add(identidade)
+
+      // Faixa nova — primeira vez que esta tela é vista, ou a pessoa trocou de tela: os
+      // contadores e o vigia da faixa anterior não valem para esta. Sem isto, uma troca de
+      // tela herda o vigia em `'ok'` da faixa antiga (nasce sem rede) e o primeiro delta de
+      // bytes contra a base do receiver antigo sai negativo.
+      if (sidsRecebidos.get(identidade) !== publicacao.trackSid) {
+        sidsRecebidos.set(identidade, publicacao.trackSid)
+        basesRecebidas.delete(identidade)
+        vigias.set(identidade, VIGIA_NOVO)
+      }
+
       const historico = estado.recebidas.get(identidade) ?? []
+      const receiver = (publicacao.track as RemoteTrack | undefined)?.receiver
+
+      if (!receiver) {
+        // Publicação sem faixa: a assinatura nunca chegou a se materializar, ou está na janela
+        // do `reassinar`. É o mesmo sintoma de "nada chegando" — alimentar com `null` em vez de
+        // pular a rodada é o que evita a tela que nunca ganha faixa ficar com `recepcao:
+        // undefined`, sem aviso e sem tentativa, para sempre.
+        const amostra = amostraVaziaDoEspectador(Date.now())
+        recebidas.set(identidade, anotar(historico, amostra))
+        avaliarEAgir(identidade, amostra)
+        continue
+      }
+
       leituras.push(
         receiver
           .getStats()
@@ -133,24 +175,25 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
             const leitura = lerAmostraDoEspectador(relatorio, basesRecebidas.get(identidade) ?? null)
             basesRecebidas.set(identidade, leitura.base)
             recebidas.set(identidade, anotar(historico, leitura.amostra))
-
-            const vigia = vigias.get(identidade) ?? VIGIA_NOVO
-            const passo = avaliarRecepcao(vigia, { emMs: leitura.amostra.emMs, kbps: leitura.amostra.kbps }, leitura.amostra.emMs)
-            vigias.set(identidade, passo.vigia)
-            if (passo.acao === 'reassinar') void reassinar(identidade)
+            avaliarEAgir(identidade, leitura.amostra)
           })
           .catch(() => {
             basesRecebidas.set(identidade, null)
-            recebidas.set(identidade, anotar(historico, amostraVaziaDoEspectador(Date.now())))
+            const amostra = amostraVaziaDoEspectador(Date.now())
+            recebidas.set(identidade, anotar(historico, amostra))
+            avaliarEAgir(identidade, amostra)
           }),
       )
     }
 
     await Promise.all(leituras)
-    for (const identidade of basesRecebidas.keys()) {
-      if (recebidas.has(identidade)) continue
-      basesRecebidas.delete(identidade)
+    // Só sai daqui quem realmente não tem mais publicação de tela — não quem só ficou uma
+    // batida sem `receiver`, que já foi tratado acima e continua em `vistos`.
+    for (const identidade of vigias.keys()) {
+      if (vistos.has(identidade)) continue
       vigias.delete(identidade)
+      sidsRecebidos.delete(identidade)
+      basesRecebidas.delete(identidade)
     }
     return recebidas
   }

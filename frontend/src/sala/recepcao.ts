@@ -2,14 +2,18 @@
  * O cão de guarda da recepção: uma tela assinada que nunca chega a entregar um byte sequer.
  *
  * O caso conhecido é entrar depois da live começada e ficar com o quadro preto até o
- * transmissor trocar de codec — republicar cria faixa nova, e faixa nova nasce chegando. Um
- * keyframe perdido no meio da assinatura tem o mesmo remédio: reassinar força um quadro-chave
- * novo, sem depender de quem transmite.
+ * transmissor trocar de codec — republicar cria faixa nova, e faixa nova nasce chegando.
+ * Reassinar é o mesmo remédio sem depender de quem transmite: força a assinatura a se
+ * refazer, com um quadro-chave novo.
  *
  * O vigia só olha para telas que **nunca** entregaram nada desde que foram assinadas. Assim
  * que uma amostra trouxer bytes, ele para de olhar para aquela tela — para sempre. É o que
  * deixa em paz o vídeo pausado, o documento parado, a pessoa que só não está mexendo em nada:
  * essas telas já entregaram algo antes, então zerar depois é parada de verdade, não o bug.
+ *
+ * Esse é também o limite da regra: um keyframe perdido depois de a tela já estar chegando
+ * não é coberto. O primeiro `kbps > 0` já encerrou a vigilância para sempre, e um soluço
+ * isolado numa tela que já provou que funciona nunca chega a acender o alarme.
  *
  * Nesta fase inicial — e só nela — `kbps: null` conta como "nada chegou", não como "sem
  * informação". Se o relatório do navegador nunca chegar a ter estatística nenhuma para a
