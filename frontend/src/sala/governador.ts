@@ -26,8 +26,9 @@ import { alturaDaResolucao, CODECS, resolucaoDaAltura, RESOLUCOES, TETO, type Pe
  *
  * Ele decide por duas vozes. A do emissor é a janela de amostras. A de quem assiste chega em
  * `espectadores`: o caso que o emissor sozinho não enxerga é encoder feliz, banda sobrando e um
- * amigo travando. Essa voz sempre segura a subida; com codec SVC ela para aí, porque o SFU já
- * dá ao amigo lento uma camada menor. Sem SVC não há camada: ela também faz descer.
+ * amigo travando. Essa voz segura a subida com qualquer sinal — inclusive o ambíguo, porque não
+ * subir é barato. Para **descer** ela precisa de perda de pacote, que só a rede explica; e nem
+ * isso com codec SVC, porque aí o SFU já dá ao amigo lento uma camada menor.
  *
  * É uma função pura sobre estado serializável; o relógio é o das amostras (`emMs`), não o da
  * máquina. Quem alimenta é o hook, uma vez por amostra nova. O pedido da pessoa deixou de ser
@@ -129,24 +130,66 @@ function menor(...valores: (number | null)[]): number | null {
 }
 
 /**
- * Alguém do outro lado está sofrendo agora?
+ * A voz de quem assiste, em dois predicados — e a assimetria entre eles é a regra inteira.
  *
- * Só entra sinal **do intervalo**: perda e desvio entre quadros são medidos entre dois relatos
- * e voltam a zero quando o problema passa. `freezes` é contador acumulado desde a assinatura —
- * qualquer limiar sobre ele gruda no primeiro engasgo e nunca mais solta, e um `alguemSofrendo`
- * grudado faria o governador de H.264 descer até o chão com a sala inteira lisa. O
- * congelamento entra por `desvioEntreQuadrosMs`, que é o mesmo fenômeno medido por intervalo:
- * quadro que não veio é intervalo que disparou.
+ * Só entra sinal **do intervalo**: perda, desvio entre quadros e ausência de quadro são medidos
+ * entre dois relatos e voltam a zero quando o problema passa. `freezes` é contador acumulado
+ * desde a assinatura — qualquer limiar sobre ele gruda no primeiro engasgo e nunca mais solta, e
+ * grudado ele faria o governador de H.264 descer até o chão com a sala inteira lisa.
  *
- * Quem sumiu não é levado em conta: relato velho descreve um problema que pode ter acabado —
- * ou uma pessoa que já saiu.
+ * Quem sumiu não é levado em conta: relato velho descreve um problema que pode ter acabado — ou
+ * uma pessoa que já saiu.
  */
-export function alguemSofrendo(espectadores: readonly Espectador[], agora: number): boolean {
-  return espectadores.some((espectador) => !sumiu(espectador, agora) && sofrendo(espectador.relato))
+
+/** Perda de pacote: o único sinal que só a rede explica. */
+function temPerda(relato: AmostraDoEspectador): boolean {
+  return (relato.perda ?? 0) > PERDA_QUE_SOFRE
 }
 
-function sofrendo(relato: AmostraDoEspectador): boolean {
-  return (relato.perda ?? 0) > PERDA_QUE_SOFRE || (relato.desvioEntreQuadrosMs ?? 0) > DESVIO_QUE_SOFRE_MS
+/**
+ * Quadros chegando fora de ritmo. É o congelamento medido por intervalo — mas é **ambíguo**: o
+ * desvio é entre quadros *decodificados*, e uma fonte que entrega poucos quadros irregulares
+ * (vídeo pausado, tela parada, jogo em fps baixo) passa de 80 ms com a rede impecável.
+ */
+function irregular(relato: AmostraDoEspectador): boolean {
+  return (relato.desvioEntreQuadrosMs ?? 0) > DESVIO_QUE_SOFRE_MS
+}
+
+/**
+ * Recepção parada de vez — o espectador mais prejudicado de todos, e o que some dos outros dois
+ * sinais: sem quadro decodificado não há desvio (`amostra.ts`, `decodificados > 0`), e sem
+ * pacote não há perda (`perdidos + recebidos === 0`). Os dois chegam `null`, e o relato de quem
+ * não está vendo nada se parece com o de quem está ótimo.
+ *
+ * `=== 0`, e nunca `?? 0`: zero é medida ("houve leitura e nada veio no intervalo"), `null` é
+ * ausência de medida — que é como chega o relato de quem não tem receiver naquela tela.
+ */
+function parado(relato: AmostraDoEspectador): boolean {
+  return relato.fpsDecodificado === 0 && (relato.kbps ?? 0) === 0
+}
+
+/**
+ * Segura a subida. Qualquer suspeita serve, inclusive a ambígua: não subir custa o que a pessoa
+ * já tem, e é o lado barato de errar.
+ */
+export function alguemSofrendo(espectadores: readonly Espectador[], agora: number): boolean {
+  return espectadores.some(
+    (espectador) =>
+      !sumiu(espectador, agora) &&
+      (temPerda(espectador.relato) || irregular(espectador.relato) || parado(espectador.relato)),
+  )
+}
+
+/**
+ * Autoriza descer (sem SVC). Só perda: descer com base ambígua é caro e se repete — cada descida
+ * reseta a janela, então uma tela parada num preset Jogo desceria um degrau a cada 5 s até o fim
+ * da escada com a sala lisa.
+ *
+ * `parado` de fora de propósito: nada chegando não se conserta encolhendo o que se manda. Isso é
+ * assinatura, e de assinatura cuida o cão de guarda da recepção.
+ */
+export function alguemPerdendo(espectadores: readonly Espectador[], agora: number): boolean {
+  return espectadores.some((espectador) => !sumiu(espectador, agora) && temPerda(espectador.relato))
 }
 
 /** O teto que a banda medida permite. Sem medida não há alvo — e sem alvo não se sobe. */
@@ -213,6 +256,7 @@ export function decidir(
   // subida numa transmissão que nunca cedeu nada.
   const limpoDesdeMs = motivoDe(nova) !== null ? agora : (estado.limpoDesdeMs ?? agora)
   const sofrendo = alguemSofrendo(espectadores, agora)
+  const perdendo = alguemPerdendo(espectadores, agora)
 
   const janelaCheia = janela.length >= JANELA
   const limitadas = janela.filter((amostra) => motivoDe(amostra) !== null)
@@ -224,7 +268,7 @@ export function decidir(
   // Com SVC o SFU já dá ao amigo lento uma camada menor, e descer puniria a sala pelo link
   // dele. Sem SVC a camada é uma só: o pior espectador é o teto de todo mundo. A janela cheia
   // é o que impede um relato ruim solto de derrubar a transmissão.
-  const doEspectador = janelaCheia && sofrendo && !CODECS[pedido.codec].svc
+  const doEspectador = janelaCheia && perdendo && !CODECS[pedido.codec].svc
 
   if (doEmissor || doEspectador) {
     const porBanda = limitadas.filter((amostra) => motivoDe(amostra) === 'banda').length
@@ -233,10 +277,14 @@ export function decidir(
     // O bitrate vai primeiro: é o eixo que quem assiste não vê mexer. Só que ele não devolve
     // ciclo nenhum — sob CPU o único caminho é encodar menos, e gastar uma janela apertando o
     // encoder seria adiar o conserto e piorar a imagem de graça.
+    //
+    // `subiuEmMs` fica de pé de propósito: como o eixo cedido só sobe depois de o teto chegar ao
+    // alvo, toda subida de degrau acontece com o teto acima do piso — e apagar a marca aqui
+    // deixaria a queima morta justamente no link que subiu, devolvendo o serrilhado 30 ↔ 45.
     if (motivo === 'banda') {
       const menor = descerOTeto(estado, pedido)
       if (menor !== null) {
-        return { ...estado, tetoKbps: menor, motivo, limpoDesdeMs: agora, subiuEmMs: null, janelaDesdeMs: agora }
+        return { ...estado, tetoKbps: menor, motivo, limpoDesdeMs: agora, janelaDesdeMs: agora }
       }
     }
 

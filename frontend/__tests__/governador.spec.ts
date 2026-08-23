@@ -269,6 +269,29 @@ describe('governador: subir', () => {
     expect(sessao.degrau).toBe(30)
   })
 
+  /**
+   * O eixo cedido só sobe depois de o teto chegar ao alvo — então toda subida de degrau acontece
+   * com o teto acima do piso, e a descida por banda que vem depois começa pelo teto. Se essa
+   * primeira janela apagasse a marca da subida, a queima nunca pegaria no link que subiu: seria
+   * sobe 45 → falha → teto absorve → desce 30 sem queimar → 30 s → 45 de novo, para sempre.
+   */
+  it('a descida do teto não desarma a queima do degrau que acabou de subir', () => {
+    const sessao = new Sessao(QUADROS).segundos(5, CPU)
+    sessao.segundos(30, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(45)
+
+    // Primeira janela sob banda: vai toda para o teto, e o degrau nem se mexe.
+    sessao.segundos(5, { ...NO_AR, limitadoPor: 'banda', fpsCodificado: 35 })
+    expect(sessao.estado).toMatchObject({ tetoKbps: 2_400, degrau: 45, queimados: [] })
+
+    // Segunda janela: o teto já está no piso, e agora o degrau desce — queimando os 45.
+    sessao.segundos(5, { ...NO_AR, limitadoPor: 'banda', fpsCodificado: 35 })
+    expect(sessao.estado).toMatchObject({ degrau: 30, queimados: [45] })
+
+    sessao.segundos(60, { ...NO_AR, fpsCodificado: 30 })
+    expect(sessao.degrau).toBe(30)
+  })
+
   it('descer de novo depois de 60 s não queima nada', () => {
     const sessao = new Sessao(QUADROS).segundos(5, CPU)
     sessao.segundos(30, { ...NO_AR, fpsCodificado: 30 })
@@ -383,10 +406,44 @@ describe('governador: o outro lado', () => {
     expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
   })
 
-  it('em codec sem SVC, espectador sofrendo faz descer, não só segurar', () => {
+  it('em codec sem SVC, espectador perdendo pacote faz descer, não só segurar', () => {
     const sofrendo = [espectador({ perda: 8 })]
     const sessao = new Sessao(JOGO).comEspectadores(sofrendo).segundos(20, NO_AR)
     expect(sessao.degrau).not.toBeNull()
+  })
+
+  /**
+   * O desvio é entre quadros *decodificados*: fonte que entrega poucos quadros irregulares —
+   * vídeo pausado, tela parada, jogo em fps baixo — passa de 80 ms com a rede impecável. Como
+   * cada descida reseta a janela, autorizar descida por ele levaria o preset Jogo ao fim da
+   * escada em ~30 s no cenário mais provável dele.
+   */
+  it('desvio sozinho segura a subida, mas não autoriza descida: tela parada não é rede ruim', () => {
+    const irregular = [espectador({ desvioEntreQuadrosMs: 240 })]
+    const sessao = new Sessao(JOGO).comEspectadores(irregular).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado).toMatchObject({ degrau: null, tetoKbps: null })
+  })
+
+  /**
+   * Sem quadro decodificado não há desvio e sem pacote não há perda: os dois chegam `null`, e o
+   * relato de quem não está vendo nada se parece com o de quem está ótimo.
+   */
+  it('quem não recebe quadro nenhum segura a subida — é o mais prejudicado, e some dos outros sinais', () => {
+    const travado = [espectador({ fpsDecodificado: 0, kbps: 0 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(travado).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeNull()
+  })
+
+  it('recepção parada não faz descer: encolher o que se manda não conserta o que não chega', () => {
+    const travado = [espectador({ fpsDecodificado: 0, kbps: 0 })]
+    const sessao = new Sessao(JOGO).comEspectadores(travado).segundos(60, NO_AR)
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('relato sem medida nenhuma não é sofrimento: zero é medida, `null` é ausência dela', () => {
+    const semLeitura = [espectador({})]
+    const sessao = new Sessao(TEXTO).comEspectadores(semLeitura).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
   })
 
   it('com SVC, espectador sofrendo não derruba a sala: o SFU já dá a ele uma camada menor', () => {
