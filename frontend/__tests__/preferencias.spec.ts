@@ -58,7 +58,7 @@ describe('preferências', () => {
     expect(PREFERENCIAS_PADRAO.perfil).toBe(PERFIL_PADRAO)
     expect(PREFERENCIAS_PADRAO.automatico).toBe(true)
 
-    const perfil = { ...PRESET_DO_CONTEUDO.movimento, resolucao: '720p' as const, tetoKbps: 12_000 }
+    const perfil = { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' as const, tetoKbps: 12_000 }
     gravarPreferencias({ perfil, automatico: false })
     expect(lerPreferencias()).toMatchObject({ perfil, automatico: false })
   })
@@ -71,6 +71,14 @@ describe('preferências', () => {
     expect(lerPreferencias()).toMatchObject({ perfil: PERFIL_PADRAO, automatico: true })
 
     localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, perfil: { ...PERFIL_PADRAO, tetoKbps: 999_999 } }))
+    expect(lerPreferencias().perfil).toEqual(PERFIL_PADRAO)
+
+    // O preset "movimento" virou "jogo": quem tinha o antigo guardado cai no padrão, e é isso
+    // que este formato faz no lugar de migração.
+    localStorage.setItem(
+      CHAVE_DAS_PREFERENCIAS,
+      JSON.stringify({ versao: 1, perfil: { ...PRESET_DO_CONTEUDO.jogo, conteudo: 'movimento' } }),
+    )
     expect(lerPreferencias().perfil).toEqual(PERFIL_PADRAO)
   })
 

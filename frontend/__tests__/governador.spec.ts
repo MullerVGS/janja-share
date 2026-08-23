@@ -8,12 +8,32 @@ import {
   zerarGovernador,
   type EstadoDoGovernador,
 } from '../src/sala/governador'
-import { PERFIL_PADRAO, type PerfilDeQualidade } from '../src/sala/qualidade'
-import { amostraVaziaDoEmissor, type AmostraDoEmissor } from '../src/telemetria/amostra'
+import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type PerfilDeQualidade } from '../src/sala/qualidade'
+import { amostraVaziaDoEmissor, amostraVaziaDoEspectador, type AmostraDoEmissor, type AmostraDoEspectador } from '../src/telemetria/amostra'
 import { anotar } from '../src/telemetria/historico'
+import type { Espectador } from '../src/telemetria/relato'
 
 const QUADROS: PerfilDeQualidade = { ...PERFIL_PADRAO, fps: 60, ceder: 'quadros' }
 const RESOLUCAO: PerfilDeQualidade = { ...PERFIL_PADRAO, resolucao: '1080p', fps: 30, ceder: 'resolucao' }
+const TEXTO: PerfilDeQualidade = PRESET_DO_CONTEUDO.texto // VP9 (SVC), cede quadros
+const JOGO: PerfilDeQualidade = PRESET_DO_CONTEUDO.jogo // H.264 (sem SVC), cede resolução
+
+/**
+ * Um espectador visto agora, com o relato que o caso precisa e o resto vazio.
+ *
+ * `vistoEm` é `Date.now()` porque na sala de verdade os dois relógios são o mesmo (o
+ * `timestamp` do `RTCStatsReport` é epoch em ms). Aqui o relógio da sessão é de brinquedo, e
+ * `Date.now()` é simplesmente "recente sob qualquer relógio"; `vistoEm: 0` é o velho.
+ */
+function espectador(relato: Partial<AmostraDoEspectador>, extra: Partial<Espectador> = {}): Espectador {
+  return {
+    identidade: 'bia-1',
+    nome: 'Bia',
+    relato: { ...amostraVaziaDoEspectador(Date.now()), ...relato },
+    vistoEm: Date.now(),
+    ...extra,
+  }
+}
 
 type Parcial = Partial<AmostraDoEmissor>
 
@@ -24,15 +44,21 @@ const CPU: Parcial = { ...NO_AR, limitadoPor: 'cpu', fpsCodificado: 40 }
 class Sessao {
   estado: EstadoDoGovernador = GOVERNADOR_PARADO
   historico: AmostraDoEmissor[] = []
+  espectadores: readonly Espectador[] = []
   emMs = 0
 
   constructor(readonly pedido: PerfilDeQualidade) {}
+
+  comEspectadores(lista: readonly Espectador[]): this {
+    this.espectadores = lista
+    return this
+  }
 
   segundos(quantos: number, parcial: Parcial): this {
     for (let i = 0; i < quantos; i += 1) {
       this.emMs += 1000
       this.historico = anotar(this.historico, { ...amostraVaziaDoEmissor(this.emMs), ...NO_AR, ...parcial })
-      this.estado = decidir(this.estado, this.historico, this.pedido)
+      this.estado = decidir(this.estado, this.historico, this.pedido, this.espectadores)
     }
     return this
   }
@@ -92,22 +118,24 @@ describe('governador: descer', () => {
   })
 
   it('cedendo resolução, desce a altura da captura ao degrau que cabe e o perfil efetivo muda a resolução', () => {
-    const sessao = new Sessao(RESOLUCAO).segundos(5, { ...NO_AR, limitadoPor: 'banda', altura: 810, fpsCodificado: 30 })
+    // 10 s e não 5: sob banda, a primeira janela vai para o teto de bitrate — o eixo caro é o segundo.
+    const sessao = new Sessao(RESOLUCAO).segundos(10, { ...NO_AR, limitadoPor: 'banda', altura: 810, fpsCodificado: 30 })
     // 0,9 × 810 = 729 → 720.
     expect(sessao.degrau).toBe(720)
     expect(sessao.estado.motivo).toBe('banda')
-    expect(perfilEfetivo(RESOLUCAO, sessao.estado)).toEqual({ ...RESOLUCAO, resolucao: '720p' })
+    // O efetivo carrega os dois eixos que cederam: o teto de bitrate e a resolução.
+    expect(perfilEfetivo(RESOLUCAO, sessao.estado)).toEqual({ ...RESOLUCAO, resolucao: '720p', tetoKbps: 2400 })
   })
 
   it('em nativa, "abaixo do pedido" é abaixo da altura que a captura entrega', () => {
     const nativa = { ...RESOLUCAO, resolucao: 'nativa' as const }
-    const sessao = new Sessao(nativa).segundos(5, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
+    const sessao = new Sessao(nativa).segundos(10, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
     // 0,9 × 900 = 810 → 720.
     expect(sessao.degrau).toBe(720)
   })
 
   it('em resolução, qualquer altura abaixo do alvo já é ceder — sem folga', () => {
-    const sessao = new Sessao(RESOLUCAO).segundos(5, { ...NO_AR, limitadoPor: 'banda', altura: 1078 })
+    const sessao = new Sessao(RESOLUCAO).segundos(10, { ...NO_AR, limitadoPor: 'banda', altura: 1078 })
     // 0,9 × 1078 = 970 → 720.
     expect(sessao.degrau).toBe(720)
 
@@ -195,7 +223,7 @@ describe('governador: subir', () => {
 
   it('em nativa, volta a nativa quando o degrau acima passa da altura da captura', () => {
     const nativa = { ...RESOLUCAO, resolucao: 'nativa' as const }
-    const sessao = new Sessao(nativa).segundos(5, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
+    const sessao = new Sessao(nativa).segundos(10, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
     expect(sessao.degrau).toBe(720)
 
     // Com o degrau em vigor, a captura passa a entregar 720: a altura nativa precisa ter ficado guardada.
@@ -280,6 +308,94 @@ describe('governador: subir', () => {
   })
 })
 
+describe('governador: subir o teto de bitrate', () => {
+  it('com o link folgado e nada limitando, sobe o teto de bitrate em direção a 0,85 da banda', () => {
+    const sessao = new Sessao(TEXTO).segundos(40, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
+    expect(sessao.estado.tetoKbps).toBeLessThanOrEqual(0.85 * 20_000)
+  })
+
+  it('nunca passa de 0,85 da banda medida, por mais que o tempo passe', () => {
+    const sessao = new Sessao(TEXTO).segundos(600, { ...NO_AR, bandaDisponivelKbps: 6_000 })
+    expect(sessao.estado.tetoKbps).toBeLessThanOrEqual(0.85 * 6_000)
+  })
+
+  it('sem medida de banda não inventa: fica no valor de partida', () => {
+    const sessao = new Sessao(TEXTO).segundos(120, { ...NO_AR, bandaDisponivelKbps: null })
+    expect(sessao.estado.tetoKbps).toBeNull()
+  })
+
+  it('sobe em degraus de 30 s, um por vez — e o eixo cedido só volta depois do teto', () => {
+    const sessao = new Sessao(TEXTO).segundos(5, { ...CPU, bandaDisponivelKbps: 20_000, fpsCodificado: 8 })
+    expect(sessao.degrau).toBe(5)
+
+    sessao.segundos(30, { ...NO_AR, bandaDisponivelKbps: 20_000, fpsCodificado: 5 })
+    expect(sessao.estado.tetoKbps).toBe(5_000)
+    expect(sessao.degrau).toBe(5)
+
+    sessao.segundos(30, { ...NO_AR, bandaDisponivelKbps: 20_000, fpsCodificado: 5 })
+    expect(sessao.estado.tetoKbps).toBe(6_250)
+    expect(sessao.degrau).toBe(5)
+  })
+
+  it('sob banda, o teto desce antes de fps ou altura — e para no piso de 60% da partida', () => {
+    const sessao = new Sessao(TEXTO).segundos(5, { ...NO_AR, limitadoPor: 'banda', fpsCodificado: 8 })
+    // Um só degrau de teto: 0,6 × 4000 já é o piso, e a próxima janela vai para o eixo cedido.
+    expect(sessao.estado).toMatchObject({ tetoKbps: 2_400, degrau: null, motivo: 'banda' })
+
+    sessao.segundos(5, { ...NO_AR, limitadoPor: 'banda', fpsCodificado: 8 })
+    expect(sessao.estado).toMatchObject({ tetoKbps: 2_400, degrau: 5 })
+  })
+
+  it('sob CPU o teto não se mexe: apertar o encoder não devolve ciclo nenhum', () => {
+    const sessao = new Sessao(TEXTO).segundos(5, { ...CPU, fpsCodificado: 8 })
+    expect(sessao.estado).toMatchObject({ tetoKbps: null, degrau: 5, motivo: 'cpu' })
+  })
+})
+
+describe('governador: o outro lado', () => {
+  it('espectador congelando segura a subida mesmo com o emissor limpo', () => {
+    const sofrendo = [espectador({ freezes: { quantidade: 6, duracaoMs: 3000 }, desvioEntreQuadrosMs: 240 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(sofrendo).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeNull()
+  })
+
+  it('espectador perdendo pacote também segura', () => {
+    const sofrendo = [espectador({ perda: 8 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(sofrendo).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeNull()
+  })
+
+  it('relato velho não conta — quem sumiu não está sofrendo', () => {
+    const velho = [espectador({ freezes: { quantidade: 6, duracaoMs: 3000 }, desvioEntreQuadrosMs: 240 }, { vistoEm: 0 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(velho).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
+  })
+
+  /**
+   * `freezes` é contador acumulado desde a assinatura: quem engasgou uma vez ao entrar carrega
+   * o número para sempre. Se ele sozinho contasse como sofrimento, o governador nunca mais
+   * subiria — e, em H.264, desceria até o chão com a sala inteira lisa.
+   */
+  it('congelamento antigo não é sofrimento: o que decide é o intervalo entre quadros de agora', () => {
+    const cicatriz = [espectador({ freezes: { quantidade: 6, duracaoMs: 3000 }, desvioEntreQuadrosMs: 12 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(cicatriz).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
+  })
+
+  it('em codec sem SVC, espectador sofrendo faz descer, não só segurar', () => {
+    const sofrendo = [espectador({ perda: 8 })]
+    const sessao = new Sessao(JOGO).comEspectadores(sofrendo).segundos(20, NO_AR)
+    expect(sessao.degrau).not.toBeNull()
+  })
+
+  it('com SVC, espectador sofrendo não derruba a sala: o SFU já dá a ele uma camada menor', () => {
+    const sofrendo = [espectador({ perda: 8 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(sofrendo).segundos(60, NO_AR)
+    expect(sessao.degrau).toBeNull()
+  })
+})
+
 describe('governador: memória e descrição', () => {
   it('sem histórico o estado não muda', () => {
     expect(decidir(GOVERNADOR_PARADO, [], QUADROS)).toBe(GOVERNADOR_PARADO)
@@ -317,11 +433,11 @@ describe('governador: memória e descrição', () => {
     const quadros = new Sessao(QUADROS).segundos(5, CPU)
     expect(descreverDegrau(QUADROS, quadros.estado)).toEqual({ transicao: '60 → 30 fps', degrau: '30', motivo: 'CPU' })
 
-    const resolucao = new Sessao(RESOLUCAO).segundos(5, { ...NO_AR, limitadoPor: 'banda', altura: 810 })
+    const resolucao = new Sessao(RESOLUCAO).segundos(10, { ...NO_AR, limitadoPor: 'banda', altura: 810 })
     expect(descreverDegrau(RESOLUCAO, resolucao.estado)).toEqual({ transicao: '1080p → 720p', degrau: '720p', motivo: 'banda' })
 
     const nativa = { ...RESOLUCAO, resolucao: 'nativa' as const }
-    const emNativa = new Sessao(nativa).segundos(5, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
+    const emNativa = new Sessao(nativa).segundos(10, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
     expect(descreverDegrau(nativa, emNativa.estado)?.transicao).toBe('nativa → 720p')
   })
 })

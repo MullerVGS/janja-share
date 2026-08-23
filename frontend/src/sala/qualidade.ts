@@ -12,14 +12,14 @@
  * isso é assunto de `useCompartilhamento`.
  *
  * Dois eixos guiam o encoder. **Conteúdo** diz o que está na tela (`contentHint`): texto
- * pede nitidez de borda, movimento pede continuidade. **Ceder** diz o que jogar fora quando
+ * pede nitidez de borda, jogo pede continuidade. **Ceder** diz o que jogar fora quando
  * não cabe (`degradationPreference`): quadros, e o texto continua legível com o scroll
  * travado; ou resolução, e o jogo continua fluido mais borrado. É também o eixo que o
  * governador degrada em degraus.
  */
 
 export type Resolucao = 'nativa' | '1440p' | '1080p' | '720p' | '540p'
-export type Conteudo = 'texto' | 'movimento'
+export type Conteudo = 'texto' | 'jogo'
 export type Codec = 'vp9' | 'av1' | 'h264' | 'vp8'
 export type Ceder = 'quadros' | 'resolucao'
 
@@ -30,7 +30,7 @@ export interface PerfilDeQualidade {
   /** Quadros por segundo pedidos à captura e ao encoder. */
   fps: number
   ceder: Ceder
-  /** Teto de bitrate em kbps. */
+  /** Bitrate de partida em kbps; o governador sobe a partir dele. */
   tetoKbps: number
 }
 
@@ -54,7 +54,7 @@ export const OPCOES_DE_FPS: readonly number[] = [5, 15, 30, 60]
 
 export const CONTEUDOS: Record<Conteudo, { rotulo: string; contentHint: 'text' | 'motion'; descricao: string }> = {
   texto: { rotulo: 'Texto', contentHint: 'text', descricao: 'código, terminal, documentos — borda nítida vale mais que quadro' },
-  movimento: { rotulo: 'Movimento', contentHint: 'motion', descricao: 'jogo, vídeo — continuidade vale mais que borda' },
+  jogo: { rotulo: 'Jogo', contentHint: 'motion', descricao: 'jogo, vídeo, filme — continuidade vale mais que borda' },
 }
 
 export const CODECS: Record<Codec, { rotulo: string; descricao: string; svc: boolean }> = {
@@ -78,29 +78,38 @@ export const CEDER: Record<Ceder, { rotulo: string; degradacao: RTCDegradationPr
 }
 
 /**
- * Quem limita esta transmissão é o **upload residencial de quem compartilha** (tipicamente
- * 10–40 Mbps no Brasil), não o servidor: a VPS sobe ~1 Gbps medido, então o fan-out do SFU é
- * praticamente de graça. Não aperte os números abaixo "para poupar o servidor" — não é ele que dói.
+ * Quem costuma limitar o Compartilhamento é o upload de quem publica. O SFU faz o fan-out;
+ * reduzir estes números não diminui o bitrate enviado por cada espectador.
+ *
+ * É também por isso que subir o teto sozinho não melhora nada: ele só dá permissão. Quem
+ * entrega a melhora é o governador achar o teto real daquele link e sentar logo abaixo dele.
  */
 
-/** Limites do slider de teto, em kbps. O topo existe para quem tem fibra boa e quer 1440p60. */
+/**
+ * Limites do teto de bitrate, em kbps. O topo não é promessa nenhuma: é até onde a busca do
+ * governador pode ir quando o link medido der. Quem chega perto dele é fibra simétrica boa.
+ */
 export const TETO = {
   minimoKbps: 200,
-  maximoKbps: 20_000,
+  maximoKbps: 50_000,
   passoKbps: 100,
 } as const
 
 /**
  * Perfil de partida de cada conteúdo.
  *
+ * `tetoKbps` aqui é de onde a transmissão **parte**, não onde ela para: o governador sobe a
+ * partir dele até onde a banda medida deixar. Partir baixo é deliberado — o teto real é o
+ * upload de quem compartilha, e só se descobre subindo em degraus limpos.
+ *
  * Texto a 15 fps porque a tela típica aqui é editor e terminal: conteúdo que muda em blocos,
- * onde quadro gasto é banda tirada da legibilidade. Movimento quadruplica os quadros e sobe
- * o teto junto, e vai de H.264 porque é o codec que o encoder de hardware do Chrome pega — a
- * CPU de quem joga já está ocupada com o jogo.
+ * onde quadro gasto é banda tirada da legibilidade. Jogo quadruplica os quadros e dobra a
+ * partida, e vai de H.264 porque é o codec que o encoder de hardware do Chrome pega — a CPU
+ * de quem joga já está ocupada com o jogo.
  */
 export const PRESET_DO_CONTEUDO: Record<Conteudo, PerfilDeQualidade> = {
-  texto: { conteudo: 'texto', codec: 'vp9', resolucao: '1080p', fps: 15, ceder: 'quadros', tetoKbps: 2_500 },
-  movimento: { conteudo: 'movimento', codec: 'h264', resolucao: '1080p', fps: 60, ceder: 'resolucao', tetoKbps: 8_000 },
+  texto: { conteudo: 'texto', codec: 'vp9', resolucao: '1080p', fps: 15, ceder: 'quadros', tetoKbps: 4_000 },
+  jogo: { conteudo: 'jogo', codec: 'h264', resolucao: '1080p', fps: 60, ceder: 'resolucao', tetoKbps: 8_000 },
 }
 
 export const PERFIL_PADRAO: PerfilDeQualidade = PRESET_DO_CONTEUDO.texto

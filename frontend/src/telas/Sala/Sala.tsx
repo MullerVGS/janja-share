@@ -41,7 +41,7 @@ export function Sala() {
   const navegar = useNavigate()
   const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const telemetria = useTelemetria(sala)
-  const compartilhamento = useCompartilhamento(sala, telemetria.emissor)
+  const compartilhamento = useCompartilhamento(sala, telemetria.emissor, telemetria.espectadores)
 
   // A captura que a home abriu viaja por `capturaPendente`; adotá-la é o que faz o clique único
   // da home terminar em transmissão. Uma vez só — `retirarCaptura` é destrutivo.

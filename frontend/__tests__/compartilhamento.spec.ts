@@ -24,8 +24,8 @@ describe('opções de publicação da tela', () => {
     expect(opcoesDePublicacao(perfil()).videoEncoding).toBeUndefined()
   })
 
-  it('o preset de movimento chega inteiro na publicação, sem esperar o setParameters', () => {
-    const opcoes = opcoesDePublicacao(PRESET_DO_CONTEUDO.movimento)
+  it('o preset de jogo chega inteiro na publicação, sem esperar o setParameters', () => {
+    const opcoes = opcoesDePublicacao(PRESET_DO_CONTEUDO.jogo)
     expect(opcoes.screenShareEncoding).toEqual({ maxBitrate: 8_000_000, maxFramerate: 60 })
     expect(opcoes.degradationPreference).toBe('maintain-framerate')
     expect(opcoes.videoCodec).toBe('h264')
@@ -47,9 +47,9 @@ describe('opções de publicação da tela', () => {
     expect(opcoesDePublicacao(perfil({ codec: 'vp8' })).videoCodec).toBe('vp8')
   })
 
-  it('VP9 e AV1 pedem L1T2; H.264 e VP8 não têm scalabilityMode', () => {
-    expect(opcoesDePublicacao(perfil({ codec: 'vp9' })).scalabilityMode).toBe('L1T2')
-    expect(opcoesDePublicacao(perfil({ codec: 'av1' })).scalabilityMode).toBe('L1T2')
+  it('VP9 e AV1 pedem L3T3_KEY; H.264 e VP8 não têm scalabilityMode', () => {
+    expect(opcoesDePublicacao(perfil({ codec: 'vp9' })).scalabilityMode).toBe('L3T3_KEY')
+    expect(opcoesDePublicacao(perfil({ codec: 'av1' })).scalabilityMode).toBe('L3T3_KEY')
     expect(opcoesDePublicacao(perfil({ codec: 'h264' }))).not.toHaveProperty('scalabilityMode')
     expect(opcoesDePublicacao(perfil({ codec: 'vp8' }))).not.toHaveProperty('scalabilityMode')
   })
@@ -79,7 +79,7 @@ describe('opções de captura da tela', () => {
 
   it('a dica de conteúdo já sai com o conteúdo escolhido', () => {
     expect(opcoesDeCaptura(PRESET_DO_CONTEUDO.texto).contentHint).toBe('text')
-    expect(opcoesDeCaptura(PRESET_DO_CONTEUDO.movimento).contentHint).toBe('motion')
+    expect(opcoesDeCaptura(PRESET_DO_CONTEUDO.jogo).contentHint).toBe('motion')
   })
 })
 

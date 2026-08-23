@@ -28,6 +28,38 @@
   gap: var(--e2);
 }
 
+/* Os dois botões do topo são o produto: ocupam o dobro de altura do resto e não competem por
+   atenção com nada, porque tudo o mais está fechado dentro de Avançado. */
+.presets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.presets button {
+  padding: var(--e3) var(--e2);
+  font-size: var(--texto-base);
+}
+
+.avancado {
+  border-top: 1px solid var(--linha);
+  padding-top: var(--e3);
+}
+
+.sumario {
+  cursor: pointer;
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  color: var(--texto-fraco);
+}
+
+.controles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+  padding-top: var(--e4);
+}
+
 .explicacao {
   margin: 0;
   font-size: var(--texto-sm);
@@ -59,12 +91,6 @@
 .slider {
   width: 100%;
   accent-color: var(--acao);
-}
-
-.automatico {
-  display: flex;
-  flex-direction: column;
-  gap: var(--e2);
 }
 
 .chave {

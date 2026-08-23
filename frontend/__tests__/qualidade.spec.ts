@@ -131,12 +131,12 @@ describe('aplicação ao vivo', () => {
     expect(relatorio).toEqual({ captura: 'aplicado', encoder: 'aplicado' })
   })
 
-  it('movimento marca o conteúdo como motion', async () => {
+  it('jogo marca o conteúdo como motion', async () => {
     const faixa = faixaFalsa()
-    await aplicarPerfil({ faixa: faixa as unknown as MediaStreamTrack }, perfil({ conteudo: 'movimento' }))
+    await aplicarPerfil({ faixa: faixa as unknown as MediaStreamTrack }, perfil({ conteudo: 'jogo' }))
 
     expect(faixa.contentHint).toBe('motion')
-    expect(CONTEUDOS.movimento.contentHint).toBe('motion')
+    expect(CONTEUDOS.jogo.contentHint).toBe('motion')
     expect(CEDER.resolucao.degradacao).toBe('maintain-framerate')
   })
 
@@ -179,25 +179,27 @@ describe('aplicação ao vivo', () => {
 })
 
 /**
- * Os presets são dimensionados pelo upload residencial de quem compartilha, não pela VPS (que
- * sobe ~1 Gbps medido). Estes testes existem para que apertá-los "para poupar o servidor" tenha
- * de ser uma decisão explícita, e não um deslize.
+ * Os presets são dimensionados pelo upload de quem compartilha. Estes testes tornam qualquer
+ * redução uma decisão explícita.
+ *
+ * O `tetoKbps` de cada preset é de **partida**: o governador sobe a partir dele até onde a
+ * banda medida deixar. Baixá-lo não é economizar banda, é atrasar a subida.
  */
 describe('presets por conteúdo', () => {
-  it('Texto: 1080p a 15 fps, 2500 kbps, VP9, cede quadros', () => {
+  it('Texto: 1080p a 15 fps, partindo de 4000 kbps, VP9, cede quadros', () => {
     expect(PRESET_DO_CONTEUDO.texto).toEqual({
       conteudo: 'texto',
       codec: 'vp9',
       resolucao: '1080p',
       fps: 15,
       ceder: 'quadros',
-      tetoKbps: 2500,
+      tetoKbps: 4000,
     })
   })
 
-  it('Movimento: 1080p a 60 fps, 8000 kbps, H.264, cede resolução', () => {
-    expect(PRESET_DO_CONTEUDO.movimento).toEqual({
-      conteudo: 'movimento',
+  it('Jogo: 1080p a 60 fps, partindo de 8000 kbps, H.264, cede resolução', () => {
+    expect(PRESET_DO_CONTEUDO.jogo).toEqual({
+      conteudo: 'jogo',
       codec: 'h264',
       resolucao: '1080p',
       fps: 60,
@@ -210,31 +212,40 @@ describe('presets por conteúdo', () => {
     expect(PERFIL_PADRAO).toBe(PRESET_DO_CONTEUDO.texto)
   })
 
-  it('o slider vai de 200 kb/s a 20 Mb/s', () => {
-    expect(TETO).toEqual({ minimoKbps: 200, maximoKbps: 20_000, passoKbps: 100 })
+  it('o teto de busca vai de 200 kb/s a 50 Mb/s — limite superior, não promessa', () => {
+    expect(TETO).toEqual({ minimoKbps: 200, maximoKbps: 50_000, passoKbps: 100 })
   })
 })
 
 describe('troca de conteúdo', () => {
   it('aplica codec, quadros, teto e o eixo a ceder do preset escolhido', () => {
-    const depois = trocarConteudo(PRESET_DO_CONTEUDO.texto, 'movimento')
-    expect(depois).toMatchObject({ conteudo: 'movimento', codec: 'h264', fps: 60, tetoKbps: 8000, ceder: 'resolucao' })
+    const depois = trocarConteudo(PRESET_DO_CONTEUDO.texto, 'jogo')
+    expect(depois).toMatchObject({ conteudo: 'jogo', codec: 'h264', fps: 60, tetoKbps: 8000, ceder: 'resolucao' })
   })
 
   it('preserva a resolução escolhida — quem desceu para 720p por causa da rede não volta a 1080p', () => {
     const magro = perfil({ resolucao: '720p', conteudo: 'texto' })
-    expect(trocarConteudo(magro, 'movimento').resolucao).toBe('720p')
+    expect(trocarConteudo(magro, 'jogo').resolucao).toBe('720p')
   })
 
-  it('a volta para texto devolve VP9, 15 fps e 2500 kbps', () => {
-    const depois = trocarConteudo(trocarConteudo(PERFIL_PADRAO, 'movimento'), 'texto')
-    expect([depois.codec, depois.fps, depois.tetoKbps]).toEqual(['vp9', 15, 2500])
+  it('a volta para texto devolve VP9, 15 fps e a partida de 4000 kbps', () => {
+    const depois = trocarConteudo(trocarConteudo(PERFIL_PADRAO, 'jogo'), 'texto')
+    expect([depois.codec, depois.fps, depois.tetoKbps]).toEqual(['vp9', 15, 4000])
   })
 })
 
 describe('perfil vindo de fora (preferências)', () => {
   it('aceita um perfil inteiro e válido', () => {
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.movimento, resolucao: '540p', tetoKbps: 12_300 })).toBe(true)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.jogo, resolucao: '540p', tetoKbps: 12_300 })).toBe(true)
+  })
+
+  /**
+   * O preset antigo se chamava `movimento`. Não há código de compatibilidade: o nome sumiu do
+   * vocabulário, `ehPerfil` recusa o perfil inteiro e a pessoa cai no padrão. É assim que este
+   * formato muda — sem migração.
+   */
+  it('perfil gravado com o nome antigo do conteúdo é recusado inteiro', () => {
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.jogo, conteudo: 'movimento' })).toBe(false)
   })
 
   it('recusa campo faltando, valor fora do vocabulário, fps estranho e teto fora do slider', () => {
@@ -246,7 +257,7 @@ describe('perfil vindo de fora (preferências)', () => {
     expect(ehPerfil({ ...PERFIL_PADRAO, ceder: 'tudo' })).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, resolucao: '4k' })).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, fps: 45 })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, tetoKbps: 50_000 })).toBe(false)
+    expect(ehPerfil({ ...PERFIL_PADRAO, tetoKbps: 50_001 })).toBe(false)
     expect(ehPerfil({ ...PERFIL_PADRAO, tetoKbps: 100 })).toBe(false)
     expect(ehPerfil(null)).toBe(false)
     expect(ehPerfil('texto')).toBe(false)

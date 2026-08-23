@@ -5,8 +5,9 @@ import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { OPCOES_DO_AUDIO_DA_TELA } from '../src/sala/audioDaTela'
 import { PERFIL_PADRAO, PRESET_DO_CONTEUDO } from '../src/sala/qualidade'
 import { useCompartilhamento } from '../src/sala/useCompartilhamento'
-import { amostraVaziaDoEmissor, type AmostraDoEmissor } from '../src/telemetria/amostra'
+import { amostraVaziaDoEmissor, amostraVaziaDoEspectador, type AmostraDoEmissor } from '../src/telemetria/amostra'
 import { anotar, type Historico } from '../src/telemetria/historico'
+import type { Espectador } from '../src/telemetria/relato'
 
 /** Uma `LocalTrack` reduzida ao que o hook toca: a faixa do navegador, o sender e o codec publicado. */
 function faixaFalsa(kind: 'video' | 'audio', codec: string | undefined = 'vp9') {
@@ -141,11 +142,24 @@ class SalaFalsa {
 }
 
 const CPU: Partial<AmostraDoEmissor> = { ativo: true, limitadoPor: 'cpu', fpsCodificado: 40, altura: 1080, alturaDaCaptura: 1080 }
+/** Link folgado e nada limitando: o cenário em que o governador tem de subir. */
+const FOLGADO: Partial<AmostraDoEmissor> = { ativo: true, fpsCodificado: 15, altura: 1080, alturaDaCaptura: 1080, bandaDisponivelKbps: 20_000 }
 
-function montar(sala: SalaFalsa) {
+/** Quem assiste, como o coletor entrega ao hook: o último relato de cada pessoa. */
+function espectadores(relato: Partial<ReturnType<typeof amostraVaziaDoEspectador>>): ReadonlyMap<string, Espectador> {
+  const bia: Espectador = {
+    identidade: 'bia-1',
+    nome: 'Bia',
+    relato: { ...amostraVaziaDoEspectador(Date.now()), ...relato },
+    vistoEm: Date.now(),
+  }
+  return new Map([[bia.identidade, bia]])
+}
+
+function montar(sala: SalaFalsa, quemAssiste?: ReadonlyMap<string, Espectador>) {
   let historico: Historico<AmostraDoEmissor> = []
   let emMs = 0
-  const resultado = renderHook(({ historico }) => useCompartilhamento(sala as unknown as Room, historico), {
+  const resultado = renderHook(({ historico }) => useCompartilhamento(sala as unknown as Room, historico, quemAssiste), {
     initialProps: { historico },
   })
 
@@ -208,15 +222,15 @@ afterEach(() => {
 
 describe('useCompartilhamento: pedido e preferências', () => {
   it('nasce com o perfil e o automático guardados; mexer persiste os dois', async () => {
-    gravarPreferencias({ perfil: { ...PRESET_DO_CONTEUDO.movimento, resolucao: '720p' }, automatico: false })
+    gravarPreferencias({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' }, automatico: false })
     const { result } = montar(new SalaFalsa())
 
-    expect(result.current.perfil).toEqual({ ...PRESET_DO_CONTEUDO.movimento, resolucao: '720p' })
+    expect(result.current.perfil).toEqual({ ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' })
     expect(result.current.automatico).toBe(false)
 
     act(() => result.current.definirPerfil({ ...result.current.perfil, fps: 30 }))
     act(() => result.current.definirAutomatico(true))
-    expect(lerPreferencias()).toMatchObject({ perfil: { ...PRESET_DO_CONTEUDO.movimento, resolucao: '720p', fps: 30 }, automatico: true })
+    expect(lerPreferencias()).toMatchObject({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p', fps: 30 }, automatico: true })
   })
 
   it('ligar publica com as opções do perfil; desligar despublica', async () => {
@@ -229,7 +243,7 @@ describe('useCompartilhamento: pedido e preferências', () => {
     const [captura] = sala.localParticipant.createScreenTracks.mock.calls[0] ?? []
     expect(captura).toMatchObject({ contentHint: 'text' })
     const [, opcoes] = sala.localParticipant.publishTrack.mock.calls[0] ?? []
-    expect(opcoes).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L1T2' })
+    expect(opcoes).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L3T3_KEY' })
 
     await ligar()
     expect(result.current.ativo).toBe(false)
@@ -288,6 +302,33 @@ describe('useCompartilhamento: governador', () => {
     expect(result.current.governador.degrau).toBeNull()
   })
 
+  it('com o link folgado, o teto sobe sozinho e o valor novo chega ao encoder', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, amostras } = montar(sala)
+    await ligar()
+    await assentar()
+    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(4_000_000)
+
+    amostras(35, FOLGADO)
+    await assentar()
+
+    expect(result.current.governador.tetoKbps).toBe(5_000)
+    expect(result.current.perfil.tetoKbps).toBe(4_000)
+    expect(result.current.perfilEfetivo.tetoKbps).toBe(5_000)
+    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(5_000_000)
+  })
+
+  it('um espectador sofrendo segura a subida — o mesmo link folgado não rende nada', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, amostras } = montar(sala, espectadores({ perda: 8 }))
+    await ligar()
+    amostras(35, FOLGADO)
+    await assentar()
+
+    expect(result.current.governador.tetoKbps).toBeNull()
+    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(4_000_000)
+  })
+
   it('parar de compartilhar zera o governador', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, amostras } = montar(sala)
@@ -321,7 +362,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     ])
     expect(publishTrack).toHaveBeenCalledTimes(2)
     expect(publishTrack.mock.calls[0]?.[0]).toBe(faixaDeVideo)
-    expect(publishTrack.mock.calls[0]?.[1]).toMatchObject({ videoCodec: 'av1', backupCodec: false, scalabilityMode: 'L1T2' })
+    expect(publishTrack.mock.calls[0]?.[1]).toMatchObject({ videoCodec: 'av1', backupCodec: false, scalabilityMode: 'L3T3_KEY' })
     expect(publishTrack.mock.calls[1]).toEqual([faixaDeAudio, OPCOES_DO_AUDIO_DA_TELA])
 
     expect(sala.video()?.track).toBe(faixaDeVideo)
@@ -341,7 +382,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     // `ligar()` já publicou a faixa de vídeo na captura inicial; a contagem abaixo é só da republicação.
     sala.localParticipant.publishTrack.mockClear()
 
-    await agir(() => result.current.definirPerfil({ ...PRESET_DO_CONTEUDO.movimento }))
+    await agir(() => result.current.definirPerfil({ ...PRESET_DO_CONTEUDO.jogo }))
 
     expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledTimes(1)
     expect(sala.localParticipant.publishTrack).toHaveBeenCalledTimes(1)
@@ -555,7 +596,7 @@ describe('useCompartilhamento: trocar de tela', () => {
       sala.localParticipant.setScreenShareEnabled.mock.invocationCallOrder[0] ?? Infinity,
     )
     expect(sala.video()?.track).not.toBe(antiga)
-    expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L1T2' })
+    expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L3T3_KEY' })
     expect(sala.audio()?.track.kind).toBe('audio')
     expect(result.current.ativo).toBe(true)
     expect(result.current.ocupado).toBe(false)
@@ -649,7 +690,7 @@ describe('useCompartilhamento: adotar (a captura que a home já abriu)', () => {
     await agir(() => result.current.adotar([video, audio] as unknown as LocalTrack[]))
 
     expect(sala.video()?.track).toBe(video)
-    expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L1T2' })
+    expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L3T3_KEY' })
     expect(sala.audio()?.track).toBe(audio)
     expect(sala.audio()?.options).toEqual(OPCOES_DO_AUDIO_DA_TELA)
     expect(result.current.ativo).toBe(true)

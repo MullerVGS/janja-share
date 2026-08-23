@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { GOVERNADOR_PARADO, type EstadoDoGovernador } from '../src/sala/governador'
@@ -13,16 +13,29 @@ function montarQualidade(parcial: Partial<Compartilhamento> = {}) {
   return compartilhamento
 }
 
-describe('aba Qualidade: controles', () => {
-  it('mostra os dois eixos, o codec, resolução, fps e teto com o perfil atual marcado', () => {
-    montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.movimento, resolucao: '720p' } })
+describe('aba Qualidade: os dois botões', () => {
+  it('a escolha da pessoa é uma só: o que está na tela', () => {
+    montarQualidade()
+    const conteudo = screen.getByRole('radiogroup', { name: 'Conteúdo' })
+    expect(within(conteudo).getAllByRole('radio').map((botao) => botao.textContent)).toEqual(['Texto', 'Jogo'])
+  })
 
-    expect(screen.getByRole('radio', { name: 'Movimento' })).toBeChecked()
+  it('Avançado começa fechado: o painel de antes existe, mas não é o produto', () => {
+    montarQualidade()
+    expect(screen.getByText('Avançado').closest('details')).not.toHaveAttribute('open')
+  })
+})
+
+describe('aba Qualidade: controles', () => {
+  it('mostra os dois eixos, o codec, resolução, fps e bitrate com o perfil atual marcado', () => {
+    montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' } })
+
+    expect(screen.getByRole('radio', { name: 'Jogo' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'H.264' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '720p' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '60' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Resolução' })).toBeChecked()
-    expect(screen.getByRole('slider', { name: /teto/i })).toHaveValue('8000')
+    expect(screen.getByRole('slider', { name: /bitrate/i })).toHaveValue('8000')
   })
 
   it('trocar o conteúdo aplica o preset e preserva a resolução escolhida', async () => {
@@ -33,9 +46,9 @@ describe('aba Qualidade: controles', () => {
       definirPerfil: (perfil) => escolhido.push(perfil),
     })
 
-    await usuario.click(screen.getByRole('radio', { name: 'Movimento' }))
+    await usuario.click(screen.getByRole('radio', { name: 'Jogo' }))
 
-    expect(escolhido[0]).toEqual({ ...PRESET_DO_CONTEUDO.movimento, resolucao: '720p' })
+    expect(escolhido[0]).toEqual({ ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' })
   })
 
   it('codec, ceder, resolução e fps mudam só o próprio campo', async () => {
@@ -63,11 +76,11 @@ describe('aba Qualidade: controles', () => {
     }
   })
 
-  it('o slider de teto vai de 200 a 20 000 kbps', () => {
+  it('o slider de bitrate vai de 200 a 50 000 kbps — é a partida, e o topo é o da busca', () => {
     montarQualidade()
-    const slider = screen.getByRole('slider', { name: /teto/i })
+    const slider = screen.getByRole('slider', { name: /bitrate/i })
     expect(slider).toHaveAttribute('min', '200')
-    expect(slider).toHaveAttribute('max', '20000')
+    expect(slider).toHaveAttribute('max', '50000')
   })
 
   it('explica o codec escolhido numa linha', () => {
@@ -144,7 +157,7 @@ describe('aba Qualidade: automático', () => {
     expect(compartilhamento.definirAutomatico).toHaveBeenCalledWith(false)
   })
 
-  it('com degrau em vigor mostra de onde para onde e por quê, e "forçar" desliga o automático', async () => {
+  it('com degrau em vigor conta o que está no ar, para onde cedeu e por quê; "forçar" desliga o automático', async () => {
     const usuario = userEvent.setup()
     const compartilhamento = montarQualidade({
       perfil: { ...PERFIL_PADRAO, fps: 60 },
@@ -153,15 +166,29 @@ describe('aba Qualidade: automático', () => {
     })
 
     const estado = screen.getByRole('status', { name: /governador/i })
-    expect(estado).toHaveTextContent('Auto · 60 → 30 fps · CPU')
+    expect(estado).toHaveTextContent('4,0 Mb/s · 1080p · 30 fps · cedeu para 30 fps — CPU')
 
     await usuario.click(screen.getByRole('button', { name: /forçar/i }))
     expect(compartilhamento.definirAutomatico).toHaveBeenCalledWith(false)
   })
 
-  it('automático ligado sem degrau diz que o pedido vale inteiro, sem "forçar"', () => {
+  it('sem nada decidido ainda, a linha diz o que está no ar e que é o ponto de partida', () => {
     montarQualidade({ automatico: true })
-    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent(/pedido vale inteiro/)
+    const estado = screen.getByRole('status', { name: /governador/i })
+    expect(estado).toHaveTextContent('4,0 Mb/s · 1080p · 15 fps · no ponto de partida')
+    expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()
+  })
+
+  it('com o teto acima da partida, a linha mostra o teto conquistado e diz que está subindo', () => {
+    const subindo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 12_500 }
+    montarQualidade({ perfilEfetivo: { ...PERFIL_PADRAO, tetoKbps: 12_500 }, governador: subindo })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('12,5 Mb/s · 1080p · 15 fps · subindo')
+  })
+
+  it('teto cedido sem degrau nenhum aparece como cessão de teto, não como subida', () => {
+    const cedeu: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 2_400, motivo: 'banda' }
+    montarQualidade({ perfilEfetivo: { ...PERFIL_PADRAO, tetoKbps: 2_400 }, governador: cedeu })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('2,4 Mb/s · 1080p · 15 fps · cedeu o teto — banda')
     expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()
   })
 

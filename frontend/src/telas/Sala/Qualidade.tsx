@@ -1,4 +1,4 @@
-import { descreverDegrau } from '../../sala/governador'
+import { descreverDegrau, NOME_DO_MOTIVO, type EstadoDoGovernador } from '../../sala/governador'
 import {
   CEDER,
   CODECS,
@@ -50,16 +50,56 @@ const OPCOES_DE_CEDER: OpcaoSegmentada<Ceder>[] = (Object.keys(CEDER) as Ceder[]
   descricao: CEDER[valor].explicacao,
 }))
 
+function rotuloDaResolucao(resolucao: Resolucao): string {
+  return RESOLUCOES.find((opcao) => opcao.valor === resolucao)?.rotulo ?? resolucao
+}
+
 /**
- * A aba que ajusta a transmissão de tela ao vivo.
+ * O que o governador está fazendo, em uma linha: o que está no ar e para onde ele foi.
  *
- * Cada controle vale no ato e sem derrubar quem assiste — exceto o codec, que republica a
- * faixa e pisca por um segundo. O efeito de cada ajuste aparece na barra de resumo logo acima
- * e na aba Transmissão: a ideia é a pessoa *ver* o que baixar o FPS ou apertar o teto faz.
+ * `subindo` é a postura, não uma promessa: significa que o teto já passou do valor de partida e
+ * que a cada 30 s limpos ele tenta de novo. O número ao lado é sempre o teto de agora, então a
+ * linha nunca promete uma banda que não existe.
+ */
+function descreverAutomatico(pedido: PerfilDeQualidade, efetivo: PerfilDeQualidade, estado: EstadoDoGovernador): string {
+  const forma = [formatarKbps(efetivo.tetoKbps), rotuloDaResolucao(efetivo.resolucao), `${efetivo.fps} fps`]
+  const degrau = descreverDegrau(pedido, estado)
+  const unidade = pedido.ceder === 'quadros' ? ' fps' : ''
+  const acao = degrau
+    ? `cedeu para ${degrau.degrau}${unidade} — ${degrau.motivo}`
+    : estado.tetoKbps === null
+      ? 'no ponto de partida'
+      : estado.tetoKbps < pedido.tetoKbps
+        ? `cedeu o teto — ${NOME_DO_MOTIVO[estado.motivo ?? 'banda']}`
+        : 'subindo'
+  return [...forma, acao].join(' · ')
+}
+
+/**
+ * A aba que ajusta a transmissão de tela.
+ *
+ * O produto são os dois botões do topo: a pessoa diz o que está mostrando e a telemetria faz o
+ * resto — o governador procura o teto do link e cede quando aperta. Abaixo deles vem a linha
+ * que conta o que ele está fazendo agora, e só.
+ *
+ * **Avançado** é saída de emergência, não painel: cada controle de lá vale no ato e sem
+ * derrubar quem assiste — exceto o codec, que republica a faixa e pisca por um segundo. Mexer
+ * em qualquer um deles zera o governador, porque o pedido mudou.
  */
 export function Qualidade({ compartilhamento }: { compartilhamento: Compartilhamento }) {
-  const { perfil, definirPerfil, relatorio, ativo, automatico, definirAutomatico, governador, codecPendente, reiniciar, ocupado } =
-    compartilhamento
+  const {
+    perfil,
+    definirPerfil,
+    perfilEfetivo,
+    relatorio,
+    ativo,
+    automatico,
+    definirAutomatico,
+    governador,
+    codecPendente,
+    reiniciar,
+    ocupado,
+  } = compartilhamento
   const ajustar = (parcial: Partial<PerfilDeQualidade>) => definirPerfil({ ...perfil, ...parcial })
   const degrau = descreverDegrau(perfil, governador)
 
@@ -70,84 +110,85 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
         {!ativo && <span className={estilos.dica}>vale no próximo compartilhamento</span>}
       </header>
 
-      <Segmentado
-        rotulo="Conteúdo"
-        opcoes={OPCOES_DE_CONTEUDO}
-        valor={perfil.conteudo}
-        aoEscolher={(conteudo) => definirPerfil(trocarConteudo(perfil, conteudo))}
-      />
-
-      <div className={estilos.bloco}>
-        <Segmentado rotulo="Codec" opcoes={OPCOES_DE_CODEC} valor={perfil.codec} aoEscolher={(codec) => ajustar({ codec })} />
-        <p className={estilos.explicacao}>{CODECS[perfil.codec].descricao}</p>
-      </div>
-
-      <Segmentado
-        rotulo="Resolução"
-        opcoes={OPCOES_DE_RESOLUCAO}
-        valor={perfil.resolucao}
-        aoEscolher={(resolucao) => ajustar({ resolucao })}
-      />
-
-      <Segmentado rotulo="FPS" opcoes={OPCOES_FPS} valor={perfil.fps} aoEscolher={(fps) => ajustar({ fps })} />
-
-      <div className={estilos.bloco}>
+      <div className={estilos.presets}>
         <Segmentado
-          rotulo="Sob aperto, ceder"
-          opcoes={OPCOES_DE_CEDER}
-          valor={perfil.ceder}
-          aoEscolher={(ceder) => ajustar({ ceder })}
+          rotulo="Conteúdo"
+          opcoes={OPCOES_DE_CONTEUDO}
+          valor={perfil.conteudo}
+          aoEscolher={(conteudo) => definirPerfil(trocarConteudo(perfil, conteudo))}
         />
-        <p className={estilos.explicacao}>{CEDER[perfil.ceder].explicacao}</p>
+        <p className={estilos.explicacao}>{CONTEUDOS[perfil.conteudo].descricao}</p>
       </div>
 
-      <div className={estilos.teto}>
-        <label className={estilos.rotuloDoTeto} htmlFor="teto-de-bitrate">
-          Teto de bitrate
-          <output className={estilos.valorDoTeto} htmlFor="teto-de-bitrate">
-            {formatarKbps(perfil.tetoKbps)}
-          </output>
-        </label>
-        <input
-          id="teto-de-bitrate"
-          className={estilos.slider}
-          type="range"
-          min={TETO.minimoKbps}
-          max={TETO.maximoKbps}
-          step={TETO.passoKbps}
-          value={perfil.tetoKbps}
-          onChange={(evento) => ajustar({ tetoKbps: Number(evento.target.value) })}
-        />
-      </div>
+      {/* O estado do governador, na forma que a pessoa lê: o que está no ar e o que ele fez. */}
+      {automatico && (
+        <p className={estilos.estadoDoAuto} role="status" aria-label="Estado do governador" data-segurando={degrau ? '' : undefined}>
+          <span>{descreverAutomatico(perfil, perfilEfetivo, governador)}</span>
+          {degrau && (
+            <Botao aparencia="fantasma" className={estilos.forcar} onClick={() => definirAutomatico(false)}>
+              forçar
+            </Botao>
+          )}
+        </p>
+      )}
 
-      <div className={estilos.automatico}>
-        <label className={estilos.chave}>
-          <input
-            type="checkbox"
-            role="switch"
-            checked={automatico}
-            onChange={(evento) => definirAutomatico(evento.target.checked)}
+      <details className={estilos.avancado}>
+        <summary className={estilos.sumario}>Avançado</summary>
+        <div className={estilos.controles}>
+          <div className={estilos.bloco}>
+            <Segmentado rotulo="Codec" opcoes={OPCOES_DE_CODEC} valor={perfil.codec} aoEscolher={(codec) => ajustar({ codec })} />
+            <p className={estilos.explicacao}>{CODECS[perfil.codec].descricao}</p>
+          </div>
+
+          <Segmentado
+            rotulo="Resolução"
+            opcoes={OPCOES_DE_RESOLUCAO}
+            valor={perfil.resolucao}
+            aoEscolher={(resolucao) => ajustar({ resolucao })}
           />
-          <span>Automático</span>
-        </label>
-        {/* O estado do governador, na forma que a pessoa lê: de onde, para onde, por quê. */}
-        {automatico && (
-          <p className={estilos.estadoDoAuto} role="status" aria-label="Estado do governador" data-segurando={degrau ? '' : undefined}>
-            {degrau ? (
-              <>
-                <span>
-                  Auto · {degrau.transicao} · {degrau.motivo}
-                </span>
-                <Botao aparencia="fantasma" className={estilos.forcar} onClick={() => definirAutomatico(false)}>
-                  forçar
-                </Botao>
-              </>
-            ) : (
-              <span>Auto · o pedido vale inteiro; sob aperto persistente, desce um degrau em {CEDER[perfil.ceder].rotulo.toLowerCase()}.</span>
-            )}
-          </p>
-        )}
-      </div>
+
+          <Segmentado rotulo="FPS" opcoes={OPCOES_FPS} valor={perfil.fps} aoEscolher={(fps) => ajustar({ fps })} />
+
+          <div className={estilos.bloco}>
+            <Segmentado
+              rotulo="Sob aperto, ceder"
+              opcoes={OPCOES_DE_CEDER}
+              valor={perfil.ceder}
+              aoEscolher={(ceder) => ajustar({ ceder })}
+            />
+            <p className={estilos.explicacao}>{CEDER[perfil.ceder].explicacao}</p>
+          </div>
+
+          <div className={estilos.teto}>
+            <label className={estilos.rotuloDoTeto} htmlFor="teto-de-bitrate">
+              Bitrate de partida
+              <output className={estilos.valorDoTeto} htmlFor="teto-de-bitrate">
+                {formatarKbps(perfil.tetoKbps)}
+              </output>
+            </label>
+            <input
+              id="teto-de-bitrate"
+              className={estilos.slider}
+              type="range"
+              min={TETO.minimoKbps}
+              max={TETO.maximoKbps}
+              step={TETO.passoKbps}
+              value={perfil.tetoKbps}
+              onChange={(evento) => ajustar({ tetoKbps: Number(evento.target.value) })}
+            />
+          </div>
+
+          <label className={estilos.chave}>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={automatico}
+              onChange={(evento) => definirAutomatico(evento.target.checked)}
+            />
+            <span>Automático</span>
+          </label>
+        </div>
+      </details>
 
       {codecPendente && (
         <Aviso tom="neutro">

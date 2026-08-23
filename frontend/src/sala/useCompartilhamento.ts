@@ -11,6 +11,7 @@ import type { ScreenShareCaptureOptions } from 'livekit-client'
 import { gravarPreferencias, lerPreferencias } from '../preferencias'
 import type { AmostraDoEmissor } from '../telemetria/amostra'
 import type { Historico } from '../telemetria/historico'
+import type { Espectador } from '../telemetria/relato'
 import { CAPTURA_DO_AUDIO_DA_TELA, NOME_DO_FLUXO_DA_TELA, OPCOES_DO_AUDIO_DA_TELA } from './audioDaTela'
 import {
   decidir,
@@ -66,9 +67,17 @@ export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOp
 }
 
 /**
- * Camada única de propósito: o teto de bitrate do painel vira uma promessa exata e o medidor
- * mostra um número que corresponde a ela. Com simulcast o uplink seria a soma das camadas —
- * e numa sala de cinco pessoas ninguém assina a versão pequena de uma tela em destaque.
+ * Simulcast fora, SVC dentro.
+ *
+ * Simulcast manda codificações independentes e o uplink vira a soma delas — caro exatamente no
+ * lugar que dói, que é o upload de quem compartilha. `L3T3_KEY` põe três camadas espaciais e
+ * três temporais num fluxo só, ~20% mais caro que camada única, e o SFU escolhe por
+ * espectador: é o que impede o amigo mais lento de puxar a sala inteira para baixo agora que o
+ * governador escuta quem assiste.
+ *
+ * A camada única de antes se justificava por um medidor manual exato: o teto do painel era uma
+ * promessa e o número tinha de corresponder a ela. O medidor manual acabou — o teto virou uma
+ * busca do governador, e não há mais promessa exata a proteger.
  *
  * O encoding vai em `screenShareEncoding`, não em `videoEncoding`: o `computeVideoEncodings` do
  * SDK só olha para o primeiro quando a fonte é tela. Com o campo errado, a transmissão nascia
@@ -76,9 +85,8 @@ export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOp
  * Movimento e começar a compartilhar dava 15 fps nos primeiros instantes.
  *
  * `backupCodec: false`: o reserva em VP8 existe para navegadores que não decodificam VP9/AV1,
- * e aqui todo mundo é Chrome desktop — seria uplink dobrado para ninguém. `L1T2` nos codecs
- * SVC dá ao SFU duas camadas temporais: quem assiste devagar recebe metade dos quadros sem
- * que o emissor precise saber.
+ * e aqui todo mundo é Chrome desktop — seria uplink dobrado para ninguém. H.264 não faz SVC:
+ * lá a camada continua única, e é por isso que o governador mira o pior espectador.
  */
 export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptions {
   return {
@@ -86,7 +94,7 @@ export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptio
     simulcast: false,
     videoCodec: perfil.codec,
     backupCodec: false,
-    ...(CODECS[perfil.codec].svc ? { scalabilityMode: 'L1T2' as const } : {}),
+    ...(CODECS[perfil.codec].svc ? { scalabilityMode: 'L3T3_KEY' as const } : {}),
     degradationPreference: CEDER[perfil.ceder].degradacao,
     screenShareEncoding: { maxBitrate: perfil.tetoKbps * 1000, maxFramerate: perfil.fps },
     stream: NOME_DO_FLUXO_DA_TELA,
@@ -95,10 +103,10 @@ export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptio
 
 export interface Compartilhamento {
   ativo: boolean
-  /** O pedido da pessoa: o teto do governador. */
+  /** O pedido da pessoa: o preset de onde o governador parte. */
   perfil: PerfilDeQualidade
   definirPerfil(perfil: PerfilDeQualidade): void
-  /** Pedido ⊕ degrau do governador — o que de fato está na captura e no encoder. */
+  /** Pedido ⊕ teto ⊕ degrau do governador — o que de fato está na captura e no encoder. */
   perfilEfetivo: PerfilDeQualidade
   automatico: boolean
   definirAutomatico(ligado: boolean): void
@@ -150,11 +158,19 @@ function pararOQueNaoFoiAoAr(sala: Room, capturadas: LocalTrack[]): void {
   for (const faixa of capturadas) if (!noAr.includes(faixa)) faixa.stop()
 }
 
+/** Uma referência estável: uma sala sem espectador nenhum não pode remontar o efeito a cada render. */
+const SEM_ESPECTADORES: ReadonlyMap<string, Espectador> = new Map()
+
 /**
  * O compartilhamento de tela: o pedido da pessoa, o governador por cima dele, e a tradução dos
- * dois para o SDK. O `historico` é a telemetria do emissor; é dele que o governador decide.
+ * dois para o SDK. O `historico` é a telemetria do emissor e `espectadores` a de quem assiste;
+ * é das duas que o governador decide.
  */
-export function useCompartilhamento(sala: Room | null, historico: Historico<AmostraDoEmissor>): Compartilhamento {
+export function useCompartilhamento(
+  sala: Room | null,
+  historico: Historico<AmostraDoEmissor>,
+  espectadores: ReadonlyMap<string, Espectador> = SEM_ESPECTADORES,
+): Compartilhamento {
   const publicacao = sala ? publicacaoDe(sala, Track.Source.ScreenShare) : undefined
   const sid = publicacao?.trackSid ?? null
 
@@ -174,6 +190,11 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
   // Republicar deixa a tela sem publicação por um instante; isso não é "parou".
   const ativo = Boolean(publicacao) || republicando
 
+  // Os relatos chegam no ritmo de quem assiste — a cada 2 s, e um por pessoa. O governador não
+  // anda com eles: ele anda uma vez por amostra do emissor, e lê o último relato de cada um.
+  const ultimosRelatos = useRef(espectadores)
+  ultimosRelatos.current = espectadores
+
   // O governador anda uma vez por amostra nova; parar de transmitir o zera.
   useEffect(() => {
     if (!ativo) {
@@ -181,11 +202,11 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
       return
     }
     if (!automatico) return
-    setGovernador((estado) => decidir(estado, historico, perfil))
+    setGovernador((estado) => decidir(estado, historico, perfil, [...ultimosRelatos.current.values()]))
   }, [historico, automatico, ativo, perfil])
 
-  // Só o degrau muda o efetivo; o resto do estado do governador muda a cada amostra limitada.
-  const perfilEfetivo = useMemo(() => combinar(perfil, governador), [perfil, governador.degrau])
+  // Só o degrau e o teto mudam o efetivo; o resto do estado muda a cada amostra limitada.
+  const perfilEfetivo = useMemo(() => combinar(perfil, governador), [perfil, governador.degrau, governador.tetoKbps])
 
   // Ajuste ao vivo: sem republicar, sem renegociar. Roda também logo depois de publicar,
   // porque a captura entrega o que o monitor tem e o teto real é este.
