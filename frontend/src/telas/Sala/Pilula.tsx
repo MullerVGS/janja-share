@@ -1,28 +1,20 @@
 import type { ReactNode } from 'react'
 import type { Peca } from '../../sala/palco'
-import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
 import {
   IconeCaber,
   IconeJanelinha,
-  IconePararTela,
   IconePixelAPixel,
   IconeSairDaTelaCheia,
-  IconeSom,
-  IconeSomMudo,
   IconeTelaCheia,
-  IconeTrocarTela,
 } from '../../ui/Icone'
 import { temPiP, temTelaCheia } from './assistir'
 import { ControleDeSom } from './ControleDeSom'
-import { SomSaindo } from './SomSaindo'
 import estilos from './Pilula.module.css'
 
 interface Props {
   peca: Peca
   volumes: ControleDeVolumes
-  /** O compartilhamento em curso: é dele que saem os botões da sua própria tela. */
-  compartilhamento: Compartilhamento
   zoom: { caber(): void; umPorUm(): void }
   telaCheia: { cheia: boolean; alternar(): void }
   pip: { emPiP: boolean; alternar(): void }
@@ -32,7 +24,6 @@ function Acao({
   rotulo,
   dica,
   ligado,
-  perigo = false,
   desabilitado = false,
   aoClicar,
   children,
@@ -41,7 +32,6 @@ function Acao({
   /** Substitui o rótulo no `title` quando há algo a explicar — tipicamente por que está apagado. */
   dica?: string
   ligado?: boolean
-  perigo?: boolean
   desabilitado?: boolean
   aoClicar(): void
   children: ReactNode
@@ -49,7 +39,7 @@ function Acao({
   return (
     <button
       type="button"
-      className={[estilos.acao, perigo ? estilos.perigo : ''].filter(Boolean).join(' ')}
+      className={estilos.acao}
       aria-pressed={ligado}
       aria-label={rotulo}
       title={dica ?? rotulo}
@@ -61,37 +51,18 @@ function Acao({
   )
 }
 
-/** O áudio da sua própria tela: calar e devolver sem republicar nada. */
-function AudioDaPropriaTela({ compartilhamento }: { compartilhamento: Compartilhamento }) {
-  const audio = compartilhamento.audioDaTela
-  const noAr = Boolean(audio && !audio.isMuted)
-  const faixa = audio?.track?.mediaStreamTrack
-
-  return (
-    <>
-      <Acao
-        rotulo={!audio ? 'Áudio da tela' : noAr ? 'Calar o áudio da tela' : 'Devolver o áudio da tela'}
-        dica={audio ? undefined : "marque 'compartilhar áudio' no seletor ao iniciar"}
-        ligado={noAr}
-        desabilitado={!audio}
-        aoClicar={() => void compartilhamento.alternarAudioDaTela()}
-      >
-        {noAr ? <IconeSom tamanho={15} /> : <IconeSomMudo tamanho={15} />}
-      </Acao>
-      {faixa && <SomSaindo faixa={faixa} />}
-    </>
-  )
-}
-
 /**
  * Os controles que aparecem sobre um quadro, no passar do mouse e ao receber foco de teclado.
  *
  * Quem vê o quê sai do papel da peça, e de mais nada: ninguém vê botão que não pode apertar —
  * sem fixar (fixar é o clique), sem parar o que não é seu, sem volume do próprio som. Uma peça
  * sem nenhum botão não tem pílula.
+ *
+ * O que é da SUA própria tela (trocar, o áudio dela, parar) não mora aqui: mora na barra —
+ * enquanto você assiste a de outra pessoa em foco, a sua vive fora do palco, sem pílula nenhuma
+ * desenhada para ela, e um botão que só existe às vezes não pode ser a única porta pra ele.
  */
-export function Pilula({ peca, volumes, compartilhamento, zoom, telaCheia, pip }: Props) {
-  const propria = peca.proprio && peca.ehTela
+export function Pilula({ peca, volumes, zoom, telaCheia, pip }: Props) {
   const alheia = !peca.proprio && peca.ehTela
   const somAlheio = !peca.proprio && peca.temAudio
 
@@ -99,14 +70,7 @@ export function Pilula({ peca, volumes, compartilhamento, zoom, telaCheia, pip }
 
   return (
     <div className={estilos.pilula}>
-      {propria && <AudioDaPropriaTela compartilhamento={compartilhamento} />}
       {somAlheio && !peca.ehTela && <ControleDeSom peca={peca} volumes={volumes} />}
-
-      {propria && (
-        <Acao rotulo="Trocar de tela" aoClicar={() => void compartilhamento.trocarDeTela()}>
-          <IconeTrocarTela tamanho={15} />
-        </Acao>
-      )}
 
       {peca.ehTela && (
         <>
@@ -137,12 +101,6 @@ export function Pilula({ peca, volumes, compartilhamento, zoom, telaCheia, pip }
           aoClicar={telaCheia.alternar}
         >
           {telaCheia.cheia ? <IconeSairDaTelaCheia tamanho={15} /> : <IconeTelaCheia tamanho={15} />}
-        </Acao>
-      )}
-
-      {propria && (
-        <Acao rotulo="Parar de transmitir" perigo aoClicar={() => void compartilhamento.alternar()}>
-          <IconePararTela tamanho={15} />
         </Acao>
       )}
     </div>

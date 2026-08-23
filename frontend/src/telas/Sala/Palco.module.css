@@ -19,6 +19,29 @@
   overflow-y: auto;
 }
 
+/* Uma tela na grade muda a hierarquia: ela é o que a captura do dono mostra, e quatro avatares
+   do mesmo tamanho brigando por espaço com ela não faz sentido. A tela reivindica a linha
+   inteira; as pessoas encolhem para uma fileira fixa, como a Tira. `:has()` decide isso sem o
+   React carregar mais um booleano derivado do palco — sem tela nenhuma, nada aqui se aplica e a
+   grade de sempre volta. */
+.palco[data-modo='grade']:has(.quadro[data-tela]) {
+  grid-template-columns: repeat(auto-fill, 160px);
+  grid-template-rows: minmax(0, 1fr) 160px;
+  grid-auto-rows: 160px;
+  grid-auto-flow: column;
+  align-content: stretch;
+  justify-content: center;
+}
+
+.palco[data-modo='grade']:has(.quadro[data-tela]) .quadro[data-tela] {
+  grid-column: 1 / -1;
+  aspect-ratio: auto;
+}
+
+.palco[data-modo='grade']:has(.quadro[data-tela]) .quadro:not([data-tela]) {
+  aspect-ratio: auto;
+}
+
 /* Em foco a peça vai de borda a borda: é o "quero ler o que está escrito ali". */
 .palco[data-modo='foco'] {
   grid-template-columns: 1fr;
@@ -229,6 +252,17 @@
   position: absolute;
   left: 50%;
   bottom: var(--e4);
+  transform: translateX(-50%);
+  max-width: calc(100% - var(--e4));
+}
+
+/* A pílula do quadro em foco: sempre à vista quando renderizada — a visibilidade já é decidida
+   em React por `interfaceVisivel` (o mesmo relógio do Cabecalho e da barra), então nada de
+   opacidade condicionada a hover aqui. */
+.comAInterface {
+  position: absolute;
+  left: 50%;
+  bottom: var(--e2);
   transform: translateX(-50%);
   max-width: calc(100% - var(--e4));
 }

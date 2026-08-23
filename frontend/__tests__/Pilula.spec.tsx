@@ -1,11 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { LocalTrackPublication } from 'livekit-client'
-import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { Pilula } from '../src/telas/Sala/Pilula'
-import { compartilhamentoFalso } from './apoio/compartilhamentoFalso'
 import { habilitarPiP, habilitarTelaCheia } from './apoio/navegador'
 import { peca, volumesFalsos } from './apoio/pecas'
 
@@ -15,7 +11,6 @@ function montarPilula(parcial: Partial<Props> = {}) {
   const props: Props = {
     peca: peca('Bia', { ehTela: true }),
     volumes: volumesFalsos(),
-    compartilhamento: compartilhamentoFalso(),
     zoom: { caber: vi.fn(), umPorUm: vi.fn() },
     telaCheia: { cheia: false, alternar: vi.fn() },
     pip: { emPiP: false, alternar: vi.fn() },
@@ -24,40 +19,13 @@ function montarPilula(parcial: Partial<Props> = {}) {
   return { ...props, ...render(<Pilula {...props} />) }
 }
 
-/** A publicação do áudio da tela reduzida ao que a pílula toca: mudo, faixa e o par mute/unmute. */
-function audioDaTelaFalso() {
-  const publicacao = {
-    isMuted: false,
-    track: { mediaStreamTrack: { id: 'som-da-tela' } as unknown as MediaStreamTrack },
-    mute: vi.fn(async () => {
-      publicacao.isMuted = true
-    }),
-    unmute: vi.fn(async () => {
-      publicacao.isMuted = false
-    }),
-  }
-  return publicacao
-}
-
 const rotulos = () => screen.getAllByRole('button').map((botao) => botao.getAttribute('aria-label'))
 
 describe('pílula: os botões saem do papel de quem vê', () => {
-  it('na sua tela: parar, trocar, caber, 1:1 e o áudio da tela — e nada de volume do próprio som', () => {
-    montarPilula({
-      peca: peca('Ana', { ehTela: true, proprio: true }),
-      compartilhamento: compartilhamentoFalso({
-        ativo: true,
-        audioDaTela: audioDaTelaFalso() as unknown as LocalTrackPublication,
-      }),
-    })
+  it('na sua tela: só caber e 1:1 — trocar, parar e o áudio dela moraram na barra', () => {
+    montarPilula({ peca: peca('Ana', { ehTela: true, proprio: true }) })
 
-    expect(rotulos()).toEqual([
-      'Calar o áudio da tela',
-      'Trocar de tela',
-      'Fazer a tela caber no quadro',
-      'Ver em 1:1',
-      'Parar de transmitir',
-    ])
+    expect(rotulos()).toEqual(['Fazer a tela caber no quadro', 'Ver em 1:1'])
     expect(screen.queryByRole('slider', { name: /volume/i })).not.toBeInTheDocument()
   })
 
@@ -120,18 +88,6 @@ describe('pílula: o que cada botão faz', () => {
     expect(zoom.umPorUm).toHaveBeenCalledOnce()
   })
 
-  it('parar de transmitir e trocar de tela chamam o compartilhamento', async () => {
-    const usuario = userEvent.setup()
-    const compartilhamento = compartilhamentoFalso({ ativo: true })
-    montarPilula({ peca: peca('Ana', { ehTela: true, proprio: true }), compartilhamento })
-
-    await usuario.click(screen.getByRole('button', { name: 'Trocar de tela' }))
-    await usuario.click(screen.getByRole('button', { name: 'Parar de transmitir' }))
-
-    expect(compartilhamento.trocarDeTela).toHaveBeenCalledOnce()
-    expect(compartilhamento.alternar).toHaveBeenCalledOnce()
-  })
-
   it('a janelinha e a tela cheia se anunciam pelo estado em que estão', () => {
     habilitarPiP()
     habilitarTelaCheia()
@@ -155,64 +111,5 @@ describe('pílula: o que cada botão faz', () => {
 
     await usuario.click(botao)
     expect(volumes.alternarMudo).toHaveBeenCalledWith('Bia', 'pessoa')
-  })
-})
-
-const DICA_SEM_AUDIO = "marque 'compartilhar áudio' no seletor ao iniciar"
-
-describe('pílula: o áudio da sua tela', () => {
-  /** Alternar o áudio re-renderiza a árvore, como o `TrackMuted` do `Room` faz na sala de verdade. */
-  function montarComAudio(audio: ReturnType<typeof audioDaTelaFalso> | null) {
-    function Cenario() {
-      const [, reler] = useState(0)
-      const base = compartilhamentoFalso({
-        ativo: true,
-        audioDaTela: (audio ?? null) as unknown as LocalTrackPublication | null,
-      })
-      const compartilhamento: Compartilhamento = {
-        ...base,
-        alternarAudioDaTela: async () => {
-          await (audio?.isMuted ? audio.unmute() : audio?.mute())
-          reler((n) => n + 1)
-        },
-      }
-      return (
-        <Pilula
-          peca={peca('Ana', { ehTela: true, proprio: true })}
-          volumes={volumesFalsos()}
-          compartilhamento={compartilhamento}
-          zoom={{ caber: vi.fn(), umPorUm: vi.fn() }}
-          telaCheia={{ cheia: false, alternar: vi.fn() }}
-          pip={{ emPiP: false, alternar: vi.fn() }}
-        />
-      )
-    }
-    return render(<Cenario />)
-  }
-
-  it('cala e devolve o som da tela, sem republicar nada', async () => {
-    const usuario = userEvent.setup()
-    const audio = audioDaTelaFalso()
-    montarComAudio(audio)
-
-    await usuario.click(screen.getByRole('button', { name: 'Calar o áudio da tela' }))
-    expect(audio.mute).toHaveBeenCalledOnce()
-
-    await usuario.click(screen.getByRole('button', { name: 'Devolver o áudio da tela' }))
-    expect(audio.unmute).toHaveBeenCalledOnce()
-  })
-
-  it('sem publicação de áudio o botão fica desabilitado e diz onde estava a escolha', () => {
-    montarComAudio(null)
-
-    const botao = screen.getByRole('button', { name: 'Áudio da tela' })
-    expect(botao).toBeDisabled()
-    expect(botao).toHaveAttribute('title', DICA_SEM_AUDIO)
-    expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
-  })
-
-  it('sem WebAudio no navegador, não há indicador de som saindo', () => {
-    montarComAudio(audioDaTelaFalso())
-    expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
   })
 })

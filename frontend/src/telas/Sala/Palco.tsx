@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { iniciais, type Peca } from '../../sala/palco'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useCliqueOuDuplo } from '../../sala/useCliqueOuDuplo'
-import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
 import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
@@ -21,7 +20,9 @@ interface Props {
   aoSoltarOFoco(): void
   aoFocar(chave: string): void
   volumes: ControleDeVolumes
-  compartilhamento: Compartilhamento
+  /** Se a interface flutuante (Cabecalho, Controles) está à mostra — `Sala.tsx` já calcula isso
+   * com `useAutoOcultar`; a pílula do quadro em foco segue o mesmo relógio, não o hover. */
+  interfaceVisivel: boolean
   zoom: ControleDeZoom
 }
 
@@ -67,7 +68,7 @@ function Quadro({
   aoSoltarOFoco,
   aoFocar,
   volumes,
-  compartilhamento,
+  interfaceVisivel,
   zoom,
 }: Omit<Props, 'pecas'> & { peca: Peca }) {
   const quadro = useRef<HTMLDivElement>(null)
@@ -102,7 +103,6 @@ function Quadro({
     <Pilula
       peca={peca}
       volumes={volumes}
-      compartilhamento={compartilhamento}
       zoom={{ caber: () => gestos.disparar({ tipo: 'caber' }), umPorUm: () => gestos.disparar({ tipo: 'umPorUm' }) }}
       telaCheia={telaCheia}
       pip={pip}
@@ -182,6 +182,10 @@ function Quadro({
 
       {telaCheia.cheia ? (
         <PilulaDaTelaCheia>{pilula}</PilulaDaTelaCheia>
+      ) : emFoco ? (
+        // Em foco a pílula segue a interface flutuante, não o hover: sumiu tudo, ela some
+        // junto — sem isso ela ficaria a única peça de UI ainda visível na tela parada.
+        interfaceVisivel && <div className={estilos.comAInterface}>{pilula}</div>
       ) : (
         <div className={estilos.aoPassarOMouse}>{pilula}</div>
       )}
@@ -196,7 +200,7 @@ function Quadro({
  * quadro que estava na grade (mesma chave, mesmo pai), e é isso que impede o vídeo de piscar
  * ao entrar e sair do foco.
  */
-export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, compartilhamento, zoom }: Props) {
+export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, interfaceVisivel, zoom }: Props) {
   return (
     <div className={estilos.palco} data-modo={emFoco ? 'foco' : 'grade'}>
       {pecas.map((peca) => (
@@ -207,7 +211,7 @@ export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, comparti
           aoSoltarOFoco={aoSoltarOFoco}
           aoFocar={aoFocar}
           volumes={volumes}
-          compartilhamento={compartilhamento}
+          interfaceVisivel={interfaceVisivel}
           zoom={zoom}
         />
       ))}

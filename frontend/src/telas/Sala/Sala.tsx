@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ConnectionState } from 'livekit-client'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
+import { retirarCaptura } from '../../sala/capturaPendente'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
 import { chavesDasTelasPublicadas, montarPalco } from '../../sala/palco'
@@ -40,6 +42,15 @@ export function Sala() {
   const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const telemetria = useTelemetria(sala)
   const compartilhamento = useCompartilhamento(sala, telemetria.emissor)
+
+  // A captura que a home abriu viaja por `capturaPendente`; adotá-la é o que faz o clique único
+  // da home terminar em transmissão. Uma vez só — `retirarCaptura` é destrutivo.
+  useEffect(() => {
+    if (conexao !== ConnectionState.Connected) return
+    const faixas = retirarCaptura()
+    if (faixas) void compartilhamento.adotar(faixas)
+  }, [conexao, compartilhamento])
+
   // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
   // mostrava "Nada dito ainda." enquanto os outros continuavam falando.
@@ -160,7 +171,7 @@ export function Sala() {
         aoSoltarOFoco={soltarOFoco}
         aoFocar={focar}
         volumes={volumes}
-        compartilhamento={compartilhamento}
+        interfaceVisivel={interfaceVisivel}
         zoom={zoom}
       />
 

@@ -8,8 +8,12 @@ import {
   IconeMicrofone,
   IconeMicrofoneMudo,
   IconeSair,
+  IconeSom,
+  IconeSomMudo,
   IconeTela,
+  IconeTrocarTela,
 } from '../../ui/Icone'
+import { SomSaindo } from './SomSaindo'
 import estilos from './Controles.module.css'
 
 interface Props {
@@ -86,8 +90,10 @@ function Botao({
  * fechados — ninguém entra numa sala já transmitindo — e o estado de cada um está no próprio
  * botão, não escondido num menu.
  *
- * O que é de uma tela específica (calar o áudio dela, trocá-la, pará-la) mora na pílula daquele
- * quadro: aqui ficam só as decisões que valem para a sala inteira.
+ * Trocar de tela e o áudio dela só aparecem transmitindo, porque são da SUA tela — e é por
+ * isso que moram aqui, e não na pílula de um quadro: enquanto você assiste a de outra pessoa em
+ * foco, a sua vive fora do palco (na Tira), sem pílula nenhuma desenhada para ela. A barra é o
+ * único lugar que está sempre no ar, foco ou não.
  */
 export function Controles({
   sala,
@@ -105,6 +111,8 @@ export function Controles({
   const cameraLigada = sala?.localParticipant.isCameraEnabled ?? false
   // Sem sala não há a quem pedir dispositivo nem tela: botão que não faz nada tem de dizer isso.
   const semSala = sala === null
+  // Quem compartilha não se ouve: o medidor é a única resposta a "está saindo som?".
+  const faixaDoAudioDaTela = compartilhamento.audioDaTela?.track?.mediaStreamTrack
 
   async function alternarMicrofone() {
     if (!sala) return
@@ -160,6 +168,33 @@ export function Controles({
       >
         <IconeTela />
       </Botao>
+
+      {compartilhamento.ativo && (
+        <>
+          <Botao
+            rotulo="Trocar de tela"
+            desabilitado={compartilhamento.ocupado}
+            aoClicar={() => void compartilhamento.trocarDeTela()}
+          >
+            <IconeTrocarTela />
+          </Botao>
+          <Botao
+            rotulo={
+              !compartilhamento.audioDaTela
+                ? 'Áudio da tela — marque "compartilhar áudio" no seletor'
+                : compartilhamento.audioDaTela.isMuted
+                  ? 'Devolver o áudio da tela'
+                  : 'Calar o áudio da tela'
+            }
+            ligado={Boolean(compartilhamento.audioDaTela && !compartilhamento.audioDaTela.isMuted)}
+            desabilitado={!compartilhamento.audioDaTela}
+            aoClicar={() => void compartilhamento.alternarAudioDaTela()}
+          >
+            {compartilhamento.audioDaTela && !compartilhamento.audioDaTela.isMuted ? <IconeSom /> : <IconeSomMudo />}
+          </Botao>
+          {faixaDoAudioDaTela && <SomSaindo faixa={faixaDoAudioDaTela} />}
+        </>
+      )}
 
       <span className={estilos.separador} />
 

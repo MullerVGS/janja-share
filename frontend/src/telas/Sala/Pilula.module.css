@@ -40,12 +40,3 @@
   color: var(--acao);
   background: var(--acao-fraca);
 }
-
-.perigo {
-  color: var(--perigo);
-}
-
-.perigo:hover:not(:disabled) {
-  background: var(--perigo-fraca);
-  color: var(--perigo);
-}

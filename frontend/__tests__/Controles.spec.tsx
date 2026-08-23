@@ -33,17 +33,32 @@ function montarBarra(parcial: Partial<Props> = {}) {
   return { ...props, ...render(<Controles {...props} />) }
 }
 
-describe('a barra flutuante', () => {
-  it('tem microfone, câmera, tela, chat e a saída — e nada do que é de uma tela só', () => {
-    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) as Compartilhamento })
+const rotulos = () => screen.getAllByRole('button').map((botao) => botao.getAttribute('aria-label'))
 
-    expect(screen.getAllByRole('button').map((botao) => botao.getAttribute('aria-label'))).toEqual([
+describe('a barra flutuante', () => {
+  it('sem transmitir: microfone, câmera, tela, chat e a saída — nada de trocar ou áudio da tela', () => {
+    montarBarra()
+
+    expect(rotulos()).toEqual(['Abrir microfone', 'Abrir câmera', 'Compartilhar tela', 'Chat', 'Sair da sala'])
+  })
+
+  it('transmitindo: trocar de tela e o áudio dela entram na barra, e trocar chama o compartilhamento', async () => {
+    const usuario = userEvent.setup()
+    const compartilhamento = compartilhamentoFalso({ ativo: true }) as Compartilhamento
+    montarBarra({ compartilhamento })
+
+    expect(rotulos()).toEqual([
       'Abrir microfone',
       'Abrir câmera',
       'Parar de compartilhar a tela',
+      'Trocar de tela',
+      'Áudio da tela — marque "compartilhar áudio" no seletor',
       'Chat',
       'Sair da sala',
     ])
+
+    await usuario.click(screen.getByRole('button', { name: 'Trocar de tela' }))
+    expect(compartilhamento.trocarDeTela).toHaveBeenCalledOnce()
   })
 
   it('microfone e câmera pedem a troca ao SDK e se anunciam pelo estado', async () => {

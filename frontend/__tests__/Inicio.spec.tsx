@@ -1,13 +1,26 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createLocalScreenTracks, type LocalTrack } from 'livekit-client'
 import { Route, Routes, useParams } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SalaNaLista } from '../src/api/salas'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
+import { retirarCaptura } from '../src/sala/capturaPendente'
 import { useSessao } from '../src/sessao/sessao'
 import { Inicio } from '../src/telas/Inicio/Inicio'
 import { montar } from './apoio/montar'
 import { chamadas, servir } from './apoio/servidorFalso'
+
+// Só `createLocalScreenTracks` vira controlável — o resto do módulo (Track, ConnectionState…)
+// segue real, porque `opcoesDeCaptura` e o resto da árvore ainda dependem dele.
+vi.mock('livekit-client', async (importar) => {
+  const real = await importar<typeof import('livekit-client')>()
+  return { ...real, createLocalScreenTracks: vi.fn() }
+})
+
+function faixaFalsa(kind: 'video' | 'audio'): LocalTrack {
+  return { kind, stop: vi.fn() } as unknown as LocalTrack
+}
 
 /** Fica no lugar da sala: prova que a navegação aconteceu e que a sessão guardou o slug certo. */
 function SalaFalsa() {
@@ -57,6 +70,9 @@ function prepararNome(nome = 'Ana') {
 // `preferencias` mora em `localStorage`, e o `preparo.ts` global só limpa o `sessionStorage` — sem
 // isto, o nome digitado num teste vazaria para o próximo (que espera partir de nome vazio).
 afterEach(() => localStorage.clear())
+// Captura pendente é módulo, não componente: sem isto, uma captura guardada e não retirada por
+// um teste vazaria para o próximo.
+afterEach(() => retirarCaptura())
 
 describe('início: lista de salas', () => {
   it('renderiza as salas da API', async () => {
@@ -433,5 +449,76 @@ describe('início: criar sala', () => {
     await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
 
     expect(gatilho).toHaveFocus()
+  })
+})
+
+describe('início: compartilhar minha tela (ação primária)', () => {
+  it('sem nome preenchido, o clique no primário não chama criarSala nem abre o seletor', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
+
+    expect(vi.mocked(createLocalScreenTracks)).not.toHaveBeenCalled()
+    expect(chamadas.some((c) => c.metodo === 'POST' && c.caminho === '/api/salas')).toBe(false)
+    expect(screen.getByText(/escreva seu nome/i)).toBeInTheDocument()
+  })
+
+  it('clique único: captura a tela, cria a sala, guarda a captura pra sala buscar e navega', async () => {
+    prepararNome('Ana')
+    servir({
+      'GET /api/salas': { corpo: [] },
+      'POST /api/salas': { status: 201, corpo: credenciais('nova-sala', 'Ana') },
+    })
+    const video = faixaFalsa('video')
+    vi.mocked(createLocalScreenTracks).mockResolvedValueOnce([video])
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
+
+    expect(await screen.findByText(/entrou em nova-sala como Ana/)).toBeInTheDocument()
+    const criacao = chamadas.find((c) => c.metodo === 'POST' && c.caminho === '/api/salas')
+    expect(criacao?.corpo).toEqual({ seuNome: 'Ana' })
+    // A sala falsa deste teste não busca a captura — sobra pendente, provando que foi guardada.
+    expect(retirarCaptura()).toEqual([video])
+  })
+
+  it('cancelar o seletor nativo não cria sala nem mostra erro — é a pessoa desistindo', async () => {
+    prepararNome('Ana')
+    servir({ 'GET /api/salas': { corpo: [] } })
+    vi.mocked(createLocalScreenTracks).mockRejectedValueOnce(
+      Object.assign(new Error('cancelado'), { name: 'NotAllowedError' }),
+    )
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
+
+    expect(chamadas.some((c) => c.metodo === 'POST' && c.caminho === '/api/salas')).toBe(false)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(retirarCaptura()).toBeNull()
+  })
+
+  it('se criar a sala falhar depois da captura, as faixas capturadas são paradas e o erro aparece', async () => {
+    prepararNome('Ana')
+    servir({
+      'GET /api/salas': { corpo: [] },
+      'POST /api/salas': { status: 503, corpo: { erro: 'sfu_indisponivel' } },
+    })
+    const video = faixaFalsa('video')
+    vi.mocked(createLocalScreenTracks).mockResolvedValueOnce([video])
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'O servidor de mídia não respondeu. Tente de novo em instantes.',
+    )
+    expect(video.stop).toHaveBeenCalledOnce()
+    // Sem sala, ninguém vem buscar a captura — teria ficado órfã se não tivesse sido parada aqui.
+    expect(retirarCaptura()).toBeNull()
   })
 })

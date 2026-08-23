@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConnectionState } from 'livekit-client'
 import { describe, expect, it, vi } from 'vitest'
@@ -51,5 +51,24 @@ describe('cabeçalho flutuante', () => {
 
     montarCabecalho({ gavetaAberta: true })
     expect(screen.getByRole('button', { name: 'Fechar o painel' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('copiar link chama writeText com a URL da página e avisa "copiado" por 2 s', async () => {
+    vi.useFakeTimers()
+    const writeText = vi.fn(async (_texto: string) => {})
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+    montarCabecalho()
+    // `fireEvent` e não `userEvent`: com timers falsos o userEvent espera um relógio que não anda.
+    const clicarEmCopiar = () =>
+      act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copiar link' })))
+
+    await clicarEmCopiar()
+
+    expect(writeText).toHaveBeenCalledWith(window.location.href)
+    expect(screen.getByRole('button', { name: 'Link copiado!' })).toBeInTheDocument()
+
+    await act(() => vi.advanceTimersByTimeAsync(2000))
+    expect(screen.getByRole('button', { name: 'Copiar link' })).toBeInTheDocument()
+    vi.useRealTimers()
   })
 })

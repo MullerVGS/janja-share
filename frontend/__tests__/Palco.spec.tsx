@@ -1,11 +1,9 @@
-import { act, fireEvent, render, screen, type RenderResult } from '@testing-library/react'
+import { act, fireEvent, render, screen, within, type RenderResult } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Peca } from '../src/sala/palco'
-import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { useZoom } from '../src/sala/useZoom'
 import type { ControleDeVolumes } from '../src/sala/useVolumes'
 import { Palco } from '../src/telas/Sala/Palco'
-import { compartilhamentoFalso } from './apoio/compartilhamentoFalso'
 import { habilitarTelaCheia } from './apoio/navegador'
 import { peca, volumesFalsos } from './apoio/pecas'
 
@@ -15,7 +13,8 @@ interface Cenario {
   aoSoltarOFoco?: () => void
   aoFocar?: (chave: string) => void
   volumes?: ControleDeVolumes
-  compartilhamento?: Compartilhamento
+  /** A sala inteira começa com a interface visível; testar o oposto é escolha explícita do teste. */
+  interfaceVisivel?: boolean
 }
 
 function Palquinho({
@@ -24,7 +23,7 @@ function Palquinho({
   aoSoltarOFoco = vi.fn(),
   aoFocar = vi.fn(),
   volumes = volumesFalsos(),
-  compartilhamento = compartilhamentoFalso(),
+  interfaceVisivel = true,
 }: Cenario) {
   const zoom = useZoom(pecas)
   return (
@@ -34,7 +33,7 @@ function Palquinho({
       aoSoltarOFoco={aoSoltarOFoco}
       aoFocar={aoFocar}
       volumes={volumes}
-      compartilhamento={compartilhamento}
+      interfaceVisivel={interfaceVisivel}
       zoom={zoom}
     />
   )
@@ -208,10 +207,20 @@ describe('palco: tela cheia', () => {
     expect(screen.queryByRole('button', umPorUm)).toBeNull()
   })
 
-  it('fora da tela cheia a pílula está sempre desenhada — quem a esconde é o hover, no CSS', () => {
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true })
-    expect(imagemDe(resultado)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ver em 1:1' })).toBeInTheDocument()
+  it('fora da grade (em foco) a pílula segue `interfaceVisivel` — não mais o hover', () => {
+    // `within(container)`, e não a query já ligada ao `render`: as duas montagens desta prova
+    // vivem no mesmo `document.body`, e a query ligada busca o corpo inteiro por padrão.
+    const visivel = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true, interfaceVisivel: true })
+    expect(imagemDe(visivel)).toBeInTheDocument()
+    expect(within(visivel.container).getByRole('button', { name: 'Ver em 1:1' })).toBeInTheDocument()
+
+    const oculta = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true, interfaceVisivel: false })
+    expect(within(oculta.container).queryByRole('button', { name: 'Ver em 1:1' })).not.toBeInTheDocument()
+  })
+
+  it('na grade (fora do foco) a pílula continua sempre desenhada — quem a esconde ali é o hover, no CSS', () => {
+    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], interfaceVisivel: false })
+    expect(resultado.getByRole('button', { name: 'Ver em 1:1' })).toBeInTheDocument()
   })
 })
 
