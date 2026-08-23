@@ -29,8 +29,12 @@ export function slugDaSala(nome: string): string {
 
 /**
  * "nome da sala, trim, 1..40" — lança NomeDaSalaInvalido se vazio OU se o slug sair vazio
- * (nome só de emoji/pontuação: passa no teste de tamanho mas não vira sala nenhuma — ruling do
- * ticket: é nome_da_sala_invalido, não "sem nome").
+ * (nome só de emoji/pontuação passa no teste de tamanho, mas não vira sala nenhuma; continua
+ * sendo nome_da_sala_invalido, não "sem nome").
+ *
+ * Não é o único caminho para um nomeDaSala: quem não digitou nada não passa por aqui — ganha um
+ * nome de `salas/nomeAutomatico.ts`, que já sai pronto para virar slug. Esta função só valida
+ * o que a pessoa escreveu; string vazia continua sendo erro, não "ausência".
  */
 export function validarNomeDaSala(bruto: unknown): string {
   if (typeof bruto !== 'string') throw new NomeDaSalaInvalido()

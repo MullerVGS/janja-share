@@ -27,7 +27,10 @@ export function listarSalas(): Promise<SalaNaLista[]> {
   return pedir<SalaNaLista[]>('/api/salas')
 }
 
-export function criarSala({ nome, senha, seuNome }: { nome: string; senha?: string; seuNome: string }): Promise<Credenciais> {
+// `nome` é opcional: quem não escolhe um ganha um nome gerado do lado do servidor — omitir o
+// campo (`undefined`, apagado pelo JSON.stringify) é o mesmo "não pedi nome" que o backend já
+// trata como ausência (ver CriarSalaUseCase).
+export function criarSala({ nome, senha, seuNome }: { nome?: string; senha?: string; seuNome: string }): Promise<Credenciais> {
   return enviarJson<Credenciais>('/api/salas', 'POST', { nome, senha, seuNome })
 }
 

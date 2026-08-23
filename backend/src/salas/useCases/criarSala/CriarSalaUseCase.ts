@@ -9,6 +9,7 @@ import { slugDaSala, validarNomeDaSala } from '../../../shared/slug'
 import { Credenciais } from '../../credenciais'
 import { gerarIdentidade } from '../../identidade'
 import { validarNome } from '../../nome'
+import { gerarNomeDeSala } from '../../nomeAutomatico'
 import { SalasRepository } from '../../repositories/salas.repository'
 
 const TETO_SALAS = 20
@@ -29,18 +30,24 @@ export class CriarSalaUseCase {
       throw new Espere()
     }
 
-    const nomeDaSala = validarNomeDaSala(nomeBruto)
-    const slug = slugDaSala(nomeDaSala)
+    // Nome ausente ou vazio não é erro: é a pessoa não querendo escolher. Só string não-vazia
+    // passa por `validarNomeDaSala` — assim `{"nome": 123}` continua sendo nome_da_sala_invalido.
+    const pediuNome = typeof nomeBruto === 'string' ? nomeBruto.trim() !== '' : nomeBruto !== undefined && nomeBruto !== null
+    // Valida cedo (antes do teto), gera tarde (só depois de `salasAtuais`, que é de onde sai o
+    // conjunto de slugs usados). Preserva a ordem antiga de erros: nome inválido continua
+    // vencendo `muitas_salas` quando os dois valem ao mesmo tempo.
+    const nomeDigitado = pediuNome ? validarNomeDaSala(nomeBruto) : null
     const seuNome = validarNome(seuNomeBruto)
     // senha não é um dos "nomes" (que precisam de código de erro dedicado): tipo errado é
     // recusado pelo DTO (@IsString + @IsOptional); aqui só decide "tem senha ou não".
     const senha = typeof senhaBruta === 'string' && senhaBruta.length > 0 ? senhaBruta : undefined
 
-    // Leitura SEM cache (Decisão 6): com o cache de 2s de listarSalas(), um segundo POST para o
-    // mesmo nome logo depois do primeiro não veria a sala recém-criada, passaria da checagem de
-    // slug já existe e apagaria (embaixo) o hash de uma sala que está viva.
+    // Leitura sem cache: um segundo POST precisa enxergar a sala recém-criada; caso contrário,
+    // poderia apagar o hash de uma sala viva antes de descobrir a colisão no SFU.
     const salasAtuais = await this.room.listarSalasSemCache()
     if (salasAtuais.length >= TETO_SALAS) throw new MuitasSalas()
+    const nomeDaSala = nomeDigitado ?? gerarNomeDeSala(new Set(salasAtuais.map((s) => s.slug)))
+    const slug = slugDaSala(nomeDaSala)
     if (salasAtuais.some((s) => s.slug === slug)) throw new SalaExiste()
 
     // Linha órfã do mesmo slug: sala morta que deixou hash para trás. Sem apagar antes, um nome

@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common'
 import { TokenVerifier } from 'livekit-server-sdk'
 import request from 'supertest'
 import { cifrar, confere } from '../src/shared/senha'
+import { slugDaSala } from '../src/shared/slug'
 import { LivekitRoomProviderFalso } from './salas-fake'
 import { criarApp, dataSource } from './helpers'
 
@@ -108,6 +109,27 @@ describe('salas/', () => {
         .post('/api/salas')
         .set('X-Forwarded-For', ipDeTeste())
         .send({ nome: '🎮', seuNome: 'Ana' })
+
+      expect(res.status).toBe(400)
+      expect(res.body).toEqual({ erro: 'nome_da_sala_invalido' })
+    })
+
+    it('sem nome, gera um automático de duas palavras — o nome ausente não é erro', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/salas')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ seuNome: 'Ana' })
+        .expect(201)
+
+      expect(res.body.nomeDaSala.split(' ')).toHaveLength(2)
+      expect(res.body.slug).toBe(slugDaSala(res.body.nomeDaSala))
+    })
+
+    it('nome não-string (ex.: número) continua devolvendo 400 nome_da_sala_invalido — só a ausência gera nome', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/salas')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ nome: 123, seuNome: 'Ana' })
 
       expect(res.status).toBe(400)
       expect(res.body).toEqual({ erro: 'nome_da_sala_invalido' })

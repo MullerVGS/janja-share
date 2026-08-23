@@ -36,12 +36,12 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
   async function enviar(evento: FormEvent) {
     evento.preventDefault()
     const seuNome = (precisaDoNome ? nomeLocal : meuNome).trim()
-    if (seuNome === '' || nomeDaSala.trim() === '') return
+    if (seuNome === '') return
 
     setEnviando(true)
     setErro(null)
     try {
-      const credenciais = await criarSala({ nome: nomeDaSala.trim(), senha: senha || undefined, seuNome })
+      const credenciais = await criarSala({ nome: nomeDaSala.trim() || undefined, senha: senha || undefined, seuNome })
       if (precisaDoNome) aoDefinirNome(seuNome)
       aoCriar(credenciais)
     } catch (falha) {
@@ -56,10 +56,10 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
       <form className={estilos.formulario} onSubmit={enviar} noValidate>
         {erro !== null && <Aviso tom="erro">{mensagemDoErro(erro)}</Aviso>}
         <Campo
-          rotulo="Nome da sala"
+          rotulo="Nome da sala (opcional)"
           autoFocus
           maxLength={LIMITE_DO_NOME}
-          placeholder="Jogatina"
+          placeholder="deixe em branco e eu escolho um"
           value={nomeDaSala}
           onChange={(e) => setNomeDaSala(e.target.value)}
         />
@@ -84,7 +84,7 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
           aparencia="primario"
           blocoInteiro
           ocupado={enviando}
-          disabled={nomeDaSala.trim() === '' || (precisaDoNome && nomeLocal.trim() === '')}
+          disabled={precisaDoNome && nomeLocal.trim() === ''}
         >
           {enviando ? 'criando…' : 'Criar sala'}
         </Botao>

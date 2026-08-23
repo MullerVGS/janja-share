@@ -345,13 +345,35 @@ describe('início: criar sala', () => {
 
     await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
     const dialogo = screen.getByRole('dialog')
-    await usuario.type(within(dialogo).getByLabelText('Nome da sala'), 'Nova Sala')
+    await usuario.type(within(dialogo).getByLabelText('Nome da sala (opcional)'), 'Nova Sala')
     await usuario.type(within(dialogo).getByLabelText('Senha (opcional)'), 'segredo123')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Criar sala' }))
 
     expect(await screen.findByText(/entrou em nova-sala como Ana/)).toBeInTheDocument()
     const criacao = chamadas.find((c) => c.metodo === 'POST' && c.caminho === '/api/salas')
     expect(criacao?.corpo).toEqual({ nome: 'Nova Sala', senha: 'segredo123', seuNome: 'Ana' })
+  })
+
+  it('sem digitar o nome da sala, o Criar sala continua habilitado e manda nome ausente', async () => {
+    prepararNome('Ana')
+    servir({
+      'GET /api/salas': { corpo: [] },
+      'POST /api/salas': { status: 201, corpo: credenciais('varanda-tranquila', 'Ana') },
+    })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
+    const dialogo = screen.getByRole('dialog')
+    const botao = within(dialogo).getByRole('button', { name: 'Criar sala' })
+    expect(botao).not.toBeDisabled()
+    await usuario.click(botao)
+
+    expect(await screen.findByText(/entrou em varanda-tranquila como Ana/)).toBeInTheDocument()
+    const criacao = chamadas.find((c) => c.metodo === 'POST' && c.caminho === '/api/salas')
+    // `nome` some do corpo (undefined é apagado pelo JSON.stringify) — é assim que o backend
+    // enxerga "ninguém escolheu um nome" e gera um automático.
+    expect(criacao?.corpo).toEqual({ seuNome: 'Ana' })
   })
 
   it('sala_existe aparece na frase certa e o diálogo continua aberto', async () => {
@@ -365,7 +387,7 @@ describe('início: criar sala', () => {
 
     await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
     const dialogo = screen.getByRole('dialog')
-    await usuario.type(within(dialogo).getByLabelText('Nome da sala'), 'Jogatina')
+    await usuario.type(within(dialogo).getByLabelText('Nome da sala (opcional)'), 'Jogatina')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Criar sala' }))
 
     expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
@@ -398,7 +420,7 @@ describe('início: criar sala', () => {
 
     await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
 
-    expect(within(screen.getByRole('dialog')).getByLabelText('Nome da sala')).toHaveFocus()
+    expect(within(screen.getByRole('dialog')).getByLabelText('Nome da sala (opcional)')).toHaveFocus()
   })
 
   it('devolve o foco a quem abriu o diálogo, ao fechar', async () => {
