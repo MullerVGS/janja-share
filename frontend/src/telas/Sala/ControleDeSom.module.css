@@ -1,0 +1,63 @@
+/* O mesmo controle mora em dois lugares — pílula e etiqueta — e cada um tem sua caixa: a
+   pílula já dá fundo e espaçamento, então o controle ali só alinha os dois elementos; a
+   etiqueta não, e a versão compacta tem que caber ao lado do nome sem esticar a fileira. */
+.controle {
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+}
+
+.compacto {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+}
+
+.acao {
+  display: flex;
+  flex: none;
+  cursor: pointer;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-sm);
+  background: transparent;
+  color: var(--texto-fraco);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.acao:hover:not(:disabled) {
+  background: var(--realce);
+  color: var(--texto);
+}
+
+.acao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.acao[aria-pressed='true'] {
+  color: var(--acao);
+  background: var(--acao-fraca);
+}
+
+.compacto .acao {
+  padding: 2px;
+}
+
+.faixaDoVolume {
+  flex: none;
+  width: 78px;
+  height: 3px;
+  cursor: pointer;
+  accent-color: var(--acao);
+}
+
+.faixaDoVolume:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.compacto .faixaDoVolume {
+  width: 56px;
+}

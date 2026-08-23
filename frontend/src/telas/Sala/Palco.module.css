@@ -158,6 +158,15 @@
   display: flex;
 }
 
+/* Sem hover, de propósito: o volume zerado é estado, não ação — quem passa o olho pela grade
+   precisa saber que abaixou um quadro sem precisar apontar o mouse para ele. */
+.selodeMudo {
+  flex: none;
+  font-size: var(--texto-xs);
+  font-weight: 600;
+  color: var(--texto-fraquissimo);
+}
+
 /* O vídeo está tocando noutra janela: sem este aviso, o quadro parece só ter congelado. */
 .emPiP {
   position: absolute;

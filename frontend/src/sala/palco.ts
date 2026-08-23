@@ -25,6 +25,8 @@ export interface Peca {
    * mudo vai e volta o tempo todo, e o controle não pode piscar junto.
    */
   temAudio: boolean
+  /** A publicação do som daquela tela; é dela que sai o nível do indicador, não de `publicacao`. */
+  publicacaoDoAudio?: TrackPublication
 }
 
 export interface Palco {
@@ -101,6 +103,7 @@ export function montarPalco(sala: Room | null): Palco {
         microfoneLigado: false,
         falando: false,
         temAudio: Boolean(somDaTela),
+        publicacaoDoAudio: somDaTela,
       })
     }
   }

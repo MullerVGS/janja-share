@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { Peca } from '../../sala/palco'
 import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
-import { VOLUME_CHEIO, type TipoDeAudio } from '../../sala/volumes'
 import {
   IconeCaber,
   IconeJanelinha,
@@ -15,6 +14,7 @@ import {
   IconeTrocarTela,
 } from '../../ui/Icone'
 import { temPiP, temTelaCheia } from './assistir'
+import { ControleDeSom } from './ControleDeSom'
 import { SomSaindo } from './SomSaindo'
 import estilos from './Pilula.module.css'
 
@@ -61,41 +61,6 @@ function Acao({
   )
 }
 
-/**
- * O volume daquele quadro, só neste navegador.
- *
- * A pessoa e a tela dela são duas fontes independentes — abaixar o jogo sem perder a conversa
- * é justamente o caso que dá razão ao controle.
- */
-function Volume({ peca, volumes }: { peca: Peca; volumes: ControleDeVolumes }) {
-  const tipo: TipoDeAudio = peca.ehTela ? 'tela' : 'pessoa'
-  const alvo = peca.ehTela ? `da tela de ${peca.nome}` : `de ${peca.nome}`
-  const volume = volumes.volumeDe(peca.nome, tipo)
-  const mudo = volume === 0
-
-  return (
-    <>
-      <Acao
-        rotulo={`${mudo ? 'Devolver' : 'Calar'} o som ${alvo}`}
-        ligado={mudo}
-        aoClicar={() => volumes.alternarMudo(peca.nome, tipo)}
-      >
-        {mudo ? <IconeSomMudo tamanho={15} /> : <IconeSom tamanho={15} />}
-      </Acao>
-      <input
-        type="range"
-        className={estilos.faixaDoVolume}
-        min={0}
-        max={VOLUME_CHEIO}
-        step={1}
-        value={volume}
-        aria-label={`Volume ${alvo}`}
-        onChange={(evento) => volumes.definir(peca.nome, tipo, Number(evento.target.value))}
-      />
-    </>
-  )
-}
-
 /** O áudio da sua própria tela: calar e devolver sem republicar nada. */
 function AudioDaPropriaTela({ compartilhamento }: { compartilhamento: Compartilhamento }) {
   const audio = compartilhamento.audioDaTela
@@ -135,7 +100,7 @@ export function Pilula({ peca, volumes, compartilhamento, zoom, telaCheia, pip }
   return (
     <div className={estilos.pilula}>
       {propria && <AudioDaPropriaTela compartilhamento={compartilhamento} />}
-      {somAlheio && <Volume peca={peca} volumes={volumes} />}
+      {somAlheio && !peca.ehTela && <ControleDeSom peca={peca} volumes={volumes} />}
 
       {propria && (
         <Acao rotulo="Trocar de tela" aoClicar={() => void compartilhamento.trocarDeTela()}>

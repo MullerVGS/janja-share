@@ -194,7 +194,7 @@ describe('sala: a gaveta e as preferências', () => {
 })
 
 describe('sala: volume local ponta a ponta', () => {
-  it('o volume mexido na pílula chega à faixa remota e fica guardado por nome', () => {
+  it('o volume mexido no controle da tela chega à faixa remota e fica guardado por nome', () => {
     const somDaTela = publicacaoFalsa(Track.Source.ScreenShareAudio)
     const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare), somDaTela])
     falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [bia])
@@ -202,7 +202,7 @@ describe('sala: volume local ponta a ponta', () => {
 
     expect(somDaTela.track?.setVolume).toHaveBeenLastCalledWith(1)
 
-    fireEvent.change(screen.getByRole('slider', { name: 'Volume da tela de Bia' }), { target: { value: '30' } })
+    fireEvent.change(screen.getByRole('slider', { name: 'Volume do som da tela de Bia' }), { target: { value: '30' } })
 
     expect(somDaTela.track?.setVolume).toHaveBeenLastCalledWith(0.3)
     expect(lerPreferencias().volumes).toEqual({ Bia: { tela: 30 } })

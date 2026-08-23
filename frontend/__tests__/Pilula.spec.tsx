@@ -61,19 +61,18 @@ describe('pílula: os botões saem do papel de quem vê', () => {
     expect(screen.queryByRole('slider', { name: /volume/i })).not.toBeInTheDocument()
   })
 
-  it('na tela de outra pessoa: volume, caber, 1:1, janelinha e tela cheia — e nada de parar o que não é seu', () => {
+  it('na tela de outra pessoa: caber, 1:1, janelinha e tela cheia — o som da tela não é dela', () => {
     habilitarPiP()
     habilitarTelaCheia()
     montarPilula({ peca: peca('Bia', { ehTela: true }) })
 
     expect(rotulos()).toEqual([
-      'Calar o som da tela de Bia',
       'Fazer a tela caber no quadro',
       'Ver em 1:1',
       'Ver na janelinha',
       'Ver em tela cheia',
     ])
-    expect(screen.getByRole('slider', { name: 'Volume da tela de Bia' })).toBeInTheDocument()
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /parar|trocar/i })).not.toBeInTheDocument()
   })
 
@@ -82,8 +81,8 @@ describe('pílula: os botões saem do papel de quem vê', () => {
     habilitarTelaCheia()
     montarPilula({ peca: peca('Bia') })
 
-    expect(rotulos()).toEqual(['Calar o som de Bia'])
-    expect(screen.getByRole('slider', { name: 'Volume de Bia' })).toBeInTheDocument()
+    expect(rotulos()).toEqual(['Calar a voz de Bia'])
+    expect(screen.getByRole('slider', { name: 'Volume da voz de Bia' })).toBeInTheDocument()
   })
 
   it('na sua própria câmera não há pílula nenhuma — nem volume do seu som, nem nada a apertar', () => {
@@ -148,14 +147,14 @@ describe('pílula: o que cada botão faz', () => {
 
   it('o mudo do quadro é o do nome e da fonte daquele quadro', async () => {
     const usuario = userEvent.setup()
-    const volumes = volumesFalsos({ Bia: { tela: 0 } })
-    montarPilula({ peca: peca('Bia', { ehTela: true }), volumes })
+    const volumes = volumesFalsos({ Bia: { pessoa: 0 } })
+    montarPilula({ peca: peca('Bia'), volumes })
 
-    const botao = screen.getByRole('button', { name: 'Devolver o som da tela de Bia' })
+    const botao = screen.getByRole('button', { name: 'Devolver a voz de Bia' })
     expect(botao).toHaveAttribute('aria-pressed', 'true')
 
     await usuario.click(botao)
-    expect(volumes.alternarMudo).toHaveBeenCalledWith('Bia', 'tela')
+    expect(volumes.alternarMudo).toHaveBeenCalledWith('Bia', 'pessoa')
   })
 })
 

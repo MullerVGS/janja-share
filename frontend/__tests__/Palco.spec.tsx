@@ -132,6 +132,13 @@ describe('palco: a grade', () => {
   })
 })
 
+describe('palco: a etiqueta', () => {
+  it('o som da tela alheia aparece sem hover', () => {
+    montarPalco({ pecas: [peca('Sadia', { ehTela: true, temAudio: true })] })
+    expect(screen.getByRole('button', { name: 'Calar o som da tela de Sadia' })).toBeInTheDocument()
+  })
+})
+
 describe('palco: o foco', () => {
   it('clicar na imagem em foco solta o foco — é o "clicar na live faz ela ficar menor"', () => {
     const aoSoltarOFoco = vi.fn()

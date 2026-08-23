@@ -9,6 +9,7 @@ import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
 import { IconeMicrofoneMudo } from '../../ui/Icone'
 import { usePiP, useTelaCheia } from './assistir'
 import { useCrescerEEncolher } from './transicao'
+import { ControleDeSom } from './ControleDeSom'
 import { Video } from './Midia'
 import { Pilula } from './Pilula'
 import estilos from './Palco.module.css'
@@ -160,6 +161,12 @@ function Quadro({
           {peca.proprio && ' (você)'}
           {peca.ehTela && ' · tela'}
         </span>
+        {!peca.proprio && peca.ehTela && peca.temAudio && (
+          <ControleDeSom peca={peca} volumes={volumes} compacto />
+        )}
+        {!peca.proprio && peca.temAudio && volumes.volumeDe(peca.nome, peca.ehTela ? 'tela' : 'pessoa') === 0 && (
+          <span className={estilos.selodeMudo}>mudo</span>
+        )}
       </div>
 
       {telaCheia.cheia ? (
