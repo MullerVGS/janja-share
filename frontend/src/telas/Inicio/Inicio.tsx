@@ -102,7 +102,7 @@ export function Inicio() {
   return (
     <div className={estilos.tela}>
       <header className={estilos.cabecalho}>
-        <span className={estilos.marca}>share</span>
+        <span className={estilos.marca}>janja-share</span>
         <Campo
           className={estilos.campoNome}
           rotulo="Seu nome"

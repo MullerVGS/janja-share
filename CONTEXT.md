@@ -1,6 +1,6 @@
 # Contexto de domínio
 
-O share permite compartilhar tela em salas efêmeras, sem contas.
+O janja-share permite compartilhar tela em salas efêmeras, sem contas.
 
 ## Glossário
 

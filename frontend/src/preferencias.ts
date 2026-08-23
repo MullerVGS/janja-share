@@ -8,7 +8,7 @@ import { lerVolumes, type Volumes } from './sala/volumes'
  * A leitura é tolerante campo a campo — um valor estranho vira o padrão daquele campo, não o
  * descarte do conjunto. Só a versão errada zera tudo: é o jeito de mudar o formato sem migração.
  */
-export const CHAVE_DAS_PREFERENCIAS = 'share.preferencias'
+export const CHAVE_DAS_PREFERENCIAS = 'janja-share.preferencias'
 const VERSAO = 1
 
 export interface Preferencias {

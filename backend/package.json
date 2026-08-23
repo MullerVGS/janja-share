@@ -1,5 +1,5 @@
 {
-  "name": "share-backend",
+  "name": "janja-share-backend",
   "version": "0.1.0",
   "private": true,
   "engines": { "node": ">=22" },

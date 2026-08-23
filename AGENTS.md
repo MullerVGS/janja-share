@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instruções para agentes que desenvolvem o share.
+Instruções para agentes que desenvolvem o janja-share.
 
 ## Começo obrigatório
 

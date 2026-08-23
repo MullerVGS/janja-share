@@ -1,4 +1,4 @@
-# share
+# janja-share
 
 Compartilhamento de tela self-hosted, sem conta, com salas e identidades efêmeras.
 
@@ -19,7 +19,7 @@ Compartilhamento de tela self-hosted, sem conta, com salas e identidades efêmer
 
 ```bash
 cp .env.example .env
-# Preencha os três segredos do arquivo.
+# Preencha os três segredos.
 
 docker compose build app
 docker compose up -d --wait db
@@ -28,11 +28,22 @@ docker compose run --rm --no-deps app npm run migration:run:prod
 docker compose up -d app
 ```
 
-Abra <http://localhost:3000>.
+Abra <http://localhost:3000>. Com o SFU na sua própria máquina, descomente `SFU_IP_EXTERNO=false`
+e `SFU_IP=127.0.0.1` no `.env` — sem isso o SFU anuncia o IP externo e ninguém recebe mídia.
 
-Em produção, ajuste `LIVEKIT_URL` para `wss://...` e rode os mesmos comandos com
-`docker compose -f docker-compose.yml -f docker-compose.prod.yml`. O projeto não inclui
-reverse proxy, TLS ou TURN; veja as [portas e opções do LiveKit](https://docs.livekit.io/transport/self-hosting/ports-firewall/).
+## Em produção
+
+O mesmo arquivo; muda o `.env`.
+
+- `LIVEKIT_URL=wss://...` e um reverse proxy com TLS na frente do app e da sinalização.
+- Proxy em Docker: `REDE_DA_BORDA=<rede-do-proxy>` e `REDE_DA_BORDA_EXTERNA=true`. Ele passa a
+  alcançar o app em `http://janja-share:3000` e a sinalização em `http://janja-share-livekit:7880`,
+  sem porta publicada no host.
+- Proxy fora do Docker: `BIND_APP=0.0.0.0` e `BIND_LIVEKIT=0.0.0.0`.
+- `7881/tcp` e `7882/udp` abertos no host, sempre — a mídia não passa pelo proxy.
+
+O projeto não inclui reverse proxy, TLS ou TURN; veja as
+[portas e opções do LiveKit](https://docs.livekit.io/transport/self-hosting/ports-firewall/).
 
 Issues e pull requests são bem-vindos.
 

@@ -60,7 +60,7 @@ describe('volumes: leitura do que estava no disco', () => {
 
 describe('useVolumes', () => {
   it('nasce do que está guardado e persiste cada mexida por nome', () => {
-    localStorage.setItem('share.preferencias', JSON.stringify({ versao: 1, volumes: { Bia: { tela: 25 } } }))
+    localStorage.setItem('janja-share.preferencias', JSON.stringify({ versao: 1, volumes: { Bia: { tela: 25 } } }))
     const { result } = renderHook(() => useVolumes())
     expect(result.current.volumeDe('Bia', 'tela')).toBe(25)
 
@@ -82,7 +82,7 @@ describe('useVolumes', () => {
   })
 
   it('mudo que veio do disco não tem lembrança: sair dele devolve o volume inteiro', () => {
-    localStorage.setItem('share.preferencias', JSON.stringify({ versao: 1, volumes: { Bia: { pessoa: 0 } } }))
+    localStorage.setItem('janja-share.preferencias', JSON.stringify({ versao: 1, volumes: { Bia: { pessoa: 0 } } }))
     const { result } = renderHook(() => useVolumes())
 
     act(() => result.current.alternarMudo('Bia', 'pessoa'))

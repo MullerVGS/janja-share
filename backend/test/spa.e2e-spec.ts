@@ -15,7 +15,7 @@ describe('fronteira SPA × API (com bundle presente)', () => {
   let app: INestApplication
 
   beforeAll(async () => {
-    const dirPublico = mkdtempSync(join(tmpdir(), 'share-spa-teste-'))
+    const dirPublico = mkdtempSync(join(tmpdir(), 'janja-share-spa-teste-'))
     writeFileSync(join(dirPublico, 'index.html'), '<!doctype html><title>casca do spa</title>')
     app = await criarApp({ dirPublico })
   })

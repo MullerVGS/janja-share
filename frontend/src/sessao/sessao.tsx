@@ -16,7 +16,7 @@ interface Sessao {
   encerrar(slug: string): void
 }
 
-export const CHAVE_DA_SESSAO = 'share.sessao'
+export const CHAVE_DA_SESSAO = 'janja-share.sessao'
 
 /** O contrato promete TTL de 8h; isto é só a rede de segurança de um token sem `exp` legível. */
 const VALIDADE_SUPOSTA_MS = 8 * 60 * 60 * 1000

@@ -56,7 +56,7 @@ export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOp
     audio: CAPTURA_DO_AUDIO_DA_TELA,
     systemAudio: 'include',
     surfaceSwitching: 'include',
-    // A própria aba do share na lista só produz o túnel de espelhos.
+    // A própria aba do janja-share na lista só produz o túnel de espelhos.
     selfBrowserSurface: 'exclude',
     contentHint: CONTEUDOS[perfil.conteudo].contentHint,
     resolution:

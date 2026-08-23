@@ -1,0 +1,67 @@
+# A pilha inteira num arquivo só: o app (API + SPA na mesma origem), o Postgres e o SFU.
+# O que muda de casa para casa vive no .env — sem arquivo de override por ambiente.
+
+name: ${PROJETO:-janja-share}
+
+services:
+  app:
+    build: .
+    container_name: ${NOME:-janja-share}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://janja_share:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/janja_share"
+      LIVEKIT_URL: "${LIVEKIT_URL:?defina LIVEKIT_URL no .env}"
+      LIVEKIT_HOST_INTERNO: http://livekit:7880
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY:?defina LIVEKIT_API_KEY no .env}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET:?defina LIVEKIT_API_SECRET no .env}"
+      NODE_ENV: "${NODE_ENV:-production}"
+    ports:
+      - "${BIND_APP:-127.0.0.1}:${PORTA_APP:-3000}:3000"
+    networks: [default, borda]
+
+  db:
+    image: postgres:17-alpine
+    container_name: ${NOME:-janja-share}-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: janja_share
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}"
+      POSTGRES_DB: janja_share
+    ports:
+      - "${BIND_DB:-127.0.0.1}:${PORTA_DB:-5443}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U janja_share -d janja_share"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  livekit:
+    image: livekit/livekit-server:v1.13.5
+    container_name: ${NOME:-janja-share}-livekit
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?defina LIVEKIT_API_KEY no .env}: ${LIVEKIT_API_SECRET:?defina LIVEKIT_API_SECRET no .env}"
+      # Só o que depende da máquina; o resto do SFU vive em infra/livekit.yaml.
+      LIVEKIT_RTC_USE_EXTERNAL_IP: "${SFU_IP_EXTERNO:-true}"
+      NODE_IP: "${SFU_IP:-}"
+    ports:
+      - "${BIND_LIVEKIT:-127.0.0.1}:${PORTA_LIVEKIT:-7880}:7880"
+      - "${PORTA_MIDIA_TCP:-7881}:7881/tcp"
+      - "${PORTA_MIDIA_UDP:-7882}:7882/udp"
+    volumes:
+      - ./infra/livekit.yaml:/etc/livekit.yaml:ro
+    networks: [default, borda]
+
+volumes:
+  db-data:
+
+networks:
+  default:
+  # A rede por onde o reverse proxy alcança o app pelo nome do container. Sem proxy, ela é
+  # só mais uma bridge da pilha; com proxy em Docker, aponte para a rede dele.
+  borda:
+    name: ${REDE_DA_BORDA:-janja-share-borda}
+    external: ${REDE_DA_BORDA_EXTERNA:-false}
