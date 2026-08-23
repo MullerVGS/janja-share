@@ -17,22 +17,34 @@ function correr(vigia: Vigia, segundos: number, kbps: number | null, desde = 0) 
   return { vigia: atual, acoes }
 }
 
-describe('recepção: o que chega está bom', () => {
-  it('bitrate vivo mantém tudo em ok e não age', () => {
+describe('recepção: a tela já confirmou que entrega', () => {
+  it('bitrate positivo já na primeira amostra encerra a vigilância e nunca mais age', () => {
     const { vigia, acoes } = correr(VIGIA_NOVO, 20, 1200)
     expect(vigia.estado).toBe('ok')
     expect(acoes.every((acao) => acao === 'nada')).toBe(true)
   })
 
-  it('um zero isolado não é motivo — a rede pisca', () => {
+  it('uma amostra positiva no meio de um ciclo de tentativas encerra a vigilância para sempre — mesmo que a tela zere de novo depois', () => {
+    const emCiclo = correr(VIGIA_NOVO, 13, 0)
+    expect(emCiclo.acoes.filter((acao) => acao === 'reassinar')).toHaveLength(2) // já em pleno ciclo, sanity check
+
+    const confirmou = correr(emCiclo.vigia, 1, 500, 13000)
+    expect(confirmou.vigia.estado).toBe('ok')
+
+    const paradaLegitimaDepois = correr(confirmou.vigia, 30, 0, 14000)
+    expect(paradaLegitimaDepois.vigia.estado).toBe('ok')
+    expect(paradaLegitimaDepois.acoes.every((acao) => acao === 'nada')).toBe(true)
+  })
+})
+
+describe('recepção: nunca chegou nada desde a assinatura', () => {
+  it('duas amostras sem nada ainda não é motivo — pode não ter dado tempo de chegar', () => {
     const { vigia, acoes } = correr(VIGIA_NOVO, 2, 0)
     expect(vigia.estado).toBe('parada')
     expect(acoes).toEqual(['nada', 'nada'])
   })
-})
 
-describe('recepção: nada chegando', () => {
-  it(`manda reassinar depois de ${ESPERA_ANTES_DE_RETOMAR_MS} ms parada`, () => {
+  it(`manda reassinar depois de ${ESPERA_ANTES_DE_RETOMAR_MS} ms sem nenhum byte`, () => {
     const { vigia, acoes } = correr(VIGIA_NOVO, 6, 0)
     expect(acoes.filter((acao) => acao === 'reassinar')).toHaveLength(1)
     expect(vigia.estado).toBe('retomando')
@@ -50,16 +62,20 @@ describe('recepção: nada chegando', () => {
     expect(acoes.filter((acao) => acao === 'reassinar')).toHaveLength(TENTATIVAS_MAXIMAS)
   })
 
-  it('bitrate voltando zera tudo, inclusive as tentativas gastas', () => {
-    const parada = correr(VIGIA_NOVO, 6, 0)
-    const voltou = correr(parada.vigia, 1, 900, 6000)
-    expect(voltou.vigia.estado).toBe('ok')
-    expect(voltou.vigia.tentativas).toBe(0)
-    expect(voltou.vigia.paradaDesdeMs).toBeNull()
+  it('kbps nulo também conta como "nada chegou" — sem isso o vigia dormiria para sempre no exato perfil do bug', () => {
+    const { vigia, acoes } = correr(VIGIA_NOVO, 10, null)
+    expect(acoes.filter((acao) => acao === 'reassinar')).toHaveLength(1)
+    expect(vigia.estado).toBe('retomando')
   })
+})
 
-  it('kbps nulo (primeira leitura da publicação) não conta como parada', () => {
-    const { vigia } = correr(VIGIA_NOVO, 10, null)
+describe('recepção: tela que já entregou fica em paz quando fica ociosa', () => {
+  it('bitrate que já chegou uma vez e depois zera não é motivo — é parada legítima, não o bug', () => {
+    const entregou = correr(VIGIA_NOVO, 1, 900)
+    expect(entregou.vigia.estado).toBe('ok')
+
+    const { vigia, acoes } = correr(entregou.vigia, 60, 0, 1000)
     expect(vigia.estado).toBe('ok')
+    expect(acoes.every((acao) => acao === 'nada')).toBe(true)
   })
 })

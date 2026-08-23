@@ -152,12 +152,12 @@ function Quadro({
 
       {peca.recepcao === 'retomando' && (
         <p className={estilos.avisoDaRecepcao} role="status">
-          a tela de {peca.nome} parou de chegar — retomando…
+          a tela de {peca.nome} ainda não chegou aqui — tentando de novo…
         </p>
       )}
       {peca.recepcao === 'desistiu' && (
         <p className={estilos.avisoDaRecepcao} role="status">
-          a tela de {peca.nome} não está chegando. Peça para {peca.nome} reiniciar a transmissão.
+          a tela de {peca.nome} nunca chegou aqui. Peça para {peca.nome} reiniciar a transmissão.
         </p>
       )}
 

@@ -1,9 +1,20 @@
 /**
- * O cão de guarda da recepção: uma tela publicada e assinada que não entrega byte nenhum.
+ * O cão de guarda da recepção: uma tela assinada que nunca chega a entregar um byte sequer.
  *
  * O caso conhecido é entrar depois da live começada e ficar com o quadro preto até o
- * transmissor trocar de codec — republicar cria faixa nova, e faixa nova nasce chegando.
- * Reassinar força quadro-chave e resolve o mesmo sintoma sem depender de quem transmite.
+ * transmissor trocar de codec — republicar cria faixa nova, e faixa nova nasce chegando. Um
+ * keyframe perdido no meio da assinatura tem o mesmo remédio: reassinar força um quadro-chave
+ * novo, sem depender de quem transmite.
+ *
+ * O vigia só olha para telas que **nunca** entregaram nada desde que foram assinadas. Assim
+ * que uma amostra trouxer bytes, ele para de olhar para aquela tela — para sempre. É o que
+ * deixa em paz o vídeo pausado, o documento parado, a pessoa que só não está mexendo em nada:
+ * essas telas já entregaram algo antes, então zerar depois é parada de verdade, não o bug.
+ *
+ * Nesta fase inicial — e só nela — `kbps: null` conta como "nada chegou", não como "sem
+ * informação". Se o relatório do navegador nunca chegar a ter estatística nenhuma para a
+ * assinatura, `null` É o sintoma do bug original; tratar `null` como inofensivo deixaria o
+ * vigia dormindo para sempre exatamente no caso que ele existe para pegar.
  *
  * Puro sobre estado serializável: o relógio é o das amostras, e quem age é o coletor.
  */
@@ -17,13 +28,17 @@ export const TENTATIVAS_MAXIMAS = 3
 
 export interface Vigia {
   estado: EstadoDaRecepcao
-  /** Quando o bitrate zerou; `null` enquanto chega alguma coisa. */
+  /** Desde quando não chega nada; `null` enquanto o relógio ainda não começou a contar. */
   paradaDesdeMs: number | null
   tentativas: number
   ultimaTentativaEmMs: number | null
 }
 
-export const VIGIA_NOVO: Vigia = { estado: 'ok', paradaDesdeMs: null, tentativas: 0, ultimaTentativaEmMs: null }
+/** Uma tela recém-assinada: ainda não se sabe se ela entrega, e o vigia está de olho nela. */
+export const VIGIA_NOVO: Vigia = { estado: 'parada', paradaDesdeMs: null, tentativas: 0, ultimaTentativaEmMs: null }
+
+/** A tela confirmou que entrega bytes — o vigia para de olhar para ela, para sempre. */
+const VIGIA_SAUDAVEL: Vigia = { estado: 'ok', paradaDesdeMs: null, tentativas: 0, ultimaTentativaEmMs: null }
 
 /** Só a leitura de uma amostra interessa aqui — o resto do relatório não decide nada. */
 export interface LeituraDaRecepcao {
@@ -32,24 +47,29 @@ export interface LeituraDaRecepcao {
 }
 
 /**
- * A cadência real do coletor: uma amostra por segundo. Não há como saber, dentro do segundo em
- * que o bitrate zerou, se ele caiu logo no início ou bem no fim — e supor o início é o que faz
- * a primeira amostra zerada já contar como o primeiro segundo parado, em vez de descartá-lo.
- * Sem este desconto a espera de 5 s só se completaria na sexta amostra, não na quinta.
+ * A cadência real do coletor: uma amostra por segundo. Uma leitura de 0 kbps no instante T é a
+ * taxa medida *durante* o segundo que termina em T, não que começa nele — nada chegou nesse
+ * intervalo. A parada começou em T − 1000, e é de lá que os 5 s de espera contam; sem este
+ * desconto a primeira amostra zerada só fecharia a janela na sexta amostra, não na quinta.
  */
 const INTERVALO_DA_AMOSTRA_MS = 1000
 
 export function avaliarRecepcao(vigia: Vigia, leitura: LeituraDaRecepcao, agora: number): { vigia: Vigia; acao: Acao } {
-  // `null` é a primeira leitura da publicação: não há taxa porque não há leitura anterior para
-  // subtrair, e chamar isso de "parada" reassinaria toda tela no primeiro segundo de vida.
-  if (leitura.kbps === null) return { vigia, acao: 'nada' }
+  // Confirmada: a tela já provou que entrega. Isto vale para sempre, mesmo que ela zere de
+  // novo depois — zerar depois de já ter entregado é parada legítima, não o bug.
+  if (vigia.estado === 'ok') return { vigia, acao: 'nada' }
 
-  if (leitura.kbps > 0) return { vigia: VIGIA_NOVO, acao: 'nada' }
+  // Uma amostra com bytes encerra a vigilância, venha ela logo de cara ou no meio de um ciclo
+  // de tentativas — inclusive resolve o caso feliz: reassinar força o quadro-chave que faltava.
+  if (leitura.kbps !== null && leitura.kbps > 0) return { vigia: VIGIA_SAUDAVEL, acao: 'nada' }
 
+  if (vigia.estado === 'desistiu') return { vigia, acao: 'nada' }
+
+  // Daqui em diante, kbps é 0 ou `null` — as duas leituras significam a mesma coisa nesta fase
+  // (nunca chegou nada desde a assinatura), pelo motivo explicado no topo do arquivo.
   const paradaDesdeMs = vigia.paradaDesdeMs ?? agora - INTERVALO_DA_AMOSTRA_MS
-  const base: Vigia = { ...vigia, paradaDesdeMs, estado: vigia.estado === 'ok' ? 'parada' : vigia.estado }
+  const base: Vigia = { ...vigia, paradaDesdeMs }
 
-  if (base.estado === 'desistiu') return { vigia: base, acao: 'nada' }
   if (agora - paradaDesdeMs < ESPERA_ANTES_DE_RETOMAR_MS) return { vigia: base, acao: 'nada' }
   if (base.ultimaTentativaEmMs !== null && agora - base.ultimaTentativaEmMs < ESPERA_ENTRE_TENTATIVAS_MS) {
     return { vigia: base, acao: 'nada' }
