@@ -185,6 +185,19 @@ describe('aba Qualidade: automático', () => {
     expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('12,5 Mb/s · 1080p · 15 fps · subindo')
   })
 
+  /** "Subindo" é postura, não promessa: no teto do link não há próxima janela limpa que renda nada. */
+  it('com a busca no que a banda deixa, para de dizer "subindo"', () => {
+    const noAlvo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 12_500, tetoNoAlvo: true }
+    montarQualidade({ perfilEfetivo: { ...PERFIL_PADRAO, tetoKbps: 12_500 }, governador: noAlvo })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('12,5 Mb/s · 1080p · 15 fps · no teto do link')
+  })
+
+  it('no teto do link sem nunca ter subido (a partida já era o que o link dá) também não diz "subindo"', () => {
+    const noAlvo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoNoAlvo: true }
+    montarQualidade({ governador: noAlvo })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('no teto do link')
+  })
+
   it('teto cedido sem degrau nenhum aparece como cessão de teto, não como subida', () => {
     const cedeu: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 2_400, motivo: 'banda' }
     montarQualidade({ perfilEfetivo: { ...PERFIL_PADRAO, tetoKbps: 2_400 }, governador: cedeu })
@@ -192,10 +205,38 @@ describe('aba Qualidade: automático', () => {
     expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()
   })
 
-  it('desligado, não há estado do governador nem "forçar"', () => {
-    montarQualidade({ automatico: false, governador: SEGURANDO })
-    expect(screen.queryByRole('status', { name: /governador/i })).not.toBeInTheDocument()
+  /**
+   * "forçar" desliga o automático num clique e grava a escolha. Se a linha de status sumisse
+   * junto, o que sobraria era uma transmissão sem indicador nenhum e a única chave de religar
+   * escondida dentro do `<details>` "Avançado", fechado por padrão: saída de um clique, volta
+   * de três, e nenhum sinal de que o produto da branch está desligado.
+   */
+  it('desligado, a linha continua no ar dizendo isso — e religar está junto dela, não escondido no Avançado', async () => {
+    const usuario = userEvent.setup()
+    const compartilhamento = montarQualidade({ automatico: false, governador: SEGURANDO })
+
+    const estado = screen.getByRole('status', { name: /governador/i })
+    expect(estado).toHaveTextContent('4,0 Mb/s · 1080p · 15 fps · automático desligado')
     expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()
+
+    // O caminho de volta não pode depender de abrir o Avançado.
+    expect(screen.getByText('Avançado').closest('details')).not.toHaveAttribute('open')
+    await usuario.click(within(estado).getByRole('button', { name: /religar/i }))
+
+    expect(compartilhamento.definirAutomatico).toHaveBeenCalledWith(true)
+  })
+
+  /** Desligado, o degrau em vigor não existe mais (definirAutomatico zera o governador): a linha não pode narrar cessão. */
+  it('desligado, a linha conta o pedido que está no ar — não o que o governador tinha decidido', () => {
+    montarQualidade({
+      automatico: false,
+      perfil: { ...PERFIL_PADRAO, fps: 60 },
+      perfilEfetivo: { ...PERFIL_PADRAO, fps: 60 },
+      governador: SEGURANDO,
+    })
+    const estado = screen.getByRole('status', { name: /governador/i })
+    expect(estado).toHaveTextContent('60 fps')
+    expect(estado).not.toHaveTextContent(/cedeu/)
   })
 })
 

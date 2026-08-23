@@ -54,25 +54,32 @@ function rotuloDaResolucao(resolucao: Resolucao): string {
   return RESOLUCOES.find((opcao) => opcao.valor === resolucao)?.rotulo ?? resolucao
 }
 
+/** O que está no ar, campo a campo — a metade da linha de status que não muda de assunto. */
+function descreverForma(efetivo: PerfilDeQualidade): string {
+  return [formatarKbps(efetivo.tetoKbps), rotuloDaResolucao(efetivo.resolucao), `${efetivo.fps} fps`].join(' · ')
+}
+
 /**
  * O que o governador está fazendo, em uma linha: o que está no ar e para onde ele foi.
  *
  * `subindo` é a postura, não uma promessa: significa que o teto já passou do valor de partida e
- * que a cada 30 s limpos ele tenta de novo. O número ao lado é sempre o teto de agora, então a
- * linha nunca promete uma banda que não existe.
+ * que a cada 30 s limpos ele tenta de novo. Quando a busca já bateu no que a banda medida
+ * deixa, ele para de tentar — e continuar dizendo "subindo" ali seria promessa que nenhuma
+ * janela limpa vai cumprir. O número ao lado é sempre o teto de agora.
  */
 function descreverAutomatico(pedido: PerfilDeQualidade, efetivo: PerfilDeQualidade, estado: EstadoDoGovernador): string {
-  const forma = [formatarKbps(efetivo.tetoKbps), rotuloDaResolucao(efetivo.resolucao), `${efetivo.fps} fps`]
   const degrau = descreverDegrau(pedido, estado)
   const unidade = pedido.ceder === 'quadros' ? ' fps' : ''
   const acao = degrau
     ? `cedeu para ${degrau.degrau}${unidade} — ${degrau.motivo}`
-    : estado.tetoKbps === null
-      ? 'no ponto de partida'
-      : estado.tetoKbps < pedido.tetoKbps
-        ? `cedeu o teto — ${NOME_DO_MOTIVO[estado.motivo ?? 'banda']}`
-        : 'subindo'
-  return [...forma, acao].join(' · ')
+    : estado.tetoKbps !== null && estado.tetoKbps < pedido.tetoKbps
+      ? `cedeu o teto — ${NOME_DO_MOTIVO[estado.motivo ?? 'banda']}`
+      : estado.tetoNoAlvo
+        ? 'no teto do link'
+        : estado.tetoKbps === null
+          ? 'no ponto de partida'
+          : 'subindo'
+  return `${descreverForma(efetivo)} · ${acao}`
 }
 
 /**
@@ -120,17 +127,36 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
         <p className={estilos.explicacao}>{CONTEUDOS[perfil.conteudo].descricao}</p>
       </div>
 
-      {/* O estado do governador, na forma que a pessoa lê: o que está no ar e o que ele fez. */}
-      {automatico && (
-        <p className={estilos.estadoDoAuto} role="status" aria-label="Estado do governador" data-segurando={degrau ? '' : undefined}>
-          <span>{descreverAutomatico(perfil, perfilEfetivo, governador)}</span>
-          {degrau && (
-            <Botao aparencia="fantasma" className={estilos.forcar} onClick={() => definirAutomatico(false)}>
-              forçar
+      {/* O estado do governador, na forma que a pessoa lê: o que está no ar e o que ele fez.
+          A linha existe **sempre**, ligado ou desligado. "forçar" desliga o automático num
+          clique e grava a escolha; se a linha inteira sumisse junto, o que sobraria era uma
+          transmissão sem indicador nenhum e a única chave de religar escondida dentro de um
+          <details> fechado por padrão — a saída de um clique com a volta de três. */}
+      <p
+        className={estilos.estadoDoAuto}
+        role="status"
+        aria-label="Estado do governador"
+        data-segurando={automatico && degrau ? '' : undefined}
+        data-desligado={automatico ? undefined : ''}
+      >
+        {automatico ? (
+          <>
+            <span>{descreverAutomatico(perfil, perfilEfetivo, governador)}</span>
+            {degrau && (
+              <Botao aparencia="fantasma" className={estilos.forcar} onClick={() => definirAutomatico(false)}>
+                forçar
+              </Botao>
+            )}
+          </>
+        ) : (
+          <>
+            <span>{descreverForma(perfilEfetivo)} · automático desligado</span>
+            <Botao aparencia="fantasma" className={estilos.forcar} onClick={() => definirAutomatico(true)}>
+              religar
             </Botao>
-          )}
-        </p>
-      )}
+          </>
+        )}
+      </p>
 
       <details className={estilos.avancado}>
         <summary className={estilos.sumario}>Avançado</summary>

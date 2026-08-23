@@ -126,6 +126,13 @@
   font-family: var(--fonte-mono);
 }
 
+/* Desligado é um estado que a pessoa precisa reconhecer de relance: sem contorno ele se
+   confunde com a linha honesta do governador trabalhando. */
+.estadoDoAuto[data-desligado] {
+  border: 1px dashed var(--linha-forte);
+  color: var(--texto-fraquissimo);
+}
+
 .forcar {
   flex: none;
 }

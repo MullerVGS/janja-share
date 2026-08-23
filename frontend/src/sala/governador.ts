@@ -77,6 +77,14 @@ export interface EstadoDoGovernador {
   degrau: number | null
   /** Teto de bitrate achado pelo governador; `null` = o valor de partida do preset vale inteiro. */
   tetoKbps: number | null
+  /**
+   * A busca do teto chegou onde a banda medida deixa: uma janela limpa de 30 s passou e não
+   * havia degrau de subida a dar. Existe porque a UI não tem como saber isso sozinha — sem
+   * este sinal ela diz "subindo" para sempre, inclusive num link já convergido, que é promessa
+   * que nenhuma janela limpa vai cumprir. Qualquer mexida no teto (para cima ou para baixo)
+   * o desfaz.
+   */
+  tetoNoAlvo: boolean
   motivo: MotivoDoGovernador | null
   /** Degraus que falharam logo depois de uma subida; não se volta a eles até a pessoa mexer. */
   queimados: readonly number[]
@@ -99,6 +107,7 @@ export interface EstadoDoGovernador {
 export const GOVERNADOR_PARADO: EstadoDoGovernador = {
   degrau: null,
   tetoKbps: null,
+  tetoNoAlvo: false,
   motivo: null,
   queimados: [],
   alturaSemDegrau: null,
@@ -284,7 +293,7 @@ export function decidir(
     if (motivo === 'banda') {
       const menor = descerOTeto(estado, pedido)
       if (menor !== null) {
-        return { ...estado, tetoKbps: menor, motivo, limpoDesdeMs: agora, janelaDesdeMs: agora }
+        return { ...estado, tetoKbps: menor, tetoNoAlvo: false, motivo, limpoDesdeMs: agora, janelaDesdeMs: agora }
       }
     }
 
@@ -313,13 +322,18 @@ export function decidir(
   // Subir é a mesma escada na ordem inversa: o teto de bitrate primeiro, e o eixo caro só
   // depois que ele chegou onde a banda medida deixa. Quem assiste sofrendo cala as duas — a
   // única coisa pior que não subir é subir por cima de quem já não está dando conta.
+  let tetoNoAlvo = estado.tetoNoAlvo
   if (agora - limpoDesdeMs >= SUBIR_APOS_MS && !sofrendo) {
-    const maior = subirOTeto(estado, pedido, alvoDoTeto(janela))
+    const alvo = alvoDoTeto(janela)
+    const maior = subirOTeto(estado, pedido, alvo)
     if (maior !== null) {
       // Sem `subiuEmMs`: quem queima degrau é subida no eixo cedido. Uma descida logo depois de
       // o teto subir não é degrau que falhou — é o teto voltando, e ele volta sozinho.
-      return { ...estado, tetoKbps: maior, limpoDesdeMs: agora, janelaDesdeMs: agora }
+      return { ...estado, tetoKbps: maior, tetoNoAlvo: false, limpoDesdeMs: agora, janelaDesdeMs: agora }
     }
+    // Janela limpa gasta sem degrau de teto a dar: se houve banda medida, o teto de agora é o
+    // que o link entrega. Sem medida não se sabe nada, e a busca segue em aberto.
+    tetoNoAlvo = alvo !== null
 
     if (estado.degrau !== null) {
       const acima = degraus[degraus.indexOf(estado.degrau) - 1]
@@ -330,6 +344,7 @@ export function decidir(
         return {
           ...estado,
           degrau: para,
+          tetoNoAlvo,
           motivo: para === null ? null : estado.motivo,
           alturaSemDegrau: para === null ? null : estado.alturaSemDegrau,
           limpoDesdeMs: agora,
@@ -341,7 +356,8 @@ export function decidir(
     }
   }
 
-  return limpoDesdeMs === estado.limpoDesdeMs ? estado : { ...estado, limpoDesdeMs }
+  if (limpoDesdeMs === estado.limpoDesdeMs && tetoNoAlvo === estado.tetoNoAlvo) return estado
+  return { ...estado, limpoDesdeMs, tetoNoAlvo }
 }
 
 /** Pedido ⊕ teto ⊕ degrau: o perfil que de fato vai para a captura e para o encoder. */

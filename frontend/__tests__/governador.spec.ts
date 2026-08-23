@@ -374,6 +374,53 @@ describe('governador: subir o teto de bitrate', () => {
     const sessao = new Sessao(TEXTO).segundos(5, { ...CPU, fpsCodificado: 8 })
     expect(sessao.estado).toMatchObject({ tetoKbps: null, degrau: 5, motivo: 'cpu' })
   })
+
+  /**
+   * A UI não tem como deduzir sozinha que a busca acabou — sem este sinal ela diz "subindo"
+   * para sempre, inclusive num link já convergido, que é promessa que nenhuma janela limpa
+   * vai cumprir.
+   */
+  describe('quando a busca chega ao que a banda deixa', () => {
+    it('enquanto ainda há degrau a dar, não se declara no alvo', () => {
+      const sessao = new Sessao(TEXTO).segundos(40, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+      expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
+      expect(sessao.estado.tetoNoAlvo).toBe(false)
+    })
+
+    it('uma janela limpa gasta sem degrau de subida marca o teto como o do link', () => {
+      // 0,85 × 4000 é menor que a partida: não há para onde subir já na primeira janela limpa.
+      const sessao = new Sessao(TEXTO).segundos(40, { ...NO_AR, bandaDisponivelKbps: 4_000 })
+      expect(sessao.estado.tetoKbps).toBeNull()
+      expect(sessao.estado.tetoNoAlvo).toBe(true)
+    })
+
+    it('sem banda medida a busca segue em aberto — não se sabe onde é o teto', () => {
+      const sessao = new Sessao(TEXTO).segundos(120, { ...NO_AR, bandaDisponivelKbps: null })
+      expect(sessao.estado.tetoNoAlvo).toBe(false)
+    })
+
+    it('a banda alargando desfaz a marca: há degrau novo a dar', () => {
+      const sessao = new Sessao(TEXTO).segundos(40, { ...NO_AR, bandaDisponivelKbps: 4_000 })
+      expect(sessao.estado.tetoNoAlvo).toBe(true)
+
+      sessao.segundos(35, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+      expect(sessao.estado.tetoNoAlvo).toBe(false)
+      expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
+    })
+
+    it('ceder o teto sob banda desfaz a marca: o que está no ar deixou de ser o do link', () => {
+      const sessao = new Sessao(TEXTO).segundos(40, { ...NO_AR, bandaDisponivelKbps: 4_000 })
+      expect(sessao.estado.tetoNoAlvo).toBe(true)
+
+      sessao.segundos(5, { ...NO_AR, limitadoPor: 'banda', fpsCodificado: 8, bandaDisponivelKbps: 4_000 })
+      expect(sessao.estado).toMatchObject({ tetoKbps: 2_400, tetoNoAlvo: false })
+    })
+
+    it('mexer nos controles zera a marca junto com o resto', () => {
+      const sessao = new Sessao(TEXTO).segundos(40, { ...NO_AR, bandaDisponivelKbps: 4_000 })
+      expect(zerarGovernador(sessao.historico).tetoNoAlvo).toBe(false)
+    })
+  })
 })
 
 describe('governador: o outro lado', () => {
