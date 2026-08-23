@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { Track, type Room, type TrackPublishOptions } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
+import { OPCOES_DO_AUDIO_DA_TELA } from '../src/sala/audioDaTela'
 import { PERFIL_PADRAO, PRESET_DO_CONTEUDO } from '../src/sala/qualidade'
 import { useCompartilhamento } from '../src/sala/useCompartilhamento'
 import { amostraVaziaDoEmissor, type AmostraDoEmissor } from '../src/telemetria/amostra'
@@ -318,7 +319,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     expect(publishTrack).toHaveBeenCalledTimes(2)
     expect(publishTrack.mock.calls[0]?.[0]).toBe(faixaDeVideo)
     expect(publishTrack.mock.calls[0]?.[1]).toMatchObject({ videoCodec: 'av1', backupCodec: false, scalabilityMode: 'L1T2' })
-    expect(publishTrack.mock.calls[1]).toEqual([faixaDeAudio, { source: Track.Source.ScreenShareAudio }])
+    expect(publishTrack.mock.calls[1]).toEqual([faixaDeAudio, OPCOES_DO_AUDIO_DA_TELA])
 
     expect(sala.video()?.track).toBe(faixaDeVideo)
     expect(sala.video()?.trackSid).not.toBe(sidAntigo)

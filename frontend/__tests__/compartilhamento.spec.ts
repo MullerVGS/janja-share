@@ -1,5 +1,6 @@
 import { Track } from 'livekit-client'
 import { describe, expect, it } from 'vitest'
+import { CAPTURA_DO_AUDIO_DA_TELA, NOME_DO_FLUXO_DA_TELA } from '../src/sala/audioDaTela'
 import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type PerfilDeQualidade } from '../src/sala/qualidade'
 import { opcoesDeCaptura, opcoesDePublicacao } from '../src/sala/useCompartilhamento'
 
@@ -69,9 +70,8 @@ describe('opções de captura da tela', () => {
     })
   })
 
-  it('pede áudio, o botão nativo de trocar de tela, e deixa a própria aba fora da lista', () => {
+  it('pede o botão nativo de trocar de tela, e deixa a própria aba fora da lista', () => {
     const opcoes = opcoesDeCaptura(perfil())
-    expect(opcoes.audio).toBe(true)
     expect(opcoes.surfaceSwitching).toBe('include')
     expect(opcoes.systemAudio).toBe('include')
     expect(opcoes.selfBrowserSurface).toBe('exclude')
@@ -80,5 +80,15 @@ describe('opções de captura da tela', () => {
   it('a dica de conteúdo já sai com o conteúdo escolhido', () => {
     expect(opcoesDeCaptura(PRESET_DO_CONTEUDO.texto).contentHint).toBe('text')
     expect(opcoesDeCaptura(PRESET_DO_CONTEUDO.movimento).contentHint).toBe('motion')
+  })
+})
+
+describe('compartilhamento: o áudio vai junto do vídeo', () => {
+  it('a captura pede áudio de mídia, não `audio: true`', () => {
+    expect(opcoesDeCaptura(PERFIL_PADRAO).audio).toEqual(CAPTURA_DO_AUDIO_DA_TELA)
+  })
+
+  it('vídeo e áudio da tela dividem o fluxo', () => {
+    expect(opcoesDePublicacao(PERFIL_PADRAO).stream).toBe(NOME_DO_FLUXO_DA_TELA)
   })
 })

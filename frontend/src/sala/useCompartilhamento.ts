@@ -11,6 +11,7 @@ import type { ScreenShareCaptureOptions } from 'livekit-client'
 import { gravarPreferencias, lerPreferencias } from '../preferencias'
 import type { AmostraDoEmissor } from '../telemetria/amostra'
 import type { Historico } from '../telemetria/historico'
+import { CAPTURA_DO_AUDIO_DA_TELA, NOME_DO_FLUXO_DA_TELA, OPCOES_DO_AUDIO_DA_TELA } from './audioDaTela'
 import {
   decidir,
   GOVERNADOR_PARADO,
@@ -51,7 +52,7 @@ const ATRASO_DO_AJUSTE_MS = 180
 export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOptions {
   const altura = alturaDaResolucao(perfil.resolucao)
   return {
-    audio: true,
+    audio: CAPTURA_DO_AUDIO_DA_TELA,
     systemAudio: 'include',
     surfaceSwitching: 'include',
     // A própria aba do share na lista só produz o túnel de espelhos.
@@ -88,10 +89,9 @@ export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptio
     ...(CODECS[perfil.codec].svc ? { scalabilityMode: 'L1T2' as const } : {}),
     degradationPreference: CEDER[perfil.ceder].degradacao,
     screenShareEncoding: { maxBitrate: perfil.tetoKbps * 1000, maxFramerate: perfil.fps },
+    stream: NOME_DO_FLUXO_DA_TELA,
   }
 }
-
-const OPCOES_DO_AUDIO_DA_TELA: TrackPublishOptions = { source: Track.Source.ScreenShareAudio }
 
 export interface Compartilhamento {
   ativo: boolean
@@ -200,6 +200,16 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     // `sid` identifica a publicação; `publicacao.track` é lido na hora para pegar o sender que
     // costuma aparecer alguns milissegundos depois dela.
   }, [sid, perfilEfetivo, publicacao])
+
+  // `contentHint` é o equivalente sonoro do 'text'/'motion' do vídeo: diz ao encoder que o
+  // conteúdo é música, não fala. Vale na faixa e sobrevive à republicação, então basta marcar
+  // sempre que a publicação de áudio for outra.
+  const sidDoAudio = (sala ? publicacaoDe(sala, Track.Source.ScreenShareAudio) : undefined)?.trackSid ?? null
+  useEffect(() => {
+    if (!sala) return
+    const faixa = publicacaoDe(sala, Track.Source.ScreenShareAudio)?.track?.mediaStreamTrack
+    if (faixa) faixa.contentHint = 'music'
+  }, [sala, sidDoAudio])
 
   /**
    * Troca de codec no ar: a mesma faixa de captura sai e volta com as opções novas — sem
