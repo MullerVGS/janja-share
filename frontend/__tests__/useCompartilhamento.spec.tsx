@@ -678,6 +678,39 @@ describe('useCompartilhamento: trocar de tela', () => {
     expect(result.current.ativo).toBe(true)
     expect(result.current.ocupado).toBe(false)
   })
+
+  /**
+   * O teto é propriedade do link, e o link não muda quando a tela muda. Se `ativo` caísse na
+   * janela do unpublish+republish, o efeito do governador o zeraria e a busca recomeçaria do
+   * ponto de partida — dois minutos ou mais para reconquistar o que já estava medido.
+   */
+  it('trocar de tela não derruba o governador: `ativo` fica de pé na janela toda e o teto aprendido sobrevive', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, amostras, batida } = montar(sala)
+    await ligar()
+    amostras(35, FOLGADO)
+    await assentar()
+    expect(result.current.governador.tetoKbps).toBe(5_000)
+
+    let promessa: Promise<void> | undefined
+    act(() => {
+      promessa = result.current.trocarDeTela()
+    })
+    // Uma batida por chamada ao SDK: createScreenTracks, unpublish (a tela some da lista),
+    // republish do vídeo, publish do áudio.
+    for (let passo = 0; passo < 4; passo += 1) {
+      await batida()
+      expect(result.current.ativo).toBe(true)
+      expect(result.current.governador.tetoKbps).toBe(5_000)
+    }
+
+    await act(async () => {
+      await promessa
+    })
+    expect(result.current.ativo).toBe(true)
+    expect(result.current.governador.tetoKbps).toBe(5_000)
+    expect(result.current.perfilEfetivo.tetoKbps).toBe(5_000)
+  })
 })
 
 describe('useCompartilhamento: adotar (a captura que a home já abriu)', () => {

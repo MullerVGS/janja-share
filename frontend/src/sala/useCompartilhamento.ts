@@ -187,8 +187,15 @@ export function useCompartilhamento(
   // O último pedido, para a republicação em curso saber se ficou para trás.
   const pedido = useRef(perfil)
 
-  // Republicar deixa a tela sem publicação por um instante; isso não é "parou".
-  const ativo = Boolean(publicacao) || republicando
+  // Republicar e trocar de tela deixam a tela sem publicação por um instante; isso não é "parou".
+  //
+  // O teto que o governador aprendeu é propriedade do **link**, não do conteúdo: trocar a tela
+  // compartilhada não muda a banda de quem transmite. Deixar `ativo` cair na janela entre o
+  // unpublish e o publish faria o efeito do governador zerá-lo — numa live que subiu de 4 para
+  // 12 Mb/s, trocar de tela recomeçaria a busca do zero. E os dois outros leitores de `ativo`
+  // pagam junto: os botões da barra desmontam e remontam, e a gaveta de Qualidade se reabre por
+  // cima do palco de quem a tinha fechado.
+  const ativo = Boolean(publicacao) || republicando || trocandoTela
 
   // Os relatos chegam no ritmo de quem assiste — a cada 2 s, e um por pessoa. O governador não
   // anda com eles: ele anda uma vez por amostra do emissor, e lê o último relato de cada um.
