@@ -297,16 +297,32 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
     [historico],
   )
 
+  /**
+   * `setScreenShareEnabled(true, captura, opções)` publica TODA faixa que `createScreenTracks`
+   * devolve com o mesmo `opções` — moldado para vídeo (`screenShareEncoding`, `videoCodec`...).
+   * É por isso que o áudio da tela nascia em 48 kbps mono com DTX mesmo com
+   * `OPCOES_DO_AUDIO_DA_TELA` existindo: o caminho comum de começar a compartilhar nunca chegava
+   * a usá-las. A saída é a mesma de `trocarDeTela` — capturar e publicar cada faixa com a opção
+   * dela, em vez de delegar as duas ao SDK de uma vez.
+   */
   const ligar = useCallback(
     async (desligarAntes: boolean) => {
       if (!sala) return
+      const participante = sala.localParticipant
       setErro(null)
       setMudando(true)
+      let capturadas: LocalTrack[] = []
       try {
-        if (desligarAntes) await sala.localParticipant.setScreenShareEnabled(false)
+        if (desligarAntes) await participante.setScreenShareEnabled(false)
         setCodecPendente(null)
         // Começa pelo pedido: parar zerou o governador, e um degrau antigo não tem mais motivo.
-        await sala.localParticipant.setScreenShareEnabled(true, opcoesDeCaptura(perfil), opcoesDePublicacao(perfil))
+        capturadas = await participante.createScreenTracks(opcoesDeCaptura(perfil))
+        const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
+        if (video) {
+          await participante.publishTrack(video, opcoesDePublicacao(perfil))
+          const audio = capturadas.find((faixa) => faixa.kind === Track.Kind.Audio)
+          if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
+        }
       } catch (falha) {
         // Cancelar o seletor nativo do Chrome cai aqui como `NotAllowedError`; não é erro para
         // mostrar em vermelho, é a pessoa mudando de ideia.
@@ -315,6 +331,7 @@ export function useCompartilhamento(sala: Room | null, historico: Historico<Amos
           setErro(falha instanceof Error ? falha.message : 'não foi possível compartilhar a tela')
         }
       } finally {
+        pararOQueNaoFoiAoAr(sala, capturadas)
         setMudando(false)
       }
     },

@@ -59,20 +59,20 @@ class SalaFalsa {
   localParticipant = {
     getTrackPublication: (fonte: Track.Source) => this.publicacoes.get(fonte),
 
-    setScreenShareEnabled: vi.fn(async (ligar: boolean, _captura?: unknown, opcoes?: TrackPublishOptions) => {
+    // Só o desligar (`ligar()` captura e publica faixa a faixa via `createScreenTracks` +
+    // `publishTrack` — é o próprio bug desta suíte: `setScreenShareEnabled(true, ...)` aplicaria
+    // a mesma opção, moldada para vídeo, a toda faixa que o SDK capturasse).
+    setScreenShareEnabled: vi.fn(async (ligar: boolean) => {
       await this.proximaBatida()
       if (!ligar) {
         this.publicacoes.delete(Track.Source.ScreenShare)
         this.publicacoes.delete(Track.Source.ScreenShareAudio)
-        return undefined
       }
-      const video = this.publicar(Track.Source.ScreenShare, faixaFalsa('video', opcoes?.videoCodec), opcoes)
-      if (this.comAudio) this.publicar(Track.Source.ScreenShareAudio, faixaFalsa('audio', undefined))
-      return video
+      return undefined
     }),
 
     /** O seletor nativo aberto de novo: entrega faixas de captura sem publicar nada. */
-    createScreenTracks: vi.fn(async () => {
+    createScreenTracks: vi.fn(async (_captura?: unknown) => {
       await this.proximaBatida()
       const faixas = [faixaFalsa('video', undefined)]
       if (this.comAudio) faixas.push(faixaFalsa('audio', undefined))
@@ -226,8 +226,9 @@ describe('useCompartilhamento: pedido e preferências', () => {
 
     await ligar()
     expect(result.current.ativo).toBe(true)
-    const [, captura, opcoes] = sala.localParticipant.setScreenShareEnabled.mock.calls[0] ?? []
+    const [captura] = sala.localParticipant.createScreenTracks.mock.calls[0] ?? []
     expect(captura).toMatchObject({ contentHint: 'text' })
+    const [, opcoes] = sala.localParticipant.publishTrack.mock.calls[0] ?? []
     expect(opcoes).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L1T2' })
 
     await ligar()
@@ -308,6 +309,8 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     const faixaDeVideo = sala.video()?.track
     const faixaDeAudio = sala.audio()?.track
     const sidAntigo = sala.video()?.trackSid
+    // `ligar()` já publicou as duas faixas na captura inicial; as contagens abaixo são só da republicação.
+    sala.localParticipant.publishTrack.mockClear()
 
     await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
 
@@ -335,6 +338,8 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     sala.comAudio = false
     const { result, ligar, agir } = montar(sala)
     await ligar()
+    // `ligar()` já publicou a faixa de vídeo na captura inicial; a contagem abaixo é só da republicação.
+    sala.localParticipant.publishTrack.mockClear()
 
     await agir(() => result.current.definirPerfil({ ...PRESET_DO_CONTEUDO.movimento }))
 
@@ -399,6 +404,8 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     const { result, ligar, agir } = montar(sala)
     await ligar()
     const faixaDeAudio = sala.audio()?.track
+    // `ligar()` já publicou as duas faixas na captura inicial; a asserção abaixo é sobre a republicação.
+    sala.localParticipant.publishTrack.mockClear()
     sala.localParticipant.unpublishTrack.mockImplementationOnce(async (faixa: Faixa) => {
       sala.publicacoes.delete(Track.Source.ScreenShare)
       faixa.mediaStreamTrack.readyState = 'ended'
@@ -443,12 +450,16 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
     expect(result.current.codecPendente).toBe('av1')
     sala.localParticipant.setScreenShareEnabled.mockClear()
+    sala.localParticipant.createScreenTracks.mockClear()
+    sala.localParticipant.publishTrack.mockClear()
 
     await agir(() => result.current.reiniciar())
 
-    const chamadas = sala.localParticipant.setScreenShareEnabled.mock.calls
-    expect(chamadas.map((chamada) => chamada[0])).toEqual([false, true])
-    expect(chamadas[1]?.[2]).toMatchObject({ videoCodec: 'av1' })
+    // Reiniciar para (desligarAntes) e captura+publica de novo — não delega mais ao
+    // `setScreenShareEnabled(true, ...)`, que aplicaria a mesma opção de vídeo ao áudio.
+    expect(sala.localParticipant.setScreenShareEnabled).toHaveBeenCalledExactlyOnceWith(false)
+    expect(sala.localParticipant.createScreenTracks).toHaveBeenCalledOnce()
+    expect(sala.localParticipant.publishTrack.mock.calls[0]?.[1]).toMatchObject({ videoCodec: 'av1' })
     expect(result.current.codecPendente).toBeNull()
     expect(result.current.ativo).toBe(true)
     expect(sala.video()?.track.codec).toBe('av1')
@@ -479,6 +490,21 @@ describe('useCompartilhamento: áudio da tela', () => {
     await ligar()
 
     expect(result.current.audioDaTela).toBeNull()
+  })
+
+  /**
+   * Este é o caminho comum: começar a compartilhar pela primeira vez, não trocar de tela nem de
+   * codec. `setScreenShareEnabled` do SDK real publica toda faixa de `createScreenTracks` com o
+   * mesmo `publishOptions` — moldado para vídeo — então sem publicar o áudio à parte ele nasce
+   * nos 48 kbps mono com DTX do vídeo, não nos 128 kbps estéreo de `OPCOES_DO_AUDIO_DA_TELA`.
+   */
+  it('ligar publica o áudio da tela com as opções de mídia, não as de vídeo', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar } = montar(sala)
+    await ligar()
+
+    expect(result.current.audioDaTela).toBe(sala.audio())
+    expect(sala.audio()?.options).toEqual(OPCOES_DO_AUDIO_DA_TELA)
   })
 
   it('calar e devolver o som é mute na publicação — a faixa não sai do ar', async () => {
@@ -518,13 +544,15 @@ describe('useCompartilhamento: trocar de tela', () => {
     const { result, ligar, agir } = montar(sala)
     await ligar()
     const antiga = sala.video()?.track
+    // `ligar()` já chamou `createScreenTracks` na captura inicial; a contagem abaixo é só da troca.
+    sala.localParticipant.createScreenTracks.mockClear()
 
     await agir(() => result.current.trocarDeTela())
 
     expect(sala.localParticipant.createScreenTracks).toHaveBeenCalledOnce()
     // A ordem é o que garante que cancelar não derruba nada: capturar vem antes de despublicar.
     expect(sala.localParticipant.createScreenTracks.mock.invocationCallOrder[0]).toBeLessThan(
-      sala.localParticipant.setScreenShareEnabled.mock.invocationCallOrder[1] ?? Infinity,
+      sala.localParticipant.setScreenShareEnabled.mock.invocationCallOrder[0] ?? Infinity,
     )
     expect(sala.video()?.track).not.toBe(antiga)
     expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L1T2' })
@@ -560,7 +588,9 @@ describe('useCompartilhamento: trocar de tela', () => {
     await agir(() => result.current.trocarDeTela())
 
     expect(sala.video()?.track).toBe(antiga)
-    expect(sala.localParticipant.setScreenShareEnabled).toHaveBeenCalledOnce()
+    // Cancelar não passa do `createScreenTracks`: nem o `setScreenShareEnabled(false)` do
+    // meio de `trocarDeTela` roda.
+    expect(sala.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled()
     expect(result.current.ativo).toBe(true)
     expect(result.current.erro).toBeNull()
   })
