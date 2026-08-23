@@ -1,22 +1,19 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createLocalScreenTracks, type LocalTrack } from 'livekit-client'
+import { type LocalTrack } from 'livekit-client'
 import { Route, Routes, useParams } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SalaNaLista } from '../src/api/salas'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
+import { capturarTela } from '../src/sala/captura'
 import { retirarCaptura } from '../src/sala/capturaPendente'
 import { useSessao } from '../src/sessao/sessao'
 import { Inicio } from '../src/telas/Inicio/Inicio'
 import { montar } from './apoio/montar'
 import { chamadas, servir } from './apoio/servidorFalso'
 
-// Só `createLocalScreenTracks` vira controlável — o resto do módulo (Track, ConnectionState…)
-// segue real, porque `opcoesDeCaptura` e o resto da árvore ainda dependem dele.
-vi.mock('livekit-client', async (importar) => {
-  const real = await importar<typeof import('livekit-client')>()
-  return { ...real, createLocalScreenTracks: vi.fn() }
-})
+// A captura é o único ponto controlável: abrir o seletor nativo não existe no jsdom.
+vi.mock('../src/sala/captura', () => ({ capturarTela: vi.fn() }))
 
 function faixaFalsa(kind: 'video' | 'audio'): LocalTrack {
   return { kind, stop: vi.fn() } as unknown as LocalTrack
@@ -460,7 +457,7 @@ describe('início: compartilhar minha tela (ação primária)', () => {
 
     await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
 
-    expect(vi.mocked(createLocalScreenTracks)).not.toHaveBeenCalled()
+    expect(vi.mocked(capturarTela)).not.toHaveBeenCalled()
     expect(chamadas.some((c) => c.metodo === 'POST' && c.caminho === '/api/salas')).toBe(false)
     expect(screen.getByText(/escreva seu nome/i)).toBeInTheDocument()
   })
@@ -472,7 +469,7 @@ describe('início: compartilhar minha tela (ação primária)', () => {
       'POST /api/salas': { status: 201, corpo: credenciais('nova-sala', 'Ana') },
     })
     const video = faixaFalsa('video')
-    vi.mocked(createLocalScreenTracks).mockResolvedValueOnce([video])
+    vi.mocked(capturarTela).mockResolvedValueOnce([video])
     const usuario = userEvent.setup()
     montarInicio()
 
@@ -488,7 +485,7 @@ describe('início: compartilhar minha tela (ação primária)', () => {
   it('cancelar o seletor nativo não cria sala nem mostra erro — é a pessoa desistindo', async () => {
     prepararNome('Ana')
     servir({ 'GET /api/salas': { corpo: [] } })
-    vi.mocked(createLocalScreenTracks).mockRejectedValueOnce(
+    vi.mocked(capturarTela).mockRejectedValueOnce(
       Object.assign(new Error('cancelado'), { name: 'NotAllowedError' }),
     )
     const usuario = userEvent.setup()
@@ -508,7 +505,7 @@ describe('início: compartilhar minha tela (ação primária)', () => {
       'POST /api/salas': { status: 503, corpo: { erro: 'sfu_indisponivel' } },
     })
     const video = faixaFalsa('video')
-    vi.mocked(createLocalScreenTracks).mockResolvedValueOnce([video])
+    vi.mocked(capturarTela).mockResolvedValueOnce([video])
     const usuario = userEvent.setup()
     montarInicio()
 

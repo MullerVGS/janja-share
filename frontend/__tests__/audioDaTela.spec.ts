@@ -9,9 +9,18 @@ describe('áudio da tela: a captura não é voz', () => {
     expect(CAPTURA_DO_AUDIO_DA_TELA.autoGainControl).toBe(false)
   })
 
-  it('pede estéreo em 48 kHz — é o que faz o SDK anunciar estéreo ao SFU', () => {
-    expect(CAPTURA_DO_AUDIO_DA_TELA.channelCount).toBe(2)
-    expect(CAPTURA_DO_AUDIO_DA_TELA.sampleRate).toBe(48_000)
+  it('manda o Chrome subtrair do loopback o áudio que esta aba produz', () => {
+    // Sem isto, compartilhar a tela inteira devolve à sala as vozes que a própria aba está
+    // tocando, e o laço fecha. É o que o navegador oferece no lugar de calar alguém.
+    expect(CAPTURA_DO_AUDIO_DA_TELA.restrictOwnAudio).toBe(true)
+  })
+
+  it('não pede formato: o loopback entrega o formato do dispositivo de saída, e só', () => {
+    // `channelCount`/`sampleRate` aqui derrubam a captura inteira com "Could not start audio
+    // source" quando a saída do sistema não está exatamente nesse formato. O estéreo de quem
+    // recebe vem de `forceStereo` na publicação, não daqui.
+    expect(CAPTURA_DO_AUDIO_DA_TELA).not.toHaveProperty('channelCount')
+    expect(CAPTURA_DO_AUDIO_DA_TELA).not.toHaveProperty('sampleRate')
   })
 })
 

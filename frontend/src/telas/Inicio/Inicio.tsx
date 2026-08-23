@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { createLocalScreenTracks, type LocalTrack } from 'livekit-client'
+import { type LocalTrack } from 'livekit-client'
 import { useNavigate } from 'react-router-dom'
 import { ErroDaApi, mensagemDoErro } from '../../api/cliente'
 import { LIMITE_DO_NOME, listarSalas, criarSala, type Credenciais } from '../../api/salas'
+import { capturarTela } from '../../sala/captura'
 import { guardarCaptura } from '../../sala/capturaPendente'
-import { opcoesDeCaptura } from '../../sala/useCompartilhamento'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { useSessao } from '../../sessao/sessao'
 import { Aviso } from '../../ui/Aviso'
@@ -18,7 +18,7 @@ import estilos from './Inicio.module.css'
 /**
  * A frase de erro de `compartilharTela`.
  *
- * `criarSala` sempre rejeita com `ErroDaApi` (é o que `pedir` lança); `createLocalScreenTracks`
+ * `criarSala` sempre rejeita com `ErroDaApi` (é o que `pedir` lança); `capturarTela`
  * rejeita com `DOMException`, que também é `Error` mas cuja `.message` é do navegador, não do
  * produto — por isso `ErroDaApi` é conferido primeiro, antes do `Error` genérico.
  */
@@ -77,7 +77,7 @@ export function Inicio() {
     try {
       // Primeira linha do handler, sem `await` antes: é o gesto do clique que autoriza o
       // seletor nativo, e ele expira assim que alguma outra coisa roda primeiro.
-      faixas = await createLocalScreenTracks(opcoesDeCaptura(lerPreferencias().perfil))
+      faixas = await capturarTela(lerPreferencias().perfil)
     } catch (falha) {
       // Cancelar o seletor é a pessoa desistindo, não um erro do produto.
       const nome = falha instanceof Error ? falha.name : ''

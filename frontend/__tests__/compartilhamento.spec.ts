@@ -2,7 +2,8 @@ import { Track } from 'livekit-client'
 import { describe, expect, it } from 'vitest'
 import { CAPTURA_DO_AUDIO_DA_TELA, NOME_DO_FLUXO_DA_TELA } from '../src/sala/audioDaTela'
 import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type PerfilDeQualidade } from '../src/sala/qualidade'
-import { opcoesDeCaptura, opcoesDePublicacao } from '../src/sala/useCompartilhamento'
+import { opcoesDeCaptura } from '../src/sala/captura'
+import { opcoesDePublicacao } from '../src/sala/useCompartilhamento'
 
 function perfil(parcial: Partial<PerfilDeQualidade> = {}): PerfilDeQualidade {
   return { ...PERFIL_PADRAO, ...parcial }
@@ -56,16 +57,16 @@ describe('opções de publicação da tela', () => {
 })
 
 describe('opções de captura da tela', () => {
-  it('resolução nativa pede zero, que é o "sem teto" do SDK', () => {
-    // Omitir `resolution` faria o SDK injetar o preset de 1080p, e a captura nasceria travada
-    // enquanto a UI promete que a tela vai como o monitor entrega.
-    expect(opcoesDeCaptura(perfil({ resolucao: 'nativa' })).resolution).toEqual({ width: 0, height: 0 })
+  it('resolução nativa não restringe tamanho, e ainda assim pede a taxa de quadros', () => {
+    // "Nativa" é a tela como o monitor entrega — restringir aqui brigaria com a proporção dela.
+    const video = opcoesDeCaptura(perfil({ resolucao: 'nativa', fps: 30 })).video
+    expect(video).toEqual({ frameRate: 30 })
   })
 
   it('resolução escolhida vira altura, largura 16:9 e taxa de quadros', () => {
-    expect(opcoesDeCaptura(perfil({ resolucao: '720p', fps: 15 })).resolution).toEqual({
-      width: 1280,
-      height: 720,
+    expect(opcoesDeCaptura(perfil({ resolucao: '720p', fps: 15 })).video).toEqual({
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
       frameRate: 15,
     })
   })
@@ -77,9 +78,9 @@ describe('opções de captura da tela', () => {
     expect(opcoes.selfBrowserSurface).toBe('exclude')
   })
 
-  it('a dica de conteúdo já sai com o conteúdo escolhido', () => {
-    expect(opcoesDeCaptura(PRESET_DO_CONTEUDO.texto).contentHint).toBe('text')
-    expect(opcoesDeCaptura(PRESET_DO_CONTEUDO.jogo).contentHint).toBe('motion')
+  it('em janela, pede o áudio daquela janela — não o mix do sistema', () => {
+    // É o caminho limpo do jogo nativo: o som do jogo vai, o Discord e o janja não vão junto.
+    expect(opcoesDeCaptura(perfil()).windowAudio).toBe('window')
   })
 })
 

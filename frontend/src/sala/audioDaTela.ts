@@ -13,13 +13,28 @@ import { AudioPresets, Track, type AudioCaptureOptions, type TrackPublishOptions
 /** O mesmo `stream` no vídeo e no áudio põe os dois no mesmo `MediaStream` de quem recebe — sincronia A/V. */
 export const NOME_DO_FLUXO_DA_TELA = 'tela'
 
-export const CAPTURA_DO_AUDIO_DA_TELA: AudioCaptureOptions = {
+/**
+ * `restrictOwnAudio` é do Screen Capture, não do SDK nem do `lib.dom` — mas o objeto de áudio
+ * viaja cru até o `getDisplayMedia`, então basta declará-lo aqui.
+ */
+export type CapturaDoAudioDaTela = AudioCaptureOptions & { restrictOwnAudio?: boolean }
+
+export const CAPTURA_DO_AUDIO_DA_TELA: CapturaDoAudioDaTela = {
   echoCancellation: false,
   noiseSuppression: false,
   autoGainControl: false,
-  // O SDK decide estéreo lendo `channelCount` das settings da faixa; sem pedir, o Chrome escolhe.
-  channelCount: 2,
-  sampleRate: 48_000,
+  /**
+   * O antídoto da microfonia de tela inteira: o Chrome captura o mix do sistema e subtrai dele
+   * o que **esta aba** está tocando — ou seja, as vozes da sala que o janja acabou de
+   * reproduzir. Sem isso, tudo que quem transmite ouve volta para quem falou, e o laço fecha
+   * com atraso maior que a janela do cancelador de eco, que por isso não pega.
+   *
+   * Só alcança esta aba. O que outro aplicativo toca (Discord) segue no mix e é
+   * indistinguível do som que a pessoa quis compartilhar — aí nenhum navegador ajuda.
+   */
+  restrictOwnAudio: true,
+  // Formato não se pede: o loopback entrega o do dispositivo de saída, e divergir derruba a
+  // captura inteira. Quem garante o estéreo de quem recebe é `forceStereo` lá embaixo.
 }
 
 export const OPCOES_DO_AUDIO_DA_TELA: TrackPublishOptions = {
@@ -27,8 +42,9 @@ export const OPCOES_DO_AUDIO_DA_TELA: TrackPublishOptions = {
   audioPreset: AudioPresets.musicHighQualityStereo,
   dtx: false,
   red: true,
-  // Cinto e suspensório: `channelCount` acima já deveria bastar, mas o Chrome às vezes relata
-  // mono em captura de aba, e aí o SDK anunciaria mono ao SFU.
+  // O único lugar onde o estéreo é decidido, agora que a captura não pede formato: o SDK lê
+  // `channelCount` das settings da faixa para escolher, e o Chrome às vezes relata mono ali.
+  // Sem isto, uma mixagem estéreo chegaria a todo mundo anunciada como mono.
   forceStereo: true,
   stream: NOME_DO_FLUXO_DA_TELA,
 }

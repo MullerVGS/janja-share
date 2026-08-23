@@ -7,12 +7,12 @@ import {
   type Room,
   type TrackPublishOptions,
 } from 'livekit-client'
-import type { ScreenShareCaptureOptions } from 'livekit-client'
 import { gravarPreferencias, lerPreferencias } from '../preferencias'
 import type { AmostraDoEmissor } from '../telemetria/amostra'
 import type { Historico } from '../telemetria/historico'
 import type { Espectador } from '../telemetria/relato'
-import { CAPTURA_DO_AUDIO_DA_TELA, NOME_DO_FLUXO_DA_TELA, OPCOES_DO_AUDIO_DA_TELA } from './audioDaTela'
+import { NOME_DO_FLUXO_DA_TELA, OPCOES_DO_AUDIO_DA_TELA } from './audioDaTela'
+import { capturarTela } from './captura'
 import {
   decidir,
   GOVERNADOR_PARADO,
@@ -22,10 +22,8 @@ import {
 } from './governador'
 import {
   aplicarPerfil,
-  alturaDaResolucao,
   CEDER,
   CODECS,
-  CONTEUDOS,
   type Codec,
   type PerfilDeQualidade,
   type RelatorioDeAplicacao,
@@ -36,35 +34,6 @@ import {
  * disparar um `setParameters` por pixel percorrido.
  */
 const ATRASO_DO_AJUSTE_MS = 180
-
-/**
- * Opções da captura de tela.
- *
- * Não existe picker próprio: o seletor nativo do Chrome é o produto. O que este objeto faz é
- * pedir a ele os recursos que valem a pena — áudio da aba, e o botão nativo de trocar a tela
- * compartilhada sem derrubar a transmissão (`surfaceSwitching`).
- *
- * `resolution` é obrigatório mesmo em "Nativa": omitir faz o SDK injetar
- * `ScreenSharePresets.h1080fps30.resolution`, e a captura nasceria travada em 1080p enquanto a
- * UI promete que a tela vai como o monitor entrega. Zero é o "sem teto" do SDK — e é o preço de
- * o `frameRate` daqui também ser ignorado nesse modo (a cláusula do SDK exige largura e altura
- * positivas), o que o `applyConstraints` logo em seguida resolve.
- */
-export function opcoesDeCaptura(perfil: PerfilDeQualidade): ScreenShareCaptureOptions {
-  const altura = alturaDaResolucao(perfil.resolucao)
-  return {
-    audio: CAPTURA_DO_AUDIO_DA_TELA,
-    systemAudio: 'include',
-    surfaceSwitching: 'include',
-    // A própria aba do janja-share na lista só produz o túnel de espelhos.
-    selfBrowserSurface: 'exclude',
-    contentHint: CONTEUDOS[perfil.conteudo].contentHint,
-    resolution:
-      altura === null
-        ? { width: 0, height: 0 }
-        : { width: Math.round((altura * 16) / 9), height: altura, frameRate: perfil.fps },
-  }
-}
 
 /**
  * Simulcast fora, SVC dentro.
@@ -328,12 +297,12 @@ export function useCompartilhamento(
   )
 
   /**
-   * `setScreenShareEnabled(true, captura, opções)` publica TODA faixa que `createScreenTracks`
-   * devolve com o mesmo `opções` — moldado para vídeo (`screenShareEncoding`, `videoCodec`...).
-   * É por isso que o áudio da tela nascia em 48 kbps mono com DTX mesmo com
-   * `OPCOES_DO_AUDIO_DA_TELA` existindo: o caminho comum de começar a compartilhar nunca chegava
-   * a usá-las. A saída é a mesma de `trocarDeTela` — capturar e publicar cada faixa com a opção
-   * dela, em vez de delegar as duas ao SDK de uma vez.
+   * `setScreenShareEnabled(true, captura, opções)` publica TODA faixa que a captura devolve com
+   * o mesmo `opções` — moldado para vídeo (`screenShareEncoding`, `videoCodec`...). É por isso
+   * que o áudio da tela nascia em 48 kbps mono com DTX mesmo com `OPCOES_DO_AUDIO_DA_TELA`
+   * existindo: o caminho comum de começar a compartilhar nunca chegava a usá-las. A saída é a
+   * mesma de `trocarDeTela` — capturar e publicar cada faixa com a opção dela, em vez de delegar
+   * as duas ao SDK de uma vez.
    */
   const ligar = useCallback(
     async (desligarAntes: boolean) => {
@@ -346,7 +315,7 @@ export function useCompartilhamento(
         if (desligarAntes) await participante.setScreenShareEnabled(false)
         setCodecPendente(null)
         // Começa pelo pedido: parar zerou o governador, e um degrau antigo não tem mais motivo.
-        capturadas = await participante.createScreenTracks(opcoesDeCaptura(perfil))
+        capturadas = await capturarTela(perfil)
         const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
         if (video) {
           await participante.publishTrack(video, opcoesDePublicacao(perfil))
@@ -398,7 +367,7 @@ export function useCompartilhamento(
     setMudando(true)
     let capturadas: LocalTrack[] = []
     try {
-      capturadas = await participante.createScreenTracks(opcoesDeCaptura(perfil))
+      capturadas = await capturarTela(perfil)
       // Seletor sem vídeo não é troca de tela; a de agora continua valendo mais que nada.
       const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
       if (video) {
