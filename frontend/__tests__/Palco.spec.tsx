@@ -137,6 +137,17 @@ describe('palco: a etiqueta', () => {
     montarPalco({ pecas: [peca('Sadia', { ehTela: true, temAudio: true })] })
     expect(screen.getByRole('button', { name: 'Calar o som da tela de Sadia' })).toBeInTheDocument()
   })
+
+  it('clicar no som da tela alheia cala e devolve pelo tipo "tela", não "pessoa"', () => {
+    const volumes = volumesFalsos({ Sadia: { tela: 0 } })
+    montarPalco({ pecas: [peca('Sadia', { ehTela: true, temAudio: true })], volumes })
+
+    const botao = screen.getByRole('button', { name: 'Devolver o som da tela de Sadia' })
+    expect(botao).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(botao)
+    expect(volumes.alternarMudo).toHaveBeenCalledWith('Sadia', 'tela')
+  })
 })
 
 describe('palco: o foco', () => {

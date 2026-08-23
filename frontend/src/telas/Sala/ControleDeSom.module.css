@@ -14,31 +14,11 @@
   height: 20px;
 }
 
+/* Mesmo botão da pílula — hover, desabilitado e o estado de mudo pelo `aria-pressed` vêm de
+   lá por composição, não por cópia: um ajuste no visual do botão não pode exigir lembrar dos
+   dois arquivos. */
 .acao {
-  display: flex;
-  flex: none;
-  cursor: pointer;
-  padding: 5px;
-  border: 1px solid transparent;
-  border-radius: var(--raio-sm);
-  background: transparent;
-  color: var(--texto-fraco);
-  transition: background-color 0.12s ease, color 0.12s ease;
-}
-
-.acao:hover:not(:disabled) {
-  background: var(--realce);
-  color: var(--texto);
-}
-
-.acao:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.acao[aria-pressed='true'] {
-  color: var(--acao);
-  background: var(--acao-fraca);
+  composes: acao from './Pilula.module.css';
 }
 
 .compacto .acao {

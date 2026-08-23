@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Peca } from '../src/sala/palco'
 import type { ControleDeVolumes } from '../src/sala/useVolumes'
 import { ControleDeSom } from '../src/telas/Sala/ControleDeSom'
+import { habilitarWebAudio } from './apoio/navegador'
 
 const VOLUMES: ControleDeVolumes = { volumeDe: () => 100, definir: vi.fn(), alternarMudo: vi.fn() }
 
@@ -34,5 +35,43 @@ describe('controle de som: voz e tela não se confundem', () => {
   it('volume em zero se anuncia como mudo', () => {
     render(<ControleDeSom peca={TELA} volumes={{ ...VOLUMES, volumeDe: () => 0 }} />)
     expect(screen.getByRole('button', { name: 'Devolver o som da tela de Sadia' })).toBeTruthy()
+  })
+})
+
+/**
+ * `publicacaoDoAudio` é vídeo de mentira nestes testes: só interessa que a faixa certa chegue
+ * ao indicador, não o que o WebAudio faz com ela — isso já é coberto em `SomSaindo.spec.tsx`.
+ */
+describe('controle de som compacto: o indicador de nível é da publicação de áudio da tela', () => {
+  it('a compacta da tela liga o indicador à faixa de `publicacaoDoAudio`, não à de `publicacao`', () => {
+    const webAudio = habilitarWebAudio()
+    const faixa = { id: 'som-da-tela' } as unknown as MediaStreamTrack
+    const comAudio: Peca = {
+      ...TELA,
+      publicacaoDoAudio: { track: { mediaStreamTrack: faixa } } as unknown as Peca['publicacaoDoAudio'],
+    }
+
+    render(<ControleDeSom peca={comAudio} volumes={VOLUMES} compacto />)
+
+    expect(screen.getByTitle('som saindo')).toBeInTheDocument()
+    expect(webAudio.faixas).toEqual([faixa])
+  })
+
+  it('sem publicação de áudio o indicador não aparece', () => {
+    habilitarWebAudio()
+    render(<ControleDeSom peca={TELA} volumes={VOLUMES} compacto />)
+    expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
+  })
+
+  it('fora do modo compacto o indicador não aparece, mesmo com a publicação presente', () => {
+    habilitarWebAudio()
+    const comAudio: Peca = {
+      ...TELA,
+      publicacaoDoAudio: { track: { mediaStreamTrack: { id: 'som-da-tela' } } } as unknown as Peca['publicacaoDoAudio'],
+    }
+
+    render(<ControleDeSom peca={comAudio} volumes={VOLUMES} />)
+
+    expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
   })
 })

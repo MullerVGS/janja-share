@@ -49,11 +49,3 @@
   background: var(--perigo-fraca);
   color: var(--perigo);
 }
-
-.faixaDoVolume {
-  flex: none;
-  width: 78px;
-  height: 3px;
-  cursor: pointer;
-  accent-color: var(--acao);
-}
