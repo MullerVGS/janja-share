@@ -124,6 +124,31 @@
   letter-spacing: 0.02em;
 }
 
+/* A faixa do cão de guarda: por cima do quadro, não dentro da etiqueta — ela já hospeda o
+   controle de som e o selo de mudo, e o aviso de recepção tem que caber sem disputar espaço. */
+.avisoDaRecepcao {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: var(--e2) var(--e4);
+  background: var(--atencao-fraca);
+  color: var(--atencao-texto);
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Tela cheia é tela cheia: lá dentro só a pílula pode aparecer, e só quando pedida. */
+.quadro[data-cheia] .avisoDaRecepcao {
+  display: none;
+}
+
 .etiqueta {
   position: absolute;
   left: var(--e2);

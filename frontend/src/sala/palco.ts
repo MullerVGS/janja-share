@@ -1,4 +1,5 @@
 import { Track, type Participant, type Room, type TrackPublication } from 'livekit-client'
+import type { EstadoDaRecepcao } from './recepcao'
 
 /**
  * O palco: tudo que existe na sala, extraído do estado do `Room` a cada mudança.
@@ -27,6 +28,8 @@ export interface Peca {
   temAudio: boolean
   /** A publicação do som daquela tela; é dela que sai o nível do indicador, não de `publicacao`. */
   publicacaoDoAudio?: TrackPublication
+  /** O veredito do cão de guarda da recepção; só existe em tela alheia — a própria não se assina. */
+  recepcao?: EstadoDaRecepcao
 }
 
 export interface Palco {
@@ -63,7 +66,7 @@ export function chavesDasTelasPublicadas(sala: Room | null): string[] {
     .map((participante) => chaveDaTela(participante.identity))
 }
 
-export function montarPalco(sala: Room | null): Palco {
+export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, EstadoDaRecepcao>): Palco {
   if (!sala) return PALCO_VAZIO
 
   const telas: Peca[] = []
@@ -104,6 +107,7 @@ export function montarPalco(sala: Room | null): Palco {
         falando: false,
         temAudio: Boolean(somDaTela),
         publicacaoDoAudio: somDaTela,
+        recepcao: proprio ? undefined : recepcao?.get(participante.identity),
       })
     }
   }

@@ -50,9 +50,11 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
       // adaptiveStream pausa o vídeo de aba em segundo plano (mata o PiP) e, sem simulcast, não
       // tem camada para escolher — não traz nada aqui.
       adaptiveStream: false,
-      // Dynacast desliga no servidor as camadas que ninguém está assistindo — numa sala de
-      // cinco pessoas com várias telas no ar, é o que evita subir uplink para ninguém.
-      dynacast: true,
+      // Dynacast desligado: com camada única (simulcast off), pausar é tudo ou nada, e o
+      // encoder pausado que não retoma para quem chega depois é o quadro preto que ninguém
+      // entende. O teto de bitrate e o governador já limitam o uplink — dynacast só ganhava
+      // banda quando ninguém assistia, e é justamente aí que ninguém se importa.
+      dynacast: false,
     })
 
     const marcar = () => setVersao((v) => v + 1)

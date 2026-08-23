@@ -38,10 +38,10 @@ vi.mock('livekit-client', async (importar) => {
 })
 
 describe('useSala', () => {
-  it('abre a sala sem adaptiveStream (mataria o PiP e não tem camada para escolher) e com dynacast', () => {
+  it('abre a sala sem adaptiveStream (mataria o PiP) e sem dynacast (não pausa o encoder de quem ninguém assina)', () => {
     const credenciais = credenciaisFalsas(Date.now() + 60_000)
     renderHook(() => useSala(credenciais))
-    expect(construidas).toEqual([{ adaptiveStream: false, dynacast: true }])
+    expect(construidas).toEqual([{ adaptiveStream: false, dynacast: false }])
   })
 
   it('conectar também recalcula o palco: sem isso o próprio quadro fica em "?" até o evento seguinte', () => {

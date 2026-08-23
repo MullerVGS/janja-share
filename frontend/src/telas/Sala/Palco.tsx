@@ -150,6 +150,17 @@ function Quadro({
 
       {pip.emPiP && <span className={estilos.emPiP}>em PiP</span>}
 
+      {peca.recepcao === 'retomando' && (
+        <p className={estilos.avisoDaRecepcao} role="status">
+          a tela de {peca.nome} parou de chegar — retomando…
+        </p>
+      )}
+      {peca.recepcao === 'desistiu' && (
+        <p className={estilos.avisoDaRecepcao} role="status">
+          a tela de {peca.nome} não está chegando. Peça para {peca.nome} reiniciar a transmissão.
+        </p>
+      )}
+
       <div className={estilos.etiqueta}>
         {!peca.ehTela && !peca.microfoneLigado && (
           <span className={estilos.microfoneFechado} title="microfone fechado">

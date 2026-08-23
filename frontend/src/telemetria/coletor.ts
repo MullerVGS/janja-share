@@ -16,6 +16,7 @@ import {
   type BaseDoEspectador,
 } from './amostra'
 import { anotar, ultima, type Historico } from './historico'
+import { avaliarRecepcao, VIGIA_NOVO, type EstadoDaRecepcao, type Vigia } from '../sala/recepcao'
 import {
   desempacotarRelato,
   empacotarRelato,
@@ -33,9 +34,16 @@ export interface Telemetria {
   espectadores: ReadonlyMap<string, Espectador>
   /** O que eu recebo de cada tela assinada, pela identidade de quem a publica. */
   recebidas: ReadonlyMap<string, Historico<AmostraDoEspectador>>
+  /** O veredito do cão de guarda para cada tela assinada, pela identidade de quem a publica. */
+  recepcao: ReadonlyMap<string, EstadoDaRecepcao>
 }
 
-export const TELEMETRIA_VAZIA: Telemetria = { emissor: [], espectadores: new Map(), recebidas: new Map() }
+export const TELEMETRIA_VAZIA: Telemetria = {
+  emissor: [],
+  espectadores: new Map(),
+  recebidas: new Map(),
+  recepcao: new Map(),
+}
 
 /**
  * O relógio único da telemetria: a cada segundo lê o sender da tela própria e o receiver de
@@ -54,10 +62,23 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   let sidDoEmissor: string | null = null
   let baseDoEmissor: BaseDoEmissor | null = null
   const basesRecebidas = new Map<string, BaseDoEspectador | null>()
+  const vigias = new Map<string, Vigia>()
 
   const publicar = (proximo: Telemetria) => {
     estado = proximo
     if (vivo) aoMudar(estado)
+  }
+
+  /**
+   * Força o SDK a montar a assinatura de novo — o que republicar faz do lado de quem transmite,
+   * mas sem depender dele. É o remédio do cão de guarda: um respiro antes de voltar, porque
+   * `setSubscribed(true)` no mesmo tick é ignorado, o SDK ainda não processou o desligamento.
+   */
+  async function reassinar(identidade: string) {
+    const publicacao = sala.remoteParticipants.get(identidade)?.getTrackPublication(Track.Source.ScreenShare)
+    if (!publicacao || !('setSubscribed' in publicacao)) return
+    publicacao.setSubscribed(false)
+    setTimeout(() => publicacao.setSubscribed(true), 250)
   }
 
   async function lerEmissor(): Promise<Historico<AmostraDoEmissor>> {
@@ -112,6 +133,11 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
             const leitura = lerAmostraDoEspectador(relatorio, basesRecebidas.get(identidade) ?? null)
             basesRecebidas.set(identidade, leitura.base)
             recebidas.set(identidade, anotar(historico, leitura.amostra))
+
+            const vigia = vigias.get(identidade) ?? VIGIA_NOVO
+            const passo = avaliarRecepcao(vigia, { emMs: leitura.amostra.emMs, kbps: leitura.amostra.kbps }, leitura.amostra.emMs)
+            vigias.set(identidade, passo.vigia)
+            if (passo.acao === 'reassinar') void reassinar(identidade)
           })
           .catch(() => {
             basesRecebidas.set(identidade, null)
@@ -121,8 +147,19 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     }
 
     await Promise.all(leituras)
-    for (const identidade of basesRecebidas.keys()) if (!recebidas.has(identidade)) basesRecebidas.delete(identidade)
+    for (const identidade of basesRecebidas.keys()) {
+      if (recebidas.has(identidade)) continue
+      basesRecebidas.delete(identidade)
+      vigias.delete(identidade)
+    }
     return recebidas
+  }
+
+  /** O estado do cão de guarda para cada tela ainda assinada — o que sobrevive à limpeza acima. */
+  function recepcaoAtual(): ReadonlyMap<string, EstadoDaRecepcao> {
+    const mapa = new Map<string, EstadoDaRecepcao>()
+    for (const [identidade, vigia] of vigias) mapa.set(identidade, vigia.estado)
+    return mapa
   }
 
   function relatar(recebidas: ReadonlyMap<string, Historico<AmostraDoEspectador>>) {
@@ -162,7 +199,11 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       // Sem tela no ar de ninguém não há o que dizer — e não há por que redesenhar a sala a 1 Hz.
       const ocioso = emissor.length === 0 && recebidas.size === 0
       if (ocioso && estado === TELEMETRIA_VAZIA) return
-      publicar(ocioso ? TELEMETRIA_VAZIA : { emissor, recebidas, espectadores: espectadoresAinda(emissor.length > 0) })
+      publicar(
+        ocioso
+          ? TELEMETRIA_VAZIA
+          : { emissor, recebidas, espectadores: espectadoresAinda(emissor.length > 0), recepcao: recepcaoAtual() },
+      )
     } finally {
       lendo = false
     }

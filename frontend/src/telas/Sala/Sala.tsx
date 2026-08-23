@@ -56,8 +56,9 @@ export function Sala() {
   const [foco, setFoco] = useState<EstadoDoFoco>(FOCO_INICIAL)
   const interfaceFlutuante = useRef<HTMLDivElement>(null)
 
-  // O palco é derivado do `Room`; `versao` é o que diz que ele mudou.
-  const palco = useMemo(() => montarPalco(sala), [sala, versao])
+  // O palco é derivado do `Room`; `versao` é o que diz que ele mudou. `telemetria.recepcao`
+  // entra à parte: o cão de guarda anda no relógio da telemetria, não no dos eventos do `Room`.
+  const palco = useMemo(() => montarPalco(sala, telemetria.recepcao), [sala, versao, telemetria.recepcao])
   const telasPublicadas = useMemo(() => chavesDasTelasPublicadas(sala), [sala, versao])
   const pecas = useMemo(() => [...palco.telas, ...palco.pessoas], [palco])
   const zoom = useZoom(pecas)

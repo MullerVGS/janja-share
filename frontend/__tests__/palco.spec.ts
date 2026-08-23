@@ -22,3 +22,32 @@ describe('chavesDasTelasPublicadas', () => {
     expect(chavesDasTelasPublicadas(salaFalsa(eu))).toEqual([])
   })
 })
+
+describe('montarPalco: recepção da tela', () => {
+  it('sem o mapa, a tela alheia não ganha veredito nenhum', () => {
+    const eu = participanteFalso('ana-a1b2', 'Ana', [])
+    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
+    const sala = salaFalsa(eu, [bia])
+
+    expect(montarPalco(sala).telas[0]?.recepcao).toBeUndefined()
+  })
+
+  it('a tela alheia leva o veredito do mapa, pela identidade de quem publica', () => {
+    const eu = participanteFalso('ana-a1b2', 'Ana', [])
+    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
+    const sala = salaFalsa(eu, [bia])
+    const recepcao = new Map([['bia-x1y2', 'retomando' as const]])
+
+    expect(montarPalco(sala, recepcao).telas[0]?.recepcao).toBe('retomando')
+  })
+
+  it('a própria tela nunca ganha o aviso — não há assinatura de quem transmite para si mesmo', () => {
+    const eu = participanteFalso('ana-a1b2', 'Ana', [publicacaoFalsa(Track.Source.ScreenShare)])
+    const sala = salaFalsa(eu)
+    // Um mapa "malicioso" com a própria identidade não deveria nem existir na prática — o
+    // coletor só assina tela alheia — mas o teste garante que `montarPalco` blinda o caso.
+    const recepcao = new Map([['ana-a1b2', 'desistiu' as const]])
+
+    expect(montarPalco(sala, recepcao).telas[0]?.recepcao).toBeUndefined()
+  })
+})
