@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
-import { IconeCerto, IconeCopiar, IconePainel } from '../../ui/Icone'
+import { IconeCerto, IconeCopiar, IconePainel, IconePessoas } from '../../ui/Icone'
 import estilos from './Cabecalho.module.css'
 
 interface Props {
@@ -18,10 +18,7 @@ const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
   [ConnectionState.Disconnected]: 'Desconectado.',
 }
 
-/**
- * O cabeçalho flutuante: onde você está, quantos são, o link e a porta do painel. Nada aqui
- * é moldura — ele vive por cima do palco e some junto com o resto da interface.
- */
+/** O topo persistente da sala: localização, presença, link e acesso ao painel lateral. */
 export function Cabecalho({ nomeDaSala, conexao, pessoas, gavetaAberta, aoAlternarGaveta }: Props) {
   const frase = FRASE_DA_CONEXAO[conexao]
   const [linkCopiado, setLinkCopiado] = useState(false)
@@ -44,13 +41,22 @@ export function Cabecalho({ nomeDaSala, conexao, pessoas, gavetaAberta, aoAltern
 
   return (
     <header className={estilos.cabecalho}>
+      <span className={estilos.canal} aria-hidden="true">
+        #
+      </span>
+      <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
+      <span className={estilos.separador} aria-hidden="true" />
       <span
         className={estilos.pulso}
         data-conectado={conexao === ConnectionState.Connected || undefined}
         aria-hidden="true"
       />
-      <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
-      <span className={estilos.estado}>{frase ?? `${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'}`}</span>
+      <span className={estilos.estado}>
+        {!frase && <IconePessoas tamanho={15} />}
+        {frase ?? `${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'}`}
+      </span>
+
+      <span className={estilos.espacador} />
 
       <button
         type="button"

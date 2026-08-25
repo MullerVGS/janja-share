@@ -1,105 +1,186 @@
 .linha {
-  display: flex;
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'info acao'
+    'pessoas acao'
+    'aviso aviso'
+    'form form';
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--e4);
-  padding: var(--e3) var(--e4);
-  border-radius: var(--raio-md);
+  column-gap: var(--e4);
+  row-gap: 10px;
+  padding: var(--e4);
+  overflow: hidden;
   border: 1px solid var(--linha);
+  border-radius: var(--raio-lg);
   background: var(--superficie);
+  box-shadow: 0 1px 0 var(--realce-minimo);
+  transition: border-color 0.14s ease, background-color 0.14s ease, transform 0.14s ease;
+}
+
+.linha::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--conectado);
+  opacity: 0.85;
+}
+
+.linha:hover {
+  border-color: var(--linha-forte);
+  background: var(--superficie-alta);
+  transform: translateY(-1px);
 }
 
 .linha[data-vazia] {
-  opacity: 0.55;
+  opacity: 0.64;
+}
+
+.linha[data-vazia]::before {
+  background: var(--texto-fraquissimo);
 }
 
 .linha[data-cheia] {
-  opacity: 0.8;
+  opacity: 0.78;
 }
 
 .info {
-  flex: 1;
+  grid-area: info;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--e2);
+  gap: 7px;
 }
 
 .nome {
-  font-weight: 600;
+  min-width: 0;
   overflow: hidden;
+  font-size: var(--texto-base);
+  font-weight: 680;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cadeado {
   flex: none;
-  color: var(--texto-fraquissimo);
   display: inline-flex;
+  color: var(--texto-fraquissimo);
 }
 
 .telas {
   flex: none;
-  font-size: var(--texto-sm);
-  color: var(--texto-fraco);
+  padding: 2px 7px;
+  border-radius: var(--raio-pilula);
+  background: var(--acao-fraca);
+  color: var(--acao-texto);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .pessoas {
-  flex: none;
+  grid-area: pessoas;
+  min-width: 0;
   display: flex;
   align-items: center;
 }
 
 .vazio {
-  font-size: var(--texto-sm);
   color: var(--texto-fraquissimo);
+  font-size: var(--texto-sm);
   font-style: italic;
 }
 
 .avatares {
   display: flex;
+  min-width: 0;
 }
 
 .avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  margin-left: -7px;
+  border: 2px solid var(--superficie);
+}
+
+.avatarExtra {
+  width: 27px;
+  height: 27px;
   display: grid;
   place-items: center;
-  font-size: var(--texto-xs);
-  font-weight: 700;
-  color: var(--fundo);
+  margin-left: -7px;
   border: 2px solid var(--superficie);
-  margin-left: -8px;
+  border-radius: 50%;
+  background: var(--superficie-selecionada);
+  color: var(--texto-fraco);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.linha:hover .avatar,
+.linha:hover .avatarExtra {
+  border-color: var(--superficie-alta);
 }
 
 .avatar:first-child {
   margin-left: 0;
 }
 
-.avatarExtra {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: var(--texto-xs);
-  font-weight: 700;
-  color: var(--texto-fraco);
-  background: var(--superficie-alta);
-  border: 2px solid var(--superficie);
-  margin-left: -8px;
+.linha > button {
+  grid-area: acao;
+  align-self: center;
+  min-width: 76px;
+  border-radius: var(--raio-md);
+}
+
+.aviso {
+  grid-area: aviso;
+  min-width: 0;
 }
 
 .formulario {
-  flex: 1 1 100%;
+  grid-area: form;
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
   gap: var(--e2);
+  padding-top: var(--e2);
+  border-top: 1px solid var(--linha);
 }
 
-.aviso {
-  flex: none;
-  max-width: 220px;
+.formulario > div {
+  min-width: 150px;
+  flex: 1;
+}
+
+.formulario button {
+  border-radius: var(--raio-md);
+}
+
+@media (max-width: 460px) {
+  .linha {
+    grid-template-areas:
+      'info info'
+      'pessoas acao'
+      'aviso aviso'
+      'form form';
+  }
+
+  .telas {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .formulario {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formulario > div,
+  .formulario button {
+    width: 100%;
+  }
 }

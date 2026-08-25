@@ -6,7 +6,7 @@
   place-items: center;
   padding: var(--e5);
   background: var(--veu);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
 }
 
 .caixa {
@@ -14,10 +14,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--e4);
-  background: var(--superficie);
+  background: var(--superficie-alta);
   border: 1px solid var(--linha);
-  border-radius: var(--raio-lg);
-  padding: var(--e5);
+  border-radius: var(--raio-xl);
+  padding: var(--e6);
   box-shadow: var(--sombra-lg);
 }
 

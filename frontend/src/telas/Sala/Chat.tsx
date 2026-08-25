@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { LIMITE_DO_TEXTO } from '../../sala/chat'
 import type { Chat as ConversaDaSala } from '../../sala/useChat'
+import { Avatar } from '../../ui/Avatar'
 import estilos from './Chat.module.css'
 
 function hora(ts: number): string {
@@ -47,13 +48,16 @@ export function Chat({ chat }: { chat: ConversaDaSala }) {
             key={mensagem.id}
             className={[estilos.mensagem, mensagem.propria ? estilos.propria : ''].filter(Boolean).join(' ')}
           >
-            <div className={estilos.linhaDoAutor}>
-              <span className={estilos.autor}>{mensagem.nome}</span>
-              <time className={estilos.hora} dateTime={new Date(mensagem.ts).toISOString()}>
-                {hora(mensagem.ts)}
-              </time>
+            <Avatar nome={mensagem.nome} tamanho="medio" />
+            <div className={estilos.conteudoDaMensagem}>
+              <div className={estilos.linhaDoAutor}>
+                <span className={estilos.autor}>{mensagem.nome}</span>
+                <time className={estilos.hora} dateTime={new Date(mensagem.ts).toISOString()}>
+                  {hora(mensagem.ts)}
+                </time>
+              </div>
+              <p className={estilos.texto}>{mensagem.texto}</p>
             </div>
-            <p className={estilos.texto}>{mensagem.texto}</p>
           </article>
         ))}
       </div>

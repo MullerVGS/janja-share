@@ -1,7 +1,7 @@
 .tira {
   display: flex;
   flex-direction: column;
-  gap: var(--e2);
+  gap: 7px;
   max-height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
@@ -10,15 +10,15 @@
 .miniatura {
   position: relative;
   flex: none;
-  width: 168px;
+  width: 176px;
   aspect-ratio: 16 / 9;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
   border: 1px solid var(--linha);
-  border-radius: var(--raio-md);
+  border-radius: var(--raio-lg);
   background: var(--palco);
-  box-shadow: var(--sombra-md);
+  box-shadow: var(--sombra-flutuante);
   display: grid;
   place-items: center;
   transition: border-color 0.12s ease, transform 0.12s ease;
@@ -53,12 +53,24 @@
   right: var(--e1);
   bottom: var(--e1);
   padding: 2px 6px;
-  border-radius: var(--raio-pilula);
-  background: var(--veu);
+  border-radius: 6px;
+  background: var(--veu-suave);
   color: var(--texto);
   font-size: var(--texto-xs);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 620px) {
+  .tira {
+    max-width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .miniatura {
+    width: 122px;
+  }
 }

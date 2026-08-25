@@ -1,0 +1,69 @@
+.trilho {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e3);
+  padding: var(--e3) var(--trilho-padding-x, var(--e2));
+  background: var(--trilho);
+}
+
+.marca {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+button.marca {
+  cursor: pointer;
+}
+
+.divisor {
+  width: 32px;
+  height: 2px;
+  flex: none;
+  border-radius: var(--raio-pilula);
+  background: var(--linha);
+}
+
+.item {
+  position: relative;
+  width: var(--tamanho-item-trilho, 48px);
+  height: var(--tamanho-item-trilho, 48px);
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: var(--superficie);
+  color: var(--texto-fraco);
+  transition: color 0.15s ease, background-color 0.15s ease, border-radius 0.15s ease;
+}
+
+button.item {
+  cursor: pointer;
+}
+
+button.item:hover,
+.item[data-ativo] {
+  border-radius: 13px;
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
+}
+
+.item[data-ativo]::before {
+  content: '';
+  position: absolute;
+  left: var(--indicador-trilho-esquerda, -12px);
+  width: 4px;
+  height: 28px;
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  background: var(--texto);
+}

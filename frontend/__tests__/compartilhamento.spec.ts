@@ -79,7 +79,7 @@ describe('opções de captura da tela', () => {
   })
 
   it('em janela, pede o áudio daquela janela — não o mix do sistema', () => {
-    // É o caminho limpo do jogo nativo: o som do jogo vai, o Discord e o janja não vão junto.
+    // É o caminho limpo do jogo nativo: o som do jogo vai, apps de voz e o janja não vão junto.
     expect(opcoesDeCaptura(perfil()).windowAudio).toBe('window')
   })
 })

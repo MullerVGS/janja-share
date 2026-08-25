@@ -4,15 +4,15 @@
   justify-content: center;
   gap: 7px;
   cursor: pointer;
-  font-weight: 550;
+  font-weight: 620;
   font-size: var(--texto-md);
   line-height: 1.2;
   color: var(--texto);
   background: transparent;
   border: 1px solid transparent;
-  padding: var(--e2) var(--e4);
-  border-radius: var(--raio-pilula);
-  transition: background-color 0.12s ease, border-color 0.12s ease;
+  padding: 9px var(--e4);
+  border-radius: var(--raio-md);
+  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
 }
 
 .botao:disabled {
@@ -26,14 +26,15 @@
 }
 .primario:hover:not(:disabled) {
   background: var(--acao-forte);
+  transform: translateY(-1px);
 }
 
 .secundario {
-  border-color: var(--linha-forte);
-  background: var(--superficie);
+  border-color: transparent;
+  background: var(--controle);
 }
 .secundario:hover:not(:disabled) {
-  background: var(--superficie-alta);
+  background: var(--superficie-selecionada);
 }
 
 .fantasma {

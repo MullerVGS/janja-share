@@ -10,11 +10,13 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--e2);
-  padding: var(--e4) var(--e4) var(--e2);
+  padding: var(--e4) var(--e4) var(--e3);
+  border-bottom: 1px solid var(--linha-sutil);
 }
 
 .titulo {
-  font-size: var(--texto-base);
+  font-size: var(--texto-md);
+  font-weight: 700;
   margin: 0;
 }
 
@@ -29,21 +31,33 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--e3);
-  padding: var(--e2) var(--e4);
+  gap: 2px;
+  padding: var(--e3) var(--e2);
   scrollbar-width: thin;
 }
 
 .vazio {
-  margin: 0;
+  margin: auto;
+  padding: var(--e5);
   color: var(--texto-fraquissimo);
   font-size: var(--texto-sm);
 }
 
 .mensagem {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px var(--e2);
+  border-radius: var(--raio-md);
+}
+
+.mensagem:hover {
+  background: var(--realce-minimo);
+}
+
+.conteudoDaMensagem {
+  min-width: 0;
 }
 
 .linhaDoAutor {
@@ -55,7 +69,7 @@
 .autor {
   font-size: var(--texto-sm);
   font-weight: 700;
-  color: var(--turquesa);
+  color: var(--texto);
 }
 
 .propria .autor {
@@ -69,6 +83,7 @@
 
 .texto {
   margin: 0;
+  color: var(--texto-fraco);
   font-size: var(--texto-md);
   line-height: 1.45;
   word-break: break-word;
@@ -85,17 +100,17 @@
 .formulario {
   display: flex;
   gap: var(--e2);
-  padding: var(--e3) var(--e4) var(--e4);
+  padding: var(--e3) var(--e3) var(--e4);
   border-top: 1px solid var(--linha);
 }
 
 .entrada {
   flex: 1;
   min-width: 0;
-  background: var(--fundo-2);
-  border: 1px solid var(--linha-forte);
-  border-radius: var(--raio-pilula);
-  padding: var(--e2) var(--e3);
+  background: var(--superficie-hover);
+  border: 1px solid transparent;
+  border-radius: var(--raio-md);
+  padding: 10px var(--e3);
 }
 
 .entrada:focus-visible {
@@ -106,7 +121,7 @@
 .enviar {
   cursor: pointer;
   border: none;
-  border-radius: var(--raio-pilula);
+  border-radius: var(--raio-md);
   padding: var(--e2) var(--e4);
   font-size: var(--texto-sm);
   font-weight: 600;

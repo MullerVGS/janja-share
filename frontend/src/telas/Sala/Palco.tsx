@@ -6,7 +6,7 @@ import type { ControleDeVolumes } from '../../sala/useVolumes'
 import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
 import { Botao } from '../../ui/Botao'
-import { IconeMicrofoneMudo } from '../../ui/Icone'
+import { IconeMicrofoneMudo, IconePessoas } from '../../ui/Icone'
 import { usePiP, useTelaCheia } from './assistir'
 import { useCrescerEEncolher } from './transicao'
 import { ControleDeSom } from './ControleDeSom'
@@ -229,7 +229,15 @@ export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, interfac
           aoTentarDeNovo={aoTentarDeNovo}
         />
       ))}
-      {pecas.length === 0 && <p className={estilos.vazio}>Você é a primeira pessoa aqui.</p>}
+      {pecas.length === 0 && (
+        <div className={estilos.vazio}>
+          <span className={estilos.iconeVazio} aria-hidden="true">
+            <IconePessoas tamanho={30} />
+          </span>
+          <strong>Você é a primeira pessoa aqui.</strong>
+          <span>Convide alguém ou comece a compartilhar sua tela.</span>
+        </div>
+      )}
     </div>
   )
 }

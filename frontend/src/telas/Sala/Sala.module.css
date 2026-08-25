@@ -1,12 +1,41 @@
 .sala {
   position: relative;
   height: 100%;
+  min-width: 0;
+  display: flex;
   overflow: hidden;
-  background: var(--fundo);
+  background: var(--conteudo);
 }
 
-/* Tudo que flutua por cima do palco e some junto. O contêiner não come clique nenhum: só os
-   pedaços de interface de verdade voltam a receber ponteiro. */
+.conteudoDaSala {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--conteudo);
+}
+
+.corpoDaSala {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.areaDoPalco {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: var(--conteudo);
+}
+
+/* Controles e miniaturas flutuam sobre o palco. O contêiner não captura cliques; somente as
+   peças interativas dentro dele voltam a receber ponteiro. */
 .interface {
   position: absolute;
   inset: 0;
@@ -14,7 +43,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--e3);
-  padding: var(--e3);
+  padding: var(--e3) var(--e3) var(--e4);
   pointer-events: none;
   transition: opacity 0.18s ease, visibility 0.18s;
 }
@@ -24,19 +53,12 @@
   visibility: hidden;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .interface {
-    transition: none;
-  }
-}
-
 .alto {
-  flex: 1;
   min-height: 0;
+  flex: 1;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--e3);
+  justify-content: flex-end;
 }
 
 .baixo {
@@ -50,19 +72,36 @@
   pointer-events: auto;
 }
 
-/* Acima da interface e da gaveta: um erro não pode ficar embaixo de nada nem sumir sozinho. */
+/* Erro é alarme, não moldura: permanece por cima de navegação, palco e painéis. */
 .avisos {
   position: absolute;
-  top: var(--e3);
+  top: calc(var(--altura-do-topo) + var(--e3));
   left: 50%;
-  transform: translateX(-50%);
-  z-index: 4;
+  z-index: 6;
+  width: min(580px, calc(100% - var(--e10)));
   display: flex;
   flex-direction: column;
   gap: var(--e2);
-  width: min(560px, calc(100% - var(--e10)));
+  transform: translateX(-50%);
+  filter: drop-shadow(var(--sombra-md));
 }
 
 .avisos:empty {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interface {
+    transition: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .interface {
+    padding: var(--e2) var(--e2) var(--e3);
+  }
+
+  .avisos {
+    width: calc(100% - var(--e4));
+  }
 }

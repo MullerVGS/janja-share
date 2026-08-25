@@ -1,0 +1,54 @@
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.simbolo {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--texto-sobre-acento);
+  background: var(--gradiente-marca);
+  box-shadow: var(--sombra-marca);
+}
+
+.simbolo svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nome {
+  overflow: hidden;
+  color: var(--texto);
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compacta .simbolo {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  transition: border-radius 0.16s ease, transform 0.16s ease;
+}
+
+.compacta .simbolo svg {
+  width: 29px;
+  height: 29px;
+}
+
+.compacta:hover .simbolo {
+  border-radius: 13px;
+  transform: translateY(-1px);
+}

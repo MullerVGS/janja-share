@@ -1,66 +1,114 @@
 .cabecalho {
+  position: relative;
+  z-index: 4;
+  height: var(--altura-do-topo);
+  min-width: 0;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: var(--e3);
-  padding: var(--e1) var(--e1) var(--e1) var(--e3);
-  border-radius: var(--raio-pilula);
-  background: var(--veu);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--linha);
-  box-shadow: var(--sombra-md);
+  gap: 9px;
+  padding: 0 var(--e3) 0 var(--e4);
+  border-bottom: 1px solid var(--linha-topo);
+  background: var(--barra-topo);
+  box-shadow: var(--sombra-topo);
 }
 
-/* Preenchido = conectado; oco = não. A forma (não só a cor) carrega o estado — quem não
-   distingue verde de vermelho ainda vê o preenchimento mudar. */
-.pulso {
+.canal {
   flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: transparent;
-  border: 1.5px solid var(--texto-fraquissimo);
-}
-
-.pulso[data-conectado] {
-  background: var(--conectado);
-  border-color: var(--conectado);
-  animation: shPulsar 2.4s ease-in-out infinite;
+  color: var(--texto-fraquissimo);
+  font-size: 24px;
+  font-weight: 450;
+  line-height: 1;
 }
 
 .nomeDaSala {
-  font-size: var(--texto-md);
-  font-weight: 600;
-  color: var(--texto);
-  white-space: nowrap;
+  min-width: 0;
+  max-width: min(42vw, 460px);
   overflow: hidden;
+  color: var(--texto);
+  font-size: var(--texto-base);
+  font-weight: 680;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
-  max-width: 40vw;
+  white-space: nowrap;
+}
+
+.separador {
+  width: 1px;
+  height: 22px;
+  margin: 0 var(--e1);
+  background: var(--linha);
+}
+
+/* Preenchido = conectado; oco = não. A forma também carrega o estado. */
+.pulso {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border: 1.5px solid var(--texto-fraquissimo);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.pulso[data-conectado] {
+  border-color: var(--conectado);
+  background: var(--conectado);
 }
 
 .estado {
-  font-size: var(--texto-sm);
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
   color: var(--texto-fraco);
+  font-size: var(--texto-sm);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.espacador {
+  min-width: var(--e2);
+  flex: 1;
+}
+
 .botao {
-  display: flex;
+  width: 34px;
+  height: 34px;
   flex: none;
-  cursor: pointer;
-  padding: 7px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--raio-pilula);
+  border-radius: var(--raio-md);
   background: transparent;
   color: var(--texto-fraco);
+  cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .botao:hover {
-  background: var(--realce);
+  background: var(--superficie-hover);
   color: var(--texto);
 }
 
 .botao[aria-pressed='true'] {
-  color: var(--acao);
   background: var(--acao-fraca);
+  color: var(--acao-texto);
+}
+
+@media (max-width: 620px) {
+  .cabecalho {
+    padding-left: var(--e3);
+  }
+
+  .nomeDaSala {
+    max-width: 42vw;
+  }
+
+  .separador,
+  .pulso,
+  .estado {
+    display: none;
+  }
 }

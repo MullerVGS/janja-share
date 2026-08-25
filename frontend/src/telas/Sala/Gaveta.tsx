@@ -23,8 +23,7 @@ interface Props {
 const PASSO_DO_TECLADO = 16
 
 /**
- * A gaveta da direita: resumo da transmissão, abas e o painel da aba ativa. Ela desliza por
- * cima do palco — nesta sala nada divide espaço com a imagem, tudo passa por cima e sai.
+ * O painel da direita: resumo da transmissão, abas e o conteúdo ativo.
  *
  * Fica montada mesmo fechada, e o chat fica montado mesmo em outra aba: o rascunho escrito e a
  * rolagem não podem sumir porque a pessoa foi olhar um gráfico. Fechada, sai da árvore de
@@ -33,7 +32,8 @@ const PASSO_DO_TECLADO = 16
  * vale pagar isso escondida.
  *
  * A largura anda por variável CSS escrita direto no elemento durante o arraste; o React só
- * fica sabendo quando a pessoa solta.
+ * fica sabendo quando a pessoa solta. No desktop o painel divide o corpo com o palco; em telas
+ * estreitas vira uma camada para não esmagar o conteúdo principal.
  */
 export function Gaveta({
   aberta,

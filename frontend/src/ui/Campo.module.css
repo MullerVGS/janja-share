@@ -15,8 +15,8 @@
   width: 100%;
   background: var(--fundo-2);
   border: 1px solid var(--linha-forte);
-  border-radius: var(--raio-md);
-  padding: var(--e2) var(--e3);
+  border-radius: 6px;
+  padding: 10px var(--e3);
   color: var(--texto);
   transition: border-color 0.12s ease;
 }

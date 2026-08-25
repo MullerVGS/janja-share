@@ -32,7 +32,7 @@ export interface OpcoesDeCapturaDeTela extends DisplayMediaStreamOptions {
  * Os dois eixos de áudio são independentes porque as superfícies são: `systemAudio` só é lido
  * quando a pessoa escolhe um monitor, `windowAudio` só quando escolhe uma janela. Pedir
  * `'window'` é o que abre o caminho limpo do jogo nativo — o som sai do processo escolhido, sem
- * levar junto o Discord e o janja que dividem o mix do sistema.
+ * levar junto outros aplicativos de voz que dividem o mix do sistema.
  *
  * Em "Nativa" o tamanho simplesmente não é restringido: a tela vai como o monitor entrega, que
  * é o que a UI promete. A taxa de quadros vai nos dois casos.

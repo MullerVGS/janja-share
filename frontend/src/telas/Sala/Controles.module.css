@@ -1,15 +1,18 @@
-/* Flutuante e centrada no rodapé: a barra passa por cima da imagem e some com o resto da
-   interface. Ela não divide espaço com o palco. */
+/* Flutuante e centrada no rodapé. Cada ação tem sua própria superfície, enquanto a caixa
+   externa só cria contraste sobre câmeras e telas claras. */
 .barra {
+  max-width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--e2);
-  padding: var(--e2);
-  border-radius: var(--raio-pilula);
+  gap: 6px;
+  overflow-x: auto;
+  padding: 7px;
+  border-radius: 16px;
   background: var(--veu);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--linha);
-  box-shadow: var(--sombra-md);
+  box-shadow: var(--sombra-flutuante);
+  scrollbar-width: none;
 }
 
 .botao {
@@ -20,16 +23,17 @@
   width: 44px;
   height: 44px;
   cursor: pointer;
-  border-radius: var(--raio-pilula);
-  border: 1px solid var(--linha-forte);
-  background: var(--superficie);
-  color: var(--texto-fraco);
-  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: var(--controle);
+  color: var(--texto);
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
 }
 
 .botao:hover:not(:disabled) {
-  background: var(--superficie-alta);
+  background: var(--superficie-selecionada);
   color: var(--texto);
+  transform: translateY(-1px);
 }
 
 .botao:disabled {
@@ -38,26 +42,43 @@
 }
 
 .botao[aria-pressed='true'] {
-  background: var(--acao-fraca);
-  border-color: var(--acao-media);
-  color: var(--acao);
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
 }
 
 .perigo {
-  color: var(--perigo);
-  border-color: var(--perigo-media);
+  color: var(--texto-sobre-acento);
+  background: var(--perigo);
 }
 
 .perigo:hover:not(:disabled) {
-  background: var(--perigo-fraca);
-  color: var(--perigo);
+  background: var(--perigo-forte);
+  color: var(--texto-sobre-acento);
 }
 
 .separador {
   width: 1px;
   height: 26px;
   background: var(--linha-forte);
-  margin: 0 var(--e2);
+  margin: 0 4px;
+}
+
+@media (max-width: 520px) {
+  .barra {
+    gap: 4px;
+    padding: 5px;
+    border-radius: 14px;
+  }
+
+  .botao {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .separador {
+    margin: 0 1px;
+  }
 }
 
 .contador {

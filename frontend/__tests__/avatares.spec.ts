@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { corDoNome, iniciaisDoNome } from '../src/telas/Inicio/avatares'
+import { corDoNome, iniciaisDoNome } from '../src/ui/avatares'
 
 describe('iniciaisDoNome', () => {
   it('nome com um só termo vira a primeira letra maiúscula', () => {

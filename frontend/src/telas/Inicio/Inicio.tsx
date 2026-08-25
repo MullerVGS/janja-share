@@ -9,8 +9,12 @@ import { guardarCaptura } from '../../sala/capturaPendente'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { useSessao } from '../../sessao/sessao'
 import { Aviso } from '../../ui/Aviso'
+import { Avatar } from '../../ui/Avatar'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
+import { IconeInicio, IconeMais, IconePessoas, IconeTela } from '../../ui/Icone'
+import { Marca } from '../../ui/Marca'
+import { ItemDoTrilho, Trilho } from '../../ui/Trilho'
 import { DialogoCriarSala } from './DialogoCriarSala'
 import { SalaLinha } from './SalaLinha'
 import estilos from './Inicio.module.css'
@@ -99,62 +103,167 @@ export function Inicio() {
     }
   }
 
+  const quantidadeDeSalas = lista.data?.length ?? 0
+  const quantidadeDePessoas = lista.data?.reduce((total, sala) => total + sala.pessoas.length, 0) ?? 0
+
   return (
     <div className={estilos.tela}>
-      <header className={estilos.cabecalho}>
-        <span className={estilos.marca}>janja-share</span>
-        <Campo
-          className={estilos.campoNome}
-          rotulo="Seu nome"
-          maxLength={LIMITE_DO_NOME}
-          placeholder="como os outros vão te ver"
-          value={meuNome}
-          onChange={(e) => definirNome(e.target.value)}
-        />
-      </header>
+      <nav className={estilos.trilho} aria-label="Atalhos principais">
+        <Trilho>
+          <ItemDoTrilho rotulo="Saguão" ativo>
+            <IconeInicio tamanho={22} />
+          </ItemDoTrilho>
+          <ItemDoTrilho rotulo="Nova sala" aoClicar={() => setCriarAberto(true)}>
+            <IconeMais tamanho={22} />
+          </ItemDoTrilho>
+        </Trilho>
+      </nav>
 
-      <div className={estilos.acaoPrincipal}>
-        <Botao aparencia="primario" blocoInteiro ocupado={compartilhando} onClick={() => void compartilharTela()}>
-          Compartilhar minha tela
-        </Botao>
-        {pedindoNome && meuNome.trim() === '' && (
-          <Aviso tom="neutro">Escreva seu nome ali em cima antes de compartilhar.</Aviso>
-        )}
-        {erroDeCompartilhar !== null && <Aviso tom="erro">{fraseDoErroDeCompartilhar(erroDeCompartilhar)}</Aviso>}
-      </div>
+      <aside className={estilos.navegacao} aria-label="Navegação do saguão">
+        <header className={estilos.cabecalhoDaNavegacao}>
+          <Marca />
+        </header>
 
-      <section className={estilos.salasNoAr}>
-        <h2 className={estilos.tituloDaSecao}>Salas no ar</h2>
+        <div className={estilos.menu}>
+          <span className={estilos.rotuloDoMenu}>Início</span>
+          <div className={estilos.itemDoMenu} data-ativo>
+            <IconePessoas tamanho={19} />
+            <span>Salas no ar</span>
+            <span className={estilos.contadorDoMenu}>{quantidadeDeSalas}</span>
+          </div>
+          <button type="button" className={estilos.itemDoMenu} onClick={() => setCriarAberto(true)}>
+            <IconeMais tamanho={19} />
+            <span>Nova sala</span>
+          </button>
+        </div>
 
-        {lista.isPending && <p className={estilos.carregando}>Carregando salas…</p>}
+        <div className={estilos.identidade}>
+          <Avatar
+            className={estilos.avatarDaIdentidade}
+            nome={meuNome}
+            tamanho="medio"
+            status="online"
+          />
+          <Campo
+            className={estilos.campoNome}
+            rotulo="Seu nome"
+            maxLength={LIMITE_DO_NOME}
+            placeholder="como vão te ver"
+            value={meuNome}
+            onChange={(e) => definirNome(e.target.value)}
+          />
+        </div>
+      </aside>
 
-        {/* Um poll de fundo pode falhar sem derrubar `data` (react-query mantém o último sucesso) —
-            por isso o aviso fica por cima da lista, e não no lugar dela: um 503 passageiro não pode
-            desmontar cada `SalaLinha` e levar junto a senha ou o nome que a pessoa já digitou. A
-            tela só-de-erro (sem lista nenhuma) só acontece quando ainda não há `data` nenhum — e é
-            exatamente aí que falta dizer que o `refetchInterval` de 5s segue tentando: sem isso a
-            tela lê como morta, não como "ainda carregando". */}
-        {lista.isError && (
-          <Aviso tom="erro">
-            {mensagemDoErro(lista.error)}
-            {!lista.data && ' Tentando de novo…'}
-          </Aviso>
-        )}
+      <main className={estilos.principal}>
+        <header className={estilos.topo}>
+          <span className={estilos.canalAtual}>
+            <span aria-hidden="true">#</span> saguão
+          </span>
+          <span className={estilos.resumoDoTopo}>
+            <span className={estilos.pontoAoVivo} aria-hidden="true" />
+            {quantidadeDePessoas === 0
+              ? 'Tudo tranquilo por aqui'
+              : `${quantidadeDePessoas} ${quantidadeDePessoas === 1 ? 'pessoa por aqui' : 'pessoas por aqui'}`}
+          </span>
+        </header>
 
-        {lista.data && lista.data.length === 0 && <p className={estilos.vazio}>Nenhuma sala no ar agora.</p>}
+        <div className={estilos.rolagem}>
+          <section className={estilos.hero}>
+            <div className={estilos.heroTexto}>
+              <span className={estilos.sobretitulo}>Rápido · efêmero · sem conta</span>
+              <h1 className={estilos.titulo}>Sua tela, sua turma, sem complicação.</h1>
+              <p className={estilos.descricao}>
+                Abra uma sala, chame quem quiser e compartilhe em poucos segundos. Quando todo mundo sair, ela
+                desaparece.
+              </p>
+              <div className={estilos.acoesDoHero}>
+                <Botao aparencia="primario" ocupado={compartilhando} onClick={() => void compartilharTela()}>
+                  <IconeTela tamanho={19} />
+                  Compartilhar minha tela
+                </Botao>
+                <Botao aparencia="secundario" onClick={() => setCriarAberto(true)}>
+                  <IconeMais tamanho={19} />
+                  Criar sala
+                </Botao>
+              </div>
+              <div className={estilos.avisosDoHero}>
+                {pedindoNome && meuNome.trim() === '' && (
+                  <Aviso tom="neutro">Escreva seu nome na lateral antes de compartilhar.</Aviso>
+                )}
+                {erroDeCompartilhar !== null && (
+                  <Aviso tom="erro">{fraseDoErroDeCompartilhar(erroDeCompartilhar)}</Aviso>
+                )}
+              </div>
+            </div>
 
-        {lista.data && lista.data.length > 0 && (
-          <ul className={estilos.lista}>
-            {lista.data.map((sala) => (
-              <SalaLinha key={sala.slug} sala={sala} meuNome={meuNome} aoDefinirNome={definirNome} aoEntrar={entrarENavegar} />
-            ))}
-          </ul>
-        )}
+            <div className={estilos.previa} aria-hidden="true">
+              <div className={estilos.previaTopo}>
+                <span />
+                <span />
+                <span />
+                <span className={estilos.previaEndereco}>sua sala está no ar</span>
+              </div>
+              <div className={estilos.previaCorpo}>
+                <div className={estilos.previaTela}>
+                  <IconeTela tamanho={34} />
+                  <span>compartilhando agora</span>
+                </div>
+                <div className={estilos.previaPessoas}>
+                  <span>AM</span>
+                  <span>BR</span>
+                  <span>+2</span>
+                </div>
+              </div>
+            </div>
+          </section>
 
-        <Botao aparencia="secundario" onClick={() => setCriarAberto(true)}>
-          Criar sala
-        </Botao>
-      </section>
+          <section className={estilos.salasNoAr}>
+            <header className={estilos.cabecalhoDaSecao}>
+              <div>
+                <span className={estilos.tituloDaSecao}>Salas no ar</span>
+                <p className={estilos.subtituloDaSecao}>Entre em uma conversa que já começou.</p>
+              </div>
+              {quantidadeDeSalas > 0 && <span className={estilos.contagem}>{quantidadeDeSalas} ao vivo</span>}
+            </header>
+
+            {lista.isPending && <p className={estilos.carregando}>Carregando salas…</p>}
+
+            {/* Um poll de fundo pode falhar sem derrubar `data` (react-query mantém o último sucesso) —
+                por isso o aviso fica por cima da lista, e não no lugar dela. */}
+            {lista.isError && (
+              <Aviso tom="erro">
+                {mensagemDoErro(lista.error)}
+                {!lista.data && ' Tentando de novo…'}
+              </Aviso>
+            )}
+
+            {lista.data && lista.data.length === 0 && (
+              <div className={estilos.vazio}>
+                <span className={estilos.iconeVazio} aria-hidden="true">
+                  <IconePessoas tamanho={28} />
+                </span>
+                <strong>Nenhuma sala no ar agora.</strong>
+                <span>Comece uma e mande o link para a turma.</span>
+              </div>
+            )}
+
+            {lista.data && lista.data.length > 0 && (
+              <ul className={estilos.lista}>
+                {lista.data.map((sala) => (
+                  <SalaLinha
+                    key={sala.slug}
+                    sala={sala}
+                    meuNome={meuNome}
+                    aoDefinirNome={definirNome}
+                    aoEntrar={entrarENavegar}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </main>
 
       <DialogoCriarSala
         aberto={criarAberto}

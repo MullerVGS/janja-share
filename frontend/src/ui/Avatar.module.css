@@ -1,0 +1,50 @@
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--texto-sobre-acento);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.mini {
+  width: 27px;
+  height: 27px;
+  font-size: 9px;
+}
+
+.pequeno {
+  width: 28px;
+  height: 28px;
+  font-size: 9px;
+}
+
+.medio {
+  width: 34px;
+  height: 34px;
+  font-size: var(--texto-xs);
+}
+
+.avatar[data-status='falando'] {
+  box-shadow: 0 0 0 2px var(--conectado);
+}
+
+.avatar[data-status='online']::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--barra-lateral);
+  border-radius: 50%;
+  background: var(--conectado);
+}
+
+.medio[data-status='online']::after {
+  width: 10px;
+  height: 10px;
+  border-width: 3px;
+}

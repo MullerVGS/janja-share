@@ -23,6 +23,7 @@ import { Chat } from './Chat'
 import { Controles } from './Controles'
 import { Gaveta } from './Gaveta'
 import { AudioDaSala } from './Midia'
+import { NavegacaoDaSala } from './NavegacaoDaSala'
 import { Palco } from './Palco'
 import { Qualidade } from './Qualidade'
 import { resumirTransmissao } from './resumo'
@@ -30,10 +31,7 @@ import { Tira } from './Tira'
 import { Transmissao } from './Transmissao'
 import estilos from './Sala.module.css'
 
-/**
- * A sala é um palco puro: a tela compartilhada ocupa tudo e a interface só aparece quando é
- * pedida — flutuando por cima e sumindo sozinha.
- */
+/** A sala reúne navegação, palco e painéis sem misturar nenhum deles com o fluxo da mídia. */
 export function Sala() {
   const { slug = '' } = useParams()
   const { credenciaisDe, encerrar } = useSessao()
@@ -173,45 +171,89 @@ export function Sala() {
 
   return (
     <div className={estilos.sala}>
-      <Palco
-        pecas={noPalco}
-        emFoco={emFoco !== null}
-        aoSoltarOFoco={soltarOFoco}
-        aoFocar={focar}
-        volumes={volumes}
-        interfaceVisivel={interfaceVisivel}
-        zoom={zoom}
-        aoTentarDeNovo={telemetria.rearmarRecepcao}
+      <NavegacaoDaSala
+        nomeDaSala={credenciais.nomeDaSala}
+        nomeDaPessoa={credenciais.nome}
+        conexao={conexao}
+        pessoas={palco.pessoas}
+        telas={palco.telas}
+        aoVoltar={sair}
       />
 
-      <div
-        ref={interfaceFlutuante}
-        className={estilos.interface}
-        data-interface={interfaceVisivel ? 'visivel' : 'oculta'}
-      >
-        <div className={estilos.alto}>
-          <Cabecalho
-            nomeDaSala={credenciais.nomeDaSala}
-            conexao={conexao}
-            pessoas={palco.pessoas.length}
-            gavetaAberta={gaveta.aberta}
-            aoAlternarGaveta={alternarGaveta}
-          />
-          <Tira pecas={foraDoPalco} aoEscolher={focar} />
-        </div>
+      <section className={estilos.conteudoDaSala} aria-label={`Sala ${credenciais.nomeDaSala}`}>
+        <Cabecalho
+          nomeDaSala={credenciais.nomeDaSala}
+          conexao={conexao}
+          pessoas={palco.pessoas.length}
+          gavetaAberta={gaveta.aberta}
+          aoAlternarGaveta={alternarGaveta}
+        />
 
-        <div className={estilos.baixo}>
-          <Controles
-            sala={sala}
-            compartilhamento={compartilhamento}
-            chatAberto={chatVisivel}
+        <div className={estilos.corpoDaSala}>
+          <main className={estilos.areaDoPalco} aria-label="Palco da sala">
+            <Palco
+              pecas={noPalco}
+              emFoco={emFoco !== null}
+              aoSoltarOFoco={soltarOFoco}
+              aoFocar={focar}
+              volumes={volumes}
+              interfaceVisivel={interfaceVisivel}
+              zoom={zoom}
+              aoTentarDeNovo={telemetria.rearmarRecepcao}
+            />
+
+            <div
+              ref={interfaceFlutuante}
+              className={estilos.interface}
+              data-interface={interfaceVisivel ? 'visivel' : 'oculta'}
+            >
+              <div className={estilos.alto}>
+                <Tira pecas={foraDoPalco} aoEscolher={focar} />
+              </div>
+
+              <div className={estilos.baixo}>
+                <Controles
+                  sala={sala}
+                  compartilhamento={compartilhamento}
+                  chatAberto={chatVisivel}
+                  naoLidasNoChat={naoLidasNoChat}
+                  aoAlternarChat={alternarChat}
+                  aoFalhar={setErroDeDispositivo}
+                  aoSair={sair}
+                />
+              </div>
+            </div>
+          </main>
+
+          <Gaveta
+            aberta={gaveta.aberta}
+            aba={abaDaGaveta}
+            aoTrocarAba={escolherAba}
+            transmitindo={compartilhamento.ativo}
+            largura={larguraDaGaveta}
+            aoRedimensionar={redimensionarGaveta}
             naoLidasNoChat={naoLidasNoChat}
-            aoAlternarChat={alternarChat}
-            aoFalhar={setErroDeDispositivo}
-            aoSair={sair}
+            resumo={
+              compartilhamento.ativo
+                ? resumirTransmissao(amostraDoEmissor, compartilhamento.relatorio, {
+                    pedido: compartilhamento.perfil,
+                    estado: compartilhamento.governador,
+                  })
+                : null
+            }
+            qualidade={<Qualidade compartilhamento={compartilhamento} />}
+            transmissao={
+              <Transmissao
+                telemetria={telemetria}
+                perfilEfetivo={compartilhamento.perfilEfetivo}
+                decisoes={compartilhamento.governador.decisoes}
+                nomeDe={nomeDe}
+              />
+            }
+            chat={<Chat chat={chat} />}
           />
         </div>
-      </div>
+      </section>
 
       {/* Os avisos não se escondem com o resto: erro não é moldura, é alarme. */}
       <div className={estilos.avisos}>
@@ -229,34 +271,6 @@ export function Sala() {
         {compartilhamento.erro && <Aviso tom="erro">{compartilhamento.erro}</Aviso>}
         {erroDeDispositivo && <Aviso tom="erro">{erroDeDispositivo}</Aviso>}
       </div>
-
-      <Gaveta
-        aberta={gaveta.aberta}
-        aba={abaDaGaveta}
-        aoTrocarAba={escolherAba}
-        transmitindo={compartilhamento.ativo}
-        largura={larguraDaGaveta}
-        aoRedimensionar={redimensionarGaveta}
-        naoLidasNoChat={naoLidasNoChat}
-        resumo={
-          compartilhamento.ativo
-            ? resumirTransmissao(amostraDoEmissor, compartilhamento.relatorio, {
-                pedido: compartilhamento.perfil,
-                estado: compartilhamento.governador,
-              })
-            : null
-        }
-        qualidade={<Qualidade compartilhamento={compartilhamento} />}
-        transmissao={
-          <Transmissao
-            telemetria={telemetria}
-            perfilEfetivo={compartilhamento.perfilEfetivo}
-            decisoes={compartilhamento.governador.decisoes}
-            nomeDe={nomeDe}
-          />
-        }
-        chat={<Chat chat={chat} />}
-      />
 
       <AudioDaSala sala={sala} volumes={volumes} />
     </div>

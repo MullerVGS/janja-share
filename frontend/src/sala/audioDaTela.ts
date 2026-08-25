@@ -29,7 +29,7 @@ export const CAPTURA_DO_AUDIO_DA_TELA: CapturaDoAudioDaTela = {
    * reproduzir. Sem isso, tudo que quem transmite ouve volta para quem falou, e o laço fecha
    * com atraso maior que a janela do cancelador de eco, que por isso não pega.
    *
-   * Só alcança esta aba. O que outro aplicativo toca (Discord) segue no mix e é
+   * Só alcança esta aba. O que outro aplicativo toca segue no mix e é
    * indistinguível do som que a pessoa quis compartilhar — aí nenhum navegador ajuda.
    */
   restrictOwnAudio: true,

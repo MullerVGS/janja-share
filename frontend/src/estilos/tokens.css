@@ -1,63 +1,76 @@
 /*
- * Tokens do janja-share. Tema escuro por padrão e único: é um app de call noturna, e a grade de
- * vídeo fica melhor sobre fundo escuro (o vídeo é a fonte de luz da tela, não a interface).
- * Paleta inspirada no Discord — minimalista, planos neutros, um acento só. Nada de hex solto
- * nos módulos CSS — cor, espaço, raio e sombra saem daqui.
+ * Tokens do janja-share. O tema é escuro por padrão: a interface funciona como moldura e deixa
+ * câmeras e telas compartilhadas serem a principal fonte de luz. Cores, espaços e elevação
+ * nascem aqui para o saguão e a sala falarem a mesma língua. Valores de cor crus ficam somente
+ * neste arquivo; os módulos consomem seus papéis sem conhecer a paleta.
  */
 :root {
   color-scheme: dark;
 
   /* — planos — */
-  --fundo: #1e1f22;
-  --fundo-2: #232428;
-  --superficie: #2b2d31;
-  --superficie-alta: #313338;
-  --palco: #0b0c0e;
-  /* `--palco` em rgba: pílulas sobre vídeo (overlay do quadro) e o fundo do diálogo modal. */
-  --veu: rgba(11, 12, 14, 0.72);
+  --fundo: #191a1e;
+  --fundo-2: #202126;
+  --superficie: #292b31;
+  --superficie-alta: #303239;
+  --superficie-hover: #383a42;
+  --superficie-selecionada: #41434d;
+  --conteudo: #32343b;
+  --palco: #101114;
+  --trilho: #17181c;
+  --barra-lateral: #282a30;
+  --barra-topo: #303239;
+  --controle: #3b3e46;
+  --veu: rgba(12, 13, 16, 0.78);
+  --veu-suave: rgba(12, 13, 16, 0.5);
+  --fundo-identidade: rgba(20, 21, 24, 0.34);
+  --fundo-vazio: rgba(27, 28, 33, 0.26);
 
   /* — texto — */
-  --texto: #dbdee1;
-  --texto-fraco: #949ba4;
-  --texto-fraquissimo: #7c7e86;
-  /* Texto sobre `--acao`/`--perigo` sólidos (botão primário, enviar, contadores): o acento
-     deixou de ser claro-o-bastante pra levar texto escuro, como levava a menta antiga. */
+  --texto: #f0f1f5;
+  --texto-fraco: #b0b3bd;
+  --texto-fraquissimo: #7f838f;
   --texto-sobre-acento: #ffffff;
 
   /* — traços — */
-  --linha: #3a3c43;
-  --linha-forte: #4a4d55;
+  --linha: #3b3d45;
+  --linha-forte: #4b4e58;
+  --linha-sutil: rgba(0, 0, 0, 0.12);
+  --linha-painel: rgba(0, 0, 0, 0.18);
+  --linha-topo: rgba(0, 0, 0, 0.22);
+  --linha-profunda: rgba(0, 0, 0, 0.24);
+  --borda-luz: rgba(255, 255, 255, 0.1);
+  --borda-luz-suave: rgba(255, 255, 255, 0.06);
+  --realce-minimo: rgba(255, 255, 255, 0.025);
   --realce: rgba(255, 255, 255, 0.06);
   --pressionado: rgba(255, 255, 255, 0.12);
 
-  /* — acentos —
-     Ação é a cor de "isto é interativo, isto é meu, isto está no ar": marca, links, foco,
-     botão primário, publicação de tela. Conectado é status ao vivo — conexão da sala, quem
-     está falando agora e a transmissão sem limitação (o "ok" do resumo) — papel que o Discord
-     separa da ação (verde, não azul). Atenção é limitado (CPU/banda, governador segurando).
-     Perigo é parar/sair/erro. Turquesa é a segunda identidade nos gráficos e no chat — sem
-     papel de status.
-
-     Os quatro hexes de `--acao`/`--perigo`/`--atencao`/`--conectado` são cor de botão, anel e
-     marca — o Discord não usa essas mesmas cores como texto de corpo (blurple de botão não é
-     azul de link). Cada uma tem uma variante `-texto`, mais clara, para todo lugar onde a cor
-     vira letra a ser lida: passa 4,5:1 (AA) nas superfícies onde aparece; a cor "de vitrine"
-     continua reservada pra fundo sólido, borda e anel. */
-  --acao: #5865f2;
-  --acao-forte: #4752c4;
-  --acao-fraca: rgba(88, 101, 242, 0.14);
-  --acao-media: rgba(88, 101, 242, 0.32);
-  --acao-texto: #8fa1ff;
-  --conectado: #23a55a;
-  --conectado-texto: #5fd68e;
+  /* — acentos — */
+  --acao: #7667f5;
+  --acao-forte: #6556dc;
+  --acao-fraca: rgba(118, 103, 245, 0.15);
+  --acao-media: rgba(118, 103, 245, 0.34);
+  --acao-texto: #a99fff;
+  --acao-brilho: rgba(118, 103, 245, 0.24);
+  --acao-nevoa: rgba(118, 103, 245, 0.11);
+  --acao-nevoa-suave: rgba(118, 103, 245, 0.08);
+  --acao-aura: rgba(118, 103, 245, 0.06);
+  --acao-arco: rgba(118, 103, 245, 0.07);
+  --conectado: #35b76f;
+  --conectado-texto: #6ede9a;
+  --conectado-fundo: rgba(53, 183, 111, 0.11);
+  --conectado-aura: rgba(53, 183, 111, 0.1);
   --atencao: #d08011;
   --atencao-fraca: rgba(208, 128, 17, 0.14);
   --atencao-texto: #f0c26b;
   --perigo: #da373c;
+  --perigo-forte: #b92f34;
   --perigo-fraca: rgba(218, 55, 60, 0.14);
   --perigo-media: rgba(218, 55, 60, 0.32);
   --perigo-texto: #ffd6d8;
-  --turquesa: #0d9488;
+  --turquesa: #2aa9a1;
+  --gradiente-marca: linear-gradient(145deg, #8b79ff 0%, #6556dc 58%, #4a87e8 100%);
+  --gradiente-hero: radial-gradient(circle at 80% 10%, var(--acao-brilho), transparent 34%),
+    linear-gradient(135deg, #292b33 0%, #25262d 100%);
 
   /* — tipografia — */
   --fonte: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -86,12 +99,22 @@
   --raio-sm: 4px;
   --raio-md: 8px;
   --raio-lg: 12px;
+  --raio-xl: 18px;
   --raio-pilula: 999px;
 
-  /* — elevação — mais secas: blur curto, pouco espalhamento */
-  --sombra-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --sombra-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
+  /* — elevação — */
+  --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.28);
+  --sombra-lg: 0 18px 50px rgba(0, 0, 0, 0.42);
+  --sombra-flutuante: 0 8px 28px rgba(0, 0, 0, 0.34);
+  --sombra-marca: 0 7px 18px rgba(85, 72, 200, 0.35);
+  --sombra-previa: 0 22px 45px rgba(0, 0, 0, 0.36);
+  --sombra-topo: 0 2px 5px rgba(0, 0, 0, 0.13);
+  --sombra-painel: -8px 0 22px rgba(0, 0, 0, 0.12);
+  --sombra-quadro: 0 8px 26px rgba(0, 0, 0, 0.2);
 
   /* — medidas — */
-  --largura-da-gaveta-padrao: 300px;
+  --largura-da-gaveta-padrao: 320px;
+  --largura-do-trilho: 72px;
+  --largura-da-navegacao: 250px;
+  --altura-do-topo: 52px;
 }

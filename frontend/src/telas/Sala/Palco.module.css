@@ -1,13 +1,15 @@
-/* O palco ocupa a sala inteira: a imagem é o produto, e nada de moldura fixa em volta dela. */
+/* O palco ocupa todo o centro da sala; a moldura externa só separa vídeo de navegação. */
 .palco {
   position: absolute;
   inset: 0;
   display: grid;
-  gap: var(--e3);
-  padding: var(--e3);
+  gap: var(--e4);
+  padding: clamp(12px, 2vw, 24px);
   align-content: center;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-  background: var(--fundo);
+  background:
+    radial-gradient(circle at 50% -20%, var(--acao-nevoa-suave), transparent 35%),
+    var(--conteudo);
   transition: padding 0.16s ease;
 }
 
@@ -42,10 +44,10 @@
   aspect-ratio: auto;
 }
 
-/* Em foco a peça vai de borda a borda: é o "quero ler o que está escrito ali". */
+/* Em foco a peça toma o palco, mas preserva uma pequena margem da interface. */
 .palco[data-modo='foco'] {
   grid-template-columns: 1fr;
-  padding: 0;
+  padding: clamp(8px, 1.4vw, 18px);
   gap: 0;
 }
 
@@ -54,9 +56,10 @@
   overflow: hidden;
   min-height: 0;
   aspect-ratio: 16 / 9;
-  border-radius: var(--raio-md);
-  border: 1px solid var(--linha);
+  border-radius: var(--raio-lg);
+  border: 1px solid var(--veu-suave);
   background: var(--palco);
+  box-shadow: var(--sombra-quadro);
   animation: shCrescer 0.16s ease;
   transition: border-radius 0.16s ease;
 }
@@ -64,8 +67,8 @@
 .palco[data-modo='foco'] .quadro {
   height: 100%;
   aspect-ratio: auto;
-  border: none;
-  border-radius: 0;
+  border-color: var(--linha);
+  border-radius: var(--raio-lg);
 }
 
 .quadro[data-tela] {
@@ -137,11 +140,19 @@
   height: 100%;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, var(--superficie) 0%, var(--fundo-2) 100%);
+  background:
+    radial-gradient(circle at 50% 40%, var(--acao-nevoa), transparent 32%),
+    linear-gradient(160deg, var(--superficie) 0%, var(--fundo-2) 100%);
 }
 
 .iniciais {
-  font-size: var(--titulo-sm);
+  width: clamp(58px, 8vw, 92px);
+  height: clamp(58px, 8vw, 92px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--superficie-selecionada);
+  font-size: clamp(var(--titulo-sm), 3vw, var(--titulo-lg));
   font-weight: 700;
   color: var(--texto-fraco);
   letter-spacing: 0.02em;
@@ -193,7 +204,7 @@
   max-width: calc(100% - var(--e8));
   padding: 3px 9px;
   border-radius: var(--raio-pilula);
-  background: var(--veu);
+  background: var(--veu-suave);
   backdrop-filter: blur(6px);
 }
 
@@ -280,6 +291,55 @@
 
 .vazio {
   grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
   text-align: center;
   color: var(--texto-fraquissimo);
+}
+
+.vazio strong {
+  color: var(--texto);
+  font-size: var(--texto-lg);
+  font-weight: 680;
+}
+
+.vazio > span:last-child {
+  font-size: var(--texto-sm);
+}
+
+.iconeVazio {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--e1);
+  border-radius: 50%;
+  background: var(--superficie);
+  color: var(--acao-texto);
+  box-shadow: 0 0 0 8px var(--acao-aura);
+}
+
+@media (max-width: 620px) {
+  .palco {
+    gap: var(--e2);
+    padding: var(--e2);
+  }
+
+  .palco[data-modo='grade'] {
+    grid-template-columns: 1fr;
+  }
+
+  .palco[data-modo='grade']:has(.quadro[data-tela]) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    grid-auto-flow: row;
+    grid-auto-rows: 110px;
+    justify-content: stretch;
+  }
+
+  .palco[data-modo='foco'] {
+    padding: var(--e2);
+  }
 }

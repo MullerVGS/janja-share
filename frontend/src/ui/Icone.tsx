@@ -202,3 +202,47 @@ export function IconeCadeado(props: Props) {
     </Traco>
   )
 }
+
+export function IconeInicio(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="m3.5 10.5 8.5-7 8.5 7" />
+      <path d="M5.5 9v10.5h13V9M9.5 19.5v-6h5v6" />
+    </Traco>
+  )
+}
+
+export function IconeMais(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Traco>
+  )
+}
+
+export function IconePessoas(props: Props) {
+  return (
+    <Traco {...props}>
+      <circle cx="9" cy="8.5" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="M15 6a3 3 0 0 1 0 5.5M17 14a5.5 5.5 0 0 1 4.5 5.5" />
+    </Traco>
+  )
+}
+
+export function IconeSalaDeVoz(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="M6 9.5h3L13 6v12l-4-3.5H6z" />
+      <path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" />
+    </Traco>
+  )
+}
+
+export function IconeSetaBaixo(props: Props) {
+  return (
+    <Traco {...props}>
+      <path d="m7 10 5 5 5-5" />
+    </Traco>
+  )
+}

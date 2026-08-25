@@ -1,12 +1,4 @@
-/**
- * Iniciais e cor de quem está numa sala, derivadas só do nome — sem pedir avatar a ninguém.
- *
- * Sem `Math.random`: um avatar que trocasse de cor a cada render tornaria o teste (e a lista)
- * uma loteria. O hash é determinístico de propósito.
- */
-
-// Sem `--perigo`: nesta paleta vermelho é parar/sair/erro em todo lugar — um avatar dessa cor
-// lê como estado de alarme ao lado do nome de alguém que não fez nada de errado.
+// Vermelho fica reservado a parar, sair e erro; avatares usam somente cores de identidade.
 const MATIZES = ['--acao', '--atencao', '--conectado', '--turquesa'] as const
 
 export function iniciaisDoNome(nome: string): string {
