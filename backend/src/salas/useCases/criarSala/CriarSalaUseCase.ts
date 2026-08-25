@@ -9,12 +9,20 @@ import { slugDaSala, validarNomeDaSala } from '../../../shared/slug'
 import { Credenciais } from '../../credenciais'
 import { gerarIdentidade } from '../../identidade'
 import { validarNome } from '../../nome'
-import { gerarNomeDeSala } from '../../nomeAutomatico'
+import { gerarNomeDeSalaDisponivel } from '../../nomeAutomatico'
 import { SalasRepository } from '../../repositories/salas.repository'
 
 const TETO_SALAS = 20
 const LIMITE_POR_MINUTO = 10
 const JANELA_MINUTO_MS = 60_000
+
+export interface CriarSalaComando {
+  nome: unknown
+  senha: unknown
+  privada: unknown
+  seuNome: unknown
+  ip: string
+}
 
 @Injectable()
 export class CriarSalaUseCase {
@@ -25,7 +33,8 @@ export class CriarSalaUseCase {
     private readonly freio: Freio,
   ) {}
 
-  async execute(nomeBruto: unknown, senhaBruta: unknown, seuNomeBruto: unknown, ip: string): Promise<Credenciais> {
+  async execute(comando: CriarSalaComando): Promise<Credenciais> {
+    const { nome: nomeBruto, senha: senhaBruta, privada: privadaBruta, seuNome: seuNomeBruto, ip } = comando
     if (!this.freio.permite(`criar-sala:${ip}`, LIMITE_POR_MINUTO, JANELA_MINUTO_MS)) {
       throw new Espere()
     }
@@ -41,12 +50,15 @@ export class CriarSalaUseCase {
     // senha não é um dos "nomes" (que precisam de código de erro dedicado): tipo errado é
     // recusado pelo DTO (@IsString + @IsOptional); aqui só decide "tem senha ou não".
     const senha = typeof senhaBruta === 'string' && senhaBruta.length > 0 ? senhaBruta : undefined
+    // O DTO garante o tipo quando o campo vem pela API; a comparação estrita mantém o caso
+    // ausente público e evita que valores truthy virem sala privada em chamadas internas.
+    const privada = privadaBruta === true
 
     // Leitura sem cache: um segundo POST precisa enxergar a sala recém-criada; caso contrário,
     // poderia apagar o hash de uma sala viva antes de descobrir a colisão no SFU.
     const salasAtuais = await this.room.listarSalasSemCache()
     if (salasAtuais.length >= TETO_SALAS) throw new MuitasSalas()
-    const nomeDaSala = nomeDigitado ?? gerarNomeDeSala(new Set(salasAtuais.map((s) => s.slug)))
+    const nomeDaSala = nomeDigitado ?? gerarNomeDeSalaDisponivel(salasAtuais)
     const slug = slugDaSala(nomeDaSala)
     if (salasAtuais.some((s) => s.slug === slug)) throw new SalaExiste()
 
@@ -56,7 +68,7 @@ export class CriarSalaUseCase {
     if (senha) await this.salas.gravarHash(slug, await cifrar(senha))
 
     // nomeNoSfu carrega o nonce — é ele, não o slug, que vai no grant do token.
-    const nomeNoSfu = await this.room.criarSala({ slug, nomeDaSala })
+    const nomeNoSfu = await this.room.criarSala({ slug, nomeDaSala, privada })
 
     const identidade = gerarIdentidade(seuNome)
     const jwt = await this.tokens.emitir(nomeNoSfu, identidade, seuNome)

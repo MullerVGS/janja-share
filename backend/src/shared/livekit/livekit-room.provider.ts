@@ -12,6 +12,7 @@ export interface ParticipanteSala {
 
 /**
  * Uma sala tal como o SFU a vê — sem `temSenha` (isso é do banco, ver ListarSalasUseCase).
+ * A visibilidade, por ser efêmera como a sala, vem do metadata do próprio SFU.
  *
  * `slug` e `nome` vêm do `metadata` da sala, não do `name` interno. Esse nome usa
  * `<slug>-<nonce>`, para um JWT pré-emitido para o
@@ -22,6 +23,8 @@ export interface SalaNoSfu {
   slug: string
   nomeNoSfu: string
   nome: string
+  /** Ausente só em dublês/encarnações antigas; ausência significa sala pública. */
+  privada?: boolean
   pessoas: string[]
   telasNoAr: number
   cheia: boolean
@@ -98,6 +101,7 @@ export class LivekitRoomProvider {
           slug: meta.slug ?? sala.name,
           nomeNoSfu: sala.name,
           nome: meta.nome ?? meta.slug ?? sala.name,
+          privada: meta.privada,
           pessoas: pessoas.map((p) => p.nome),
           telasNoAr: pessoas.filter((p) => p.publicandoTela).length,
           cheia: pessoas.length >= LOTACAO_MAXIMA,
@@ -112,12 +116,12 @@ export class LivekitRoomProvider {
   /**
    * `createRoom` com os valores fixos do contrato. O nome real no SFU ganha um nonce
    * (`<slug>-<nonce>`) — devolvido aqui porque é ele, não o slug, que vai no grant do
-   * token. `slug` e o nome de exibição vão só no metadata; a senha, nunca.
+   * token. `slug`, nome de exibição e visibilidade vão só no metadata; a senha, nunca.
    *
    * Invalida o cache ao final: sem isso, uma leitura cacheada por `listarSalas()` nos
    * próximos 2s continuaria sem enxergar a sala recém-criada.
    */
-  async criarSala(dados: { slug: string; nomeDaSala: string }): Promise<string> {
+  async criarSala(dados: { slug: string; nomeDaSala: string; privada: boolean }): Promise<string> {
     const nomeNoSfu = `${dados.slug}-${randomBytes(TAMANHO_NONCE).toString('hex')}`
     try {
       await this.cliente().createRoom({
@@ -125,7 +129,7 @@ export class LivekitRoomProvider {
         emptyTimeout: TEMPO_VAZIA_S,
         departureTimeout: TEMPO_CARENCIA_S,
         maxParticipants: LOTACAO_MAXIMA,
-        metadata: JSON.stringify({ slug: dados.slug, nome: dados.nomeDaSala }),
+        metadata: JSON.stringify({ slug: dados.slug, nome: dados.nomeDaSala, privada: dados.privada }),
       })
     } catch {
       throw new SfuIndisponivel()
@@ -135,14 +139,15 @@ export class LivekitRoomProvider {
   }
 }
 
-function metadataDaSala(metadata: string): { slug: string | null; nome: string | null } {
+function metadataDaSala(metadata: string): { slug: string | null; nome: string | null; privada: boolean } {
   try {
-    const dados = JSON.parse(metadata) as { slug?: unknown; nome?: unknown }
+    const dados = JSON.parse(metadata) as { slug?: unknown; nome?: unknown; privada?: unknown }
     return {
       slug: typeof dados.slug === 'string' ? dados.slug : null,
       nome: typeof dados.nome === 'string' ? dados.nome : null,
+      privada: dados.privada === true,
     }
   } catch {
-    return { slug: null, nome: null }
+    return { slug: null, nome: null, privada: false }
   }
 }

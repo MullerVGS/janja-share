@@ -8,6 +8,7 @@ export interface Resposta {
 export interface Chamada {
   metodo: string
   caminho: string
+  busca: string
   corpo: unknown
 }
 
@@ -20,7 +21,7 @@ export const chamadas: Chamada[] = []
  * Fica no `fetch`, e não no módulo da API, de propósito: assim o teste atravessa de verdade a
  * tradução de erro de `api/cliente.ts` em vez de simular o que ela faria.
  */
-export function servir(rotas: Record<string, Resposta | (() => Resposta)>): void {
+export function servir(rotas: Record<string, Resposta | (() => Resposta | Promise<Resposta>)>): void {
   chamadas.length = 0
   vi.stubGlobal(
     'fetch',
@@ -28,10 +29,12 @@ export function servir(rotas: Record<string, Resposta | (() => Resposta)>): void
       const url =
         typeof entrada === 'string' ? entrada : entrada instanceof URL ? entrada.href : (entrada as Request).url
       const metodo = (init?.method ?? 'GET').toUpperCase()
-      const caminho = new URL(url, 'http://localhost').pathname
+      const endereco = new URL(url, 'http://localhost')
+      const caminho = endereco.pathname
       chamadas.push({
         metodo,
         caminho,
+        busca: endereco.search,
         corpo: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
       })
 
@@ -43,7 +46,7 @@ export function servir(rotas: Record<string, Resposta | (() => Resposta)>): void
         })
       }
 
-      const { status = 200, corpo } = typeof rota === 'function' ? rota() : rota
+      const { status = 200, corpo } = typeof rota === 'function' ? await rota() : rota
       return new Response(corpo === undefined ? null : JSON.stringify(corpo), {
         status,
         headers: { 'content-type': 'application/json' },

@@ -27,11 +27,26 @@ export function listarSalas(): Promise<SalaNaLista[]> {
   return pedir<SalaNaLista[]>('/api/salas')
 }
 
-// `nome` é opcional: quem não escolhe um ganha um nome gerado do lado do servidor — omitir o
-// campo (`undefined`, apagado pelo JSON.stringify) é o mesmo "não pedi nome" que o backend já
-// trata como ausência (ver CriarSalaUseCase).
-export function criarSala({ nome, senha, seuNome }: { nome?: string; senha?: string; seuNome: string }): Promise<Credenciais> {
-  return enviarJson<Credenciais>('/api/salas', 'POST', { nome, senha, seuNome })
+export async function sugerirNomeDeSala(nomeAtual?: string): Promise<string> {
+  const busca = nomeAtual ? `?nomeAtual=${encodeURIComponent(nomeAtual)}` : ''
+  const sugestao = await pedir<{ nome: string }>(`/api/salas/nome-sugerido${busca}`)
+  return sugestao.nome
+}
+
+// `nome` continua opcional no contrato porque a ação de compartilhar em um clique pede para o
+// backend gerar um. O diálogo, por sua vez, mostra uma sugestão e a envia explicitamente.
+export function criarSala({
+  nome,
+  senha,
+  privada,
+  seuNome,
+}: {
+  nome?: string
+  senha?: string
+  privada?: boolean
+  seuNome: string
+}): Promise<Credenciais> {
+  return enviarJson<Credenciais>('/api/salas', 'POST', { nome, senha, privada, seuNome })
 }
 
 export function entrarNaSala(

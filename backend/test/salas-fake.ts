@@ -31,10 +31,18 @@ export class LivekitRoomProviderFalso extends LivekitRoomProvider {
     return (sala?.pessoas ?? []).map((nome) => ({ identidade: `${nome}-fake01`, nome, publicandoTela: false }))
   }
 
-  override async criarSala(dados: { slug: string; nomeDaSala: string }): Promise<string> {
+  override async criarSala(dados: { slug: string; nomeDaSala: string; privada: boolean }): Promise<string> {
     if (this.deveFalhar) throw new SfuIndisponivel()
     const nomeNoSfu = `${dados.slug}-fake${this.proximoNonce++}`
-    this.salasAtuais.push({ slug: dados.slug, nomeNoSfu, nome: dados.nomeDaSala, pessoas: [], telasNoAr: 0, cheia: false })
+    this.salasAtuais.push({
+      slug: dados.slug,
+      nomeNoSfu,
+      nome: dados.nomeDaSala,
+      privada: dados.privada,
+      pessoas: [],
+      telasNoAr: 0,
+      cheia: false,
+    })
     return nomeNoSfu
   }
 }

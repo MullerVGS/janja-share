@@ -3,3 +3,119 @@
   flex-direction: column;
   gap: var(--e4);
 }
+
+.nomeComDado {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: end;
+  gap: var(--e2);
+}
+
+.dado {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--texto-fraco);
+  background: var(--controle);
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio-md);
+  cursor: pointer;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.dado:hover:not(:disabled) {
+  color: var(--texto);
+  background: var(--superficie-selecionada);
+  border-color: var(--texto-fraquissimo);
+}
+
+.dado:focus-visible {
+  border-color: var(--acao);
+  outline: none;
+}
+
+.dado:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.dado[aria-busy='true'] svg {
+  animation: shDadoGirando 0.75s ease-in-out infinite;
+}
+
+.avancadas {
+  border-top: 1px solid var(--linha);
+  border-bottom: 1px solid var(--linha);
+}
+
+.resumoDasAvancadas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e2);
+  padding: var(--e3) 0;
+  color: var(--texto-fraco);
+  font-size: var(--texto-sm);
+  font-weight: 620;
+  cursor: pointer;
+  list-style: none;
+}
+
+.resumoDasAvancadas::-webkit-details-marker {
+  display: none;
+}
+
+.resumoDasAvancadas svg {
+  transition: transform 0.15s ease;
+}
+
+.avancadas[open] .resumoDasAvancadas svg {
+  transform: rotate(180deg);
+}
+
+.conteudoDasAvancadas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+  padding: 0 0 var(--e4);
+}
+
+.opcaoPrivada {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e3);
+  cursor: pointer;
+}
+
+.opcaoPrivada input {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin: 2px 0 0;
+  accent-color: var(--acao);
+}
+
+.opcaoPrivada span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.opcaoPrivada strong {
+  color: var(--texto);
+  font-size: var(--texto-md);
+}
+
+.opcaoPrivada small {
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-sm);
+  line-height: 1.35;
+}
+
+@keyframes shDadoGirando {
+  50% {
+    transform: rotate(90deg) scale(0.9);
+  }
+}

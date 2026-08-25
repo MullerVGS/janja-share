@@ -48,3 +48,16 @@ export function gerarNomeDeSala(usados: ReadonlySet<string>, sortear: () => numb
     if (!usados.has(slugDaSala(nome))) return nome
   }
 }
+
+/** Converte o retrato das salas vivas numa sugestão, somando slugs que não podem se repetir. */
+export function gerarNomeDeSalaDisponivel(
+  salasAtuais: readonly { slug: string }[],
+  slugsIgnorados: Iterable<string> = [],
+  sortear: () => number = Math.random,
+): string {
+  const usados = new Set(salasAtuais.map((sala) => sala.slug))
+  for (const slug of slugsIgnorados) {
+    if (slug !== '') usados.add(slug)
+  }
+  return gerarNomeDeSala(usados, sortear)
+}

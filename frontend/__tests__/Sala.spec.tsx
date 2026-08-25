@@ -1,16 +1,18 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RoomEvent, Track, type Room } from 'livekit-client'
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CHAVE_DAS_PREFERENCIAS, lerPreferencias } from '../src/preferencias'
+import { CHAVE_DAS_PREFERENCIAS, gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { Sala } from '../src/telas/Sala/Sala'
 import { empacotar } from '../src/sala/chat'
 import { TOPICO_DO_CHAT } from '../src/sala/useChat'
+import { CHAVE_DA_SESSAO } from '../src/sessao/sessao'
 import { montar } from './apoio/montar'
 import { emitirNaSala, participanteFalso, publicacaoFalsa, salaFalsa } from './apoio/salaFalsa'
 import { credenciaisFalsas, guardarSessao } from './apoio/sessaoFalsa'
+import { chamadas, servir } from './apoio/servidorFalso'
 
 /** O que os hooks do SDK devolvem; o teste mexe aqui e re-renderiza. */
 const falso = vi.hoisted(() => ({ compartilhando: false, trocandoTela: false, sala: null as Room | null, versao: 0 }))
@@ -380,16 +382,86 @@ describe('sala: a interface que se esconde', () => {
 })
 
 describe('sala: sem credenciais para o slug', () => {
-  it('rota /sala/:slug sem sessão guardada redireciona para o início — sem tela intermediária', () => {
+  it('quem abre um link privado informa nome e senha, guarda a sessão e entra', async () => {
+    const daquiAUmaHora = Date.now() + 60 * 60 * 1000
+    const credenciais = credenciaisFalsas(daquiAUmaHora, 'Ana', 'privada')
+    credenciais.nomeDaSala = 'Privada'
+    servir({
+      'POST /api/salas/privada/entrar': { status: 200, corpo: credenciais },
+    })
+    const usuario = userEvent.setup()
+
     montar(
       <Routes>
         <Route path="/sala/:slug" element={<Sala />} />
         <Route path="/" element={<div>início</div>} />
       </Routes>,
-      '/sala/inexistente',
+      '/sala/privada',
     )
 
+    const dialogo = screen.getByRole('dialog', { name: 'Entrar na sala' })
+    await usuario.type(within(dialogo).getByLabelText('Seu nome'), 'Ana')
+    await usuario.type(within(dialogo).getByLabelText('Senha (opcional)'), 'segredo')
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByRole('region', { name: 'Sala Privada' })).toBeInTheDocument()
+    const entrada = chamadas.find((chamada) => chamada.caminho === '/api/salas/privada/entrar')
+    expect(entrada?.corpo).toEqual({ seuNome: 'Ana', senha: 'segredo' })
+    expect(lerPreferencias().nome).toBe('Ana')
+  })
+
+  it('senha errada mantém a porta aberta para corrigir', async () => {
+    gravarPreferencias({ nome: 'Ana' })
+    servir({
+      'POST /api/salas/privada/entrar': { status: 401, corpo: { erro: 'senha_incorreta' } },
+    })
+    const usuario = userEvent.setup()
+    montar(
+      <Routes>
+        <Route path="/sala/:slug" element={<Sala />} />
+      </Routes>,
+      '/sala/privada',
+    )
+
+    await usuario.type(screen.getByLabelText('Senha (opcional)'), 'errada')
+    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Senha incorreta.')
+    expect(screen.getByRole('dialog', { name: 'Entrar na sala' })).toBeInTheDocument()
+  })
+
+  it('fechar durante a requisição ignora a resposta tardia e não guarda a sessão', async () => {
+    const daquiAUmaHora = Date.now() + 60 * 60 * 1000
+    const credenciais = credenciaisFalsas(daquiAUmaHora, 'Nova', 'privada')
+    let responder!: (resposta: { status: number; corpo: unknown }) => void
+    const pendente = new Promise<{ status: number; corpo: unknown }>((resolve) => {
+      responder = resolve
+    })
+    gravarPreferencias({ nome: 'Antiga' })
+    servir({ 'POST /api/salas/privada/entrar': () => pendente })
+    const usuario = userEvent.setup()
+    montar(
+      <Routes>
+        <Route path="/sala/:slug" element={<Sala />} />
+        <Route path="/" element={<div>início</div>} />
+      </Routes>,
+      '/sala/privada',
+    )
+
+    const nome = screen.getByLabelText('Seu nome')
+    await usuario.clear(nome)
+    await usuario.type(nome, 'Nova')
+    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
+    await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
     expect(screen.getByText('início')).toBeInTheDocument()
+
+    await act(async () => {
+      responder({ status: 200, corpo: credenciais })
+      await pendente
+    })
+
+    expect(lerPreferencias().nome).toBe('Antiga')
+    expect(sessionStorage.getItem(CHAVE_DA_SESSAO)).toBeNull()
   })
 
   it('sessão guardada para outro slug não vaza para esta sala', () => {
@@ -404,6 +476,7 @@ describe('sala: sem credenciais para o slug', () => {
       '/sala/share',
     )
 
-    expect(screen.getByText('início')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Entrar na sala' })).toBeInTheDocument()
+    expect(screen.getByText('#share')).toBeInTheDocument()
   })
 })

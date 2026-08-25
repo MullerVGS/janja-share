@@ -6,7 +6,8 @@ Compartilhamento de tela self-hosted, sem conta, com salas e identidades efêmer
 
 - Compartilhamento simultâneo de telas, com áudio opcional.
 - Voz, câmera e chat efêmero.
-- Salas com senha opcional.
+- Nome de sala sugerido, com troca em um clique.
+- Salas públicas ou privadas (não listadas), com senha opcional.
 - Qualidade adaptada no navegador de quem compartilha.
 
 ## Requisitos

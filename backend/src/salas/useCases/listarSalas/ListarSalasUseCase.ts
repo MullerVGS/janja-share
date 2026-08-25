@@ -26,13 +26,15 @@ export class ListarSalasUseCase {
   async execute(): Promise<SalaNaLista[]> {
     const [salasNoSfu, comSenha] = await Promise.all([this.room.listarSalas(), this.salas.listarSlugsComSenha()])
 
-    return salasNoSfu.map((sala) => ({
-      slug: sala.slug,
-      nome: sala.nome,
-      pessoas: sala.pessoas,
-      telasNoAr: sala.telasNoAr,
-      temSenha: comSenha.has(sala.slug),
-      cheia: sala.cheia,
-    }))
+    return salasNoSfu
+      .filter((sala) => sala.privada !== true)
+      .map((sala) => ({
+        slug: sala.slug,
+        nome: sala.nome,
+        pessoas: sala.pessoas,
+        telasNoAr: sala.telasNoAr,
+        temSenha: comSenha.has(sala.slug),
+        cheia: sala.cheia,
+      }))
   }
 }

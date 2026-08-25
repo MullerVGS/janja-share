@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsOptional, IsString } from 'class-validator'
 
 /**
  * `nome` e `seuNome` ficam soltos (`@IsOptional()` sem `@IsString()`): o contrato reserva
@@ -13,5 +13,6 @@ import { IsOptional, IsString } from 'class-validator'
 export class CriarSalaDto {
   @IsOptional() nome?: unknown
   @IsOptional() @IsString() senha?: string
+  @IsOptional() @IsBoolean() privada?: boolean
   @IsOptional() seuNome?: unknown
 }

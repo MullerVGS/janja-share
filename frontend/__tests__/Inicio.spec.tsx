@@ -54,6 +54,10 @@ const SALAS: SalaNaLista[] = [
   },
 ]
 
+const ROTA_DE_SUGESTAO = {
+  'GET /api/salas/nome-sugerido': { corpo: { nome: 'Varanda Tranquila' } },
+}
+
 function linhaDe(nome: string): HTMLElement {
   const item = screen.getByText(nome).closest('li')
   if (!item) throw new Error(`linha "${nome}" não é um <li>`)
@@ -347,10 +351,11 @@ describe('início: entrar', () => {
 })
 
 describe('início: criar sala', () => {
-  it('chama a API com nome e senha, guarda a sessão e navega para a sala', async () => {
+  it('permite editar o nome sugerido e guarda a senha nas opções avançadas', async () => {
     prepararNome('Ana')
     servir({
       'GET /api/salas': { corpo: [] },
+      ...ROTA_DE_SUGESTAO,
       'POST /api/salas': { status: 201, corpo: credenciais('nova-sala', 'Ana') },
     })
     const usuario = userEvent.setup()
@@ -358,7 +363,13 @@ describe('início: criar sala', () => {
 
     await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
     const dialogo = screen.getByRole('dialog')
-    await usuario.type(within(dialogo).getByLabelText('Nome da sala (opcional)'), 'Nova Sala')
+    const nome = await within(dialogo).findByDisplayValue('Varanda Tranquila')
+    await usuario.clear(nome)
+    await usuario.type(nome, 'Nova Sala')
+    const avancadas = within(dialogo).getByText('Opções avançadas').closest('details')
+    expect(avancadas).not.toHaveAttribute('open')
+    await usuario.click(within(dialogo).getByText('Opções avançadas'))
+    expect(avancadas).toHaveAttribute('open')
     await usuario.type(within(dialogo).getByLabelText('Senha (opcional)'), 'segredo123')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Criar sala' }))
 
@@ -367,10 +378,42 @@ describe('início: criar sala', () => {
     expect(criacao?.corpo).toEqual({ nome: 'Nova Sala', senha: 'segredo123', seuNome: 'Ana' })
   })
 
-  it('sem digitar o nome da sala, o Criar sala continua habilitado e manda nome ausente', async () => {
+  it('mostra um nome aleatório e o dado busca outro antes de criar', async () => {
+    prepararNome('Ana')
+    let sugestao = 0
+    servir({
+      'GET /api/salas': { corpo: [] },
+      'GET /api/salas/nome-sugerido': () => ({
+        corpo: { nome: sugestao++ === 0 ? 'Varanda Tranquila' : 'Praia Dourada' },
+      }),
+      'POST /api/salas': { status: 201, corpo: credenciais('praia-dourada', 'Ana') },
+    })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
+    const dialogo = screen.getByRole('dialog')
+    expect(await within(dialogo).findByDisplayValue('Varanda Tranquila')).toBeInTheDocument()
+
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Gerar outro nome' }))
+    expect(await within(dialogo).findByDisplayValue('Praia Dourada')).toBeInTheDocument()
+    const pedidosDeSugestao = chamadas.filter((chamada) => chamada.caminho === '/api/salas/nome-sugerido')
+    expect(pedidosDeSugestao[1]?.busca).toBe('?nomeAtual=Varanda%20Tranquila')
+
+    const botao = within(dialogo).getByRole('button', { name: 'Criar sala' })
+    expect(botao).not.toBeDisabled()
+    await usuario.click(botao)
+
+    expect(await screen.findByText(/entrou em praia-dourada como Ana/)).toBeInTheDocument()
+    const criacao = chamadas.find((c) => c.metodo === 'POST' && c.caminho === '/api/salas')
+    expect(criacao?.corpo).toEqual({ nome: 'Praia Dourada', seuNome: 'Ana' })
+  })
+
+  it('cria sala privada pelas opções avançadas e explica que ela não aparece no saguão', async () => {
     prepararNome('Ana')
     servir({
       'GET /api/salas': { corpo: [] },
+      ...ROTA_DE_SUGESTAO,
       'POST /api/salas': { status: 201, corpo: credenciais('varanda-tranquila', 'Ana') },
     })
     const usuario = userEvent.setup()
@@ -378,21 +421,22 @@ describe('início: criar sala', () => {
 
     await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
     const dialogo = screen.getByRole('dialog')
-    const botao = within(dialogo).getByRole('button', { name: 'Criar sala' })
-    expect(botao).not.toBeDisabled()
-    await usuario.click(botao)
+    await within(dialogo).findByDisplayValue('Varanda Tranquila')
+    await usuario.click(within(dialogo).getByText('Opções avançadas'))
+    expect(within(dialogo).getByText(/não aparece no saguão/i)).toBeInTheDocument()
+    await usuario.click(within(dialogo).getByRole('checkbox', { name: /sala privada/i }))
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Criar sala' }))
 
     expect(await screen.findByText(/entrou em varanda-tranquila como Ana/)).toBeInTheDocument()
     const criacao = chamadas.find((c) => c.metodo === 'POST' && c.caminho === '/api/salas')
-    // `nome` some do corpo (undefined é apagado pelo JSON.stringify) — é assim que o backend
-    // enxerga "ninguém escolheu um nome" e gera um automático.
-    expect(criacao?.corpo).toEqual({ seuNome: 'Ana' })
+    expect(criacao?.corpo).toEqual({ nome: 'Varanda Tranquila', privada: true, seuNome: 'Ana' })
   })
 
   it('sala_existe aparece na frase certa e o diálogo continua aberto', async () => {
     prepararNome('Ana')
     servir({
       'GET /api/salas': { corpo: [] },
+      ...ROTA_DE_SUGESTAO,
       'POST /api/salas': { status: 409, corpo: { erro: 'sala_existe' } },
     })
     const usuario = userEvent.setup()
@@ -400,7 +444,9 @@ describe('início: criar sala', () => {
 
     await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
     const dialogo = screen.getByRole('dialog')
-    await usuario.type(within(dialogo).getByLabelText('Nome da sala (opcional)'), 'Jogatina')
+    const nome = await within(dialogo).findByDisplayValue('Varanda Tranquila')
+    await usuario.clear(nome)
+    await usuario.type(nome, 'Jogatina')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Criar sala' }))
 
     expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
@@ -410,7 +456,7 @@ describe('início: criar sala', () => {
   })
 
   it('fecha no botão de fechar e no Esc, sem criar nada', async () => {
-    servir({ 'GET /api/salas': { corpo: [] } })
+    servir({ 'GET /api/salas': { corpo: [] }, ...ROTA_DE_SUGESTAO })
     const usuario = userEvent.setup()
     montarInicio()
 
@@ -427,17 +473,17 @@ describe('início: criar sala', () => {
   })
 
   it('abre com o foco no primeiro campo — o efeito do Dialogo não rouba o autoFocus', async () => {
-    servir({ 'GET /api/salas': { corpo: [] } })
+    servir({ 'GET /api/salas': { corpo: [] }, ...ROTA_DE_SUGESTAO })
     const usuario = userEvent.setup()
     montarInicio()
 
     await usuario.click(await screen.findByRole('button', { name: 'Criar sala' }))
 
-    expect(within(screen.getByRole('dialog')).getByLabelText('Nome da sala (opcional)')).toHaveFocus()
+    expect(within(screen.getByRole('dialog')).getByLabelText('Nome da sala')).toHaveFocus()
   })
 
   it('devolve o foco a quem abriu o diálogo, ao fechar', async () => {
-    servir({ 'GET /api/salas': { corpo: [] } })
+    servir({ 'GET /api/salas': { corpo: [] }, ...ROTA_DE_SUGESTAO })
     const usuario = userEvent.setup()
     montarInicio()
 

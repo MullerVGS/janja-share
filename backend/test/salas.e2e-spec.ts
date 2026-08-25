@@ -60,6 +60,25 @@ describe('salas/', () => {
       expect(res.body).toEqual([{ slug: 'vazia', nome: 'Vazia', pessoas: [], telasNoAr: 0, temSenha: false, cheia: false }])
     })
 
+    it('não expõe sala privada no saguão', async () => {
+      sfu.salasAtuais = [
+        { slug: 'publica', nomeNoSfu: 'publica-x1', nome: 'Pública', pessoas: [], telasNoAr: 0, cheia: false },
+        {
+          slug: 'secreta',
+          nomeNoSfu: 'secreta-x1',
+          nome: 'Secreta',
+          privada: true,
+          pessoas: ['Ana'],
+          telasNoAr: 1,
+          cheia: false,
+        },
+      ]
+
+      const res = await request(app.getHttpServer()).get('/api/salas').expect(200)
+
+      expect(res.body).toEqual([expect.objectContaining({ slug: 'publica' })])
+    })
+
     it('temSenha vem do banco, não do SFU', async () => {
       const ip = ipDeTeste()
       await request(app.getHttpServer())
@@ -80,6 +99,44 @@ describe('salas/', () => {
 
       expect(res.status).toBe(503)
       expect(res.body).toEqual({ erro: 'sfu_indisponivel' })
+    })
+  })
+
+  describe('GET /api/salas/nome-sugerido', () => {
+    it('sugere um nome diferente dos usados, inclusive por sala privada', async () => {
+      sfu.salasAtuais = [
+        {
+          slug: 'varanda-tranquila',
+          nomeNoSfu: 'varanda-tranquila-x1',
+          nome: 'Varanda Tranquila',
+          privada: true,
+          pessoas: [],
+          telasNoAr: 0,
+          cheia: false,
+        },
+      ]
+      const sorteio = jest.spyOn(Math, 'random').mockReturnValue(0)
+
+      try {
+        const res = await request(app.getHttpServer()).get('/api/salas/nome-sugerido').expect(200)
+        expect(res.body).toEqual({ nome: 'Varanda Tranquila 2' })
+      } finally {
+        sorteio.mockRestore()
+      }
+    })
+
+    it('o dado nunca devolve de novo o nome que já está exibido', async () => {
+      const sorteio = jest.spyOn(Math, 'random').mockReturnValue(0)
+
+      try {
+        const res = await request(app.getHttpServer())
+          .get('/api/salas/nome-sugerido')
+          .query({ nomeAtual: 'Varanda Tranquila' })
+          .expect(200)
+        expect(res.body).toEqual({ nome: 'Varanda Tranquila 2' })
+      } finally {
+        sorteio.mockRestore()
+      }
     })
   })
 
@@ -153,6 +210,37 @@ describe('salas/', () => {
 
       expect(res.status).toBe(400)
       expect(sfu.salasAtuais).toHaveLength(0)
+    })
+
+    it('privada não-booleana devolve 400, sem criar sala', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/salas')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ nome: 'Escondida', privada: 'sim', seuNome: 'Ana' })
+
+      expect(res.status).toBe(400)
+      expect(sfu.salasAtuais).toHaveLength(0)
+    })
+
+    it('sala privada fica fora da lista, mas quem conhece o link entra com a senha', async () => {
+      await request(app.getHttpServer())
+        .post('/api/salas')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ nome: 'Escondida', privada: true, senha: 'segredo', seuNome: 'Ana' })
+        .expect(201)
+
+      expect(sfu.salasAtuais).toEqual([
+        expect.objectContaining({ slug: 'escondida', privada: true }),
+      ])
+      await request(app.getHttpServer()).get('/api/salas').expect(200, [])
+
+      const entrada = await request(app.getHttpServer())
+        .post('/api/salas/escondida/entrar')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ senha: 'segredo', seuNome: 'Bea' })
+        .expect(200)
+
+      expect(entrada.body).toMatchObject({ slug: 'escondida', nomeDaSala: 'Escondida', nome: 'Bea' })
     })
 
     it('slug repetido (já existe no SFU) devolve 409 sala_existe', async () => {

@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { mensagemDoErro } from '../../api/cliente'
-import { entrarNaSala, LIMITE_DO_NOME, type Credenciais, type SalaNaLista } from '../../api/salas'
+import { LIMITE_DO_NOME, type Credenciais, type SalaNaLista } from '../../api/salas'
+import { useEntradaNaSala } from '../../sala/useEntradaNaSala'
 import { Aviso } from '../../ui/Aviso'
 import { Avatar } from '../../ui/Avatar'
 import { Botao } from '../../ui/Botao'
@@ -25,16 +26,18 @@ interface Props {
  * — senha da sala, ou o nome de quem está entrando; do contrário vai direto.
  */
 export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
-  const precisaDoNome = meuNome.trim() === ''
   const [expandido, setExpandido] = useState(false)
-  const [senha, setSenha] = useState('')
-  const [nomeLocal, setNomeLocal] = useState('')
-  const [enviando, setEnviando] = useState(false)
-  const [erro, setErro] = useState<unknown>(null)
+  const entrada = useEntradaNaSala({
+    slug: sala.slug,
+    meuNome,
+    aoDefinirNome,
+    aoEntrar,
+    aoFalhar: () => setExpandido(true),
+  })
 
   function clicarEntrar() {
-    if (!sala.temSenha && !precisaDoNome) {
-      void enviar()
+    if (!sala.temSenha && !entrada.precisaDoNome) {
+      void entrada.enviar()
       return
     }
     setExpandido(true)
@@ -42,31 +45,7 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
 
   function cancelar() {
     setExpandido(false)
-    setSenha('')
-    setNomeLocal('')
-    setErro(null)
-  }
-
-  async function enviar(evento?: FormEvent) {
-    evento?.preventDefault()
-    const seuNome = (precisaDoNome ? nomeLocal : meuNome).trim()
-    if (seuNome === '') return
-
-    setEnviando(true)
-    setErro(null)
-    try {
-      const credenciais = await entrarNaSala(sala.slug, { seuNome, senha: sala.temSenha ? senha : undefined })
-      if (precisaDoNome) aoDefinirNome(seuNome)
-      aoEntrar(credenciais)
-    } catch (falha) {
-      setErro(falha)
-      // Cobre o caminho direto (sem senha, nome já sabido): se o servidor responder diferente por
-      // motivo — uma sala que passou a exigir senha entre um poll e outro, por exemplo — a linha
-      // precisa de um campo para corrigir, não só da frase do erro.
-      setExpandido(true)
-    } finally {
-      setEnviando(false)
-    }
+    entrada.limpar()
   }
 
   return (
@@ -112,42 +91,42 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
         )}
       </div>
 
-      {erro !== null && (
+      {entrada.erro !== null && (
         <div className={estilos.aviso}>
-          <Aviso tom="erro">{mensagemDoErro(erro)}</Aviso>
+          <Aviso tom="erro">{mensagemDoErro(entrada.erro)}</Aviso>
         </div>
       )}
 
       {expandido ? (
-        <form className={estilos.formulario} onSubmit={enviar}>
-          {precisaDoNome && (
+        <form className={estilos.formulario} onSubmit={entrada.enviar}>
+          {entrada.precisaDoNome && (
             <Campo
               rotulo="Seu nome"
               autoFocus
               maxLength={LIMITE_DO_NOME}
               placeholder="como os outros vão te ver"
-              value={nomeLocal}
-              onChange={(e) => setNomeLocal(e.target.value)}
+              value={entrada.nomeLocal}
+              onChange={(e) => entrada.setNomeLocal(e.target.value)}
             />
           )}
           {sala.temSenha && (
             <Campo
               rotulo="Senha"
               type="password"
-              autoFocus={!precisaDoNome}
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
+              autoFocus={!entrada.precisaDoNome}
+              value={entrada.senha}
+              onChange={(e) => entrada.setSenha(e.target.value)}
             />
           )}
           <Botao
             type="submit"
             aparencia="primario"
-            ocupado={enviando}
-            disabled={(precisaDoNome ? nomeLocal.trim() : meuNome.trim()) === ''}
+            ocupado={entrada.enviando}
+            disabled={!entrada.podeEntrar}
           >
             Entrar
           </Botao>
-          <Botao type="button" aparencia="fantasma" disabled={enviando} onClick={cancelar}>
+          <Botao type="button" aparencia="fantasma" disabled={entrada.enviando} onClick={cancelar}>
             Cancelar
           </Botao>
         </form>
@@ -155,7 +134,7 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
         <Botao
           aparencia={sala.cheia ? 'secundario' : 'primario'}
           disabled={sala.cheia}
-          ocupado={enviando}
+          ocupado={entrada.enviando}
           onClick={clicarEntrar}
         >
           {sala.cheia ? 'cheia' : 'Entrar'}

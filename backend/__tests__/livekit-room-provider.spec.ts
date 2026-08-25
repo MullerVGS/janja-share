@@ -54,7 +54,31 @@ describe('LivekitRoomProvider — listarSalas() com o SDK dublado', () => {
     const lista = await provider.listarSalas()
 
     expect(lista).toEqual([
-      { slug: 'jogatina', nomeNoSfu: 'jogatina-a1b2c3d4', nome: 'Jogatina', pessoas: ['Ana', 'Bea'], telasNoAr: 1, cheia: false },
+      {
+        slug: 'jogatina',
+        nomeNoSfu: 'jogatina-a1b2c3d4',
+        nome: 'Jogatina',
+        privada: false,
+        pessoas: ['Ana', 'Bea'],
+        telasNoAr: 1,
+        cheia: false,
+      },
+    ])
+  })
+
+  it('lê a visibilidade do metadata; ausência continua significando sala pública', async () => {
+    jest.spyOn(RoomServiceClient.prototype, 'listRooms').mockResolvedValue([
+      sala({ metadata: JSON.stringify({ slug: 'jogatina', nome: 'Jogatina', privada: true }) }),
+      sala({ name: 'legada-aabbccdd', metadata: JSON.stringify({ slug: 'legada', nome: 'Legada' }) }),
+    ])
+    jest.spyOn(RoomServiceClient.prototype, 'listParticipants').mockResolvedValue([])
+
+    const provider = new LivekitRoomProvider()
+    const lista = await provider.listarSalas()
+
+    expect(lista.map((item) => ({ slug: item.slug, privada: item.privada }))).toEqual([
+      { slug: 'jogatina', privada: true },
+      { slug: 'legada', privada: false },
     ])
   })
 
@@ -81,7 +105,17 @@ describe('LivekitRoomProvider — listarSalas() com o SDK dublado', () => {
     const provider = new LivekitRoomProvider()
     const lista = await provider.listarSalas()
 
-    expect(lista).toEqual([{ slug: 'vazia', nomeNoSfu: 'vazia-11112222', nome: 'Vazia', pessoas: [], telasNoAr: 0, cheia: false }])
+    expect(lista).toEqual([
+      {
+        slug: 'vazia',
+        nomeNoSfu: 'vazia-11112222',
+        nome: 'Vazia',
+        privada: false,
+        pessoas: [],
+        telasNoAr: 0,
+        cheia: false,
+      },
+    ])
   })
 
   it('cheia quando pessoas atinge a lotação máxima (30)', async () => {
@@ -157,11 +191,11 @@ describe('LivekitRoomProvider — listarSalasSemCache()', () => {
 describe('LivekitRoomProvider — criarSala()', () => {
   afterEach(() => jest.restoreAllMocks())
 
-  it('chama createRoom com um nome no SFU derivado do slug (com nonce) e metadata {slug, nome}', async () => {
+  it('chama createRoom com nome opaco e visibilidade no metadata', async () => {
     const espiao = jest.spyOn(RoomServiceClient.prototype, 'createRoom').mockResolvedValue(sala())
 
     const provider = new LivekitRoomProvider()
-    const nomeNoSfu = await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina' })
+    const nomeNoSfu = await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina', privada: true })
 
     // Nome interno ≠ slug, mas começa com "slug-" e tem um sufixo hex depois.
     expect(nomeNoSfu).toMatch(/^jogatina-[0-9a-f]{8}$/)
@@ -172,7 +206,7 @@ describe('LivekitRoomProvider — criarSala()', () => {
       emptyTimeout: 60,
       departureTimeout: 120,
       maxParticipants: 30,
-      metadata: JSON.stringify({ slug: 'jogatina', nome: 'Jogatina' }),
+      metadata: JSON.stringify({ slug: 'jogatina', nome: 'Jogatina', privada: true }),
     })
   })
 
@@ -180,8 +214,8 @@ describe('LivekitRoomProvider — criarSala()', () => {
     jest.spyOn(RoomServiceClient.prototype, 'createRoom').mockResolvedValue(sala())
 
     const provider = new LivekitRoomProvider()
-    const a = await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina' })
-    const b = await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina' })
+    const a = await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina', privada: false })
+    const b = await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina', privada: false })
 
     expect(a).not.toBe(b)
   })
@@ -190,7 +224,9 @@ describe('LivekitRoomProvider — criarSala()', () => {
     jest.spyOn(RoomServiceClient.prototype, 'createRoom').mockRejectedValue(new Error('fora do ar'))
 
     const provider = new LivekitRoomProvider()
-    await expect(provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina' })).rejects.toThrow(SfuIndisponivel)
+    await expect(provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina', privada: false })).rejects.toThrow(
+      SfuIndisponivel,
+    )
   })
 
   it('invalida o cache ao criar uma sala', async () => {
@@ -200,7 +236,7 @@ describe('LivekitRoomProvider — criarSala()', () => {
 
     const provider = new LivekitRoomProvider()
     await provider.listarSalas(1000) // popula o cache com uma lista vazia
-    await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina' })
+    await provider.criarSala({ slug: 'jogatina', nomeDaSala: 'Jogatina', privada: false })
     await provider.listarSalas(1500) // ainda dentro dos 2s do cache original — mas foi invalidado
 
     expect(espiaoListRooms).toHaveBeenCalledTimes(2) // a leitura pré-criação e a leitura pós-criação

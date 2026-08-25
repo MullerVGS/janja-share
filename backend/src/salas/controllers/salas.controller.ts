@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Req } from '@nestjs/common'
 import { Request } from 'express'
 import { ipDoPedido } from '../../shared/ip'
 import { slugDaSala } from '../../shared/slug'
@@ -7,11 +7,13 @@ import { EntrarSalaDto } from '../dto/entrar-sala.dto'
 import { CriarSalaUseCase } from '../useCases/criarSala/CriarSalaUseCase'
 import { EntrarNaSalaUseCase } from '../useCases/entrarNaSala/EntrarNaSalaUseCase'
 import { ListarSalasUseCase } from '../useCases/listarSalas/ListarSalasUseCase'
+import { SugerirNomeDeSalaUseCase } from '../useCases/sugerirNomeDeSala/SugerirNomeDeSalaUseCase'
 
 @Controller('salas')
 export class SalasController {
   constructor(
     private readonly listar: ListarSalasUseCase,
+    private readonly sugerirNome: SugerirNomeDeSalaUseCase,
     private readonly criar: CriarSalaUseCase,
     private readonly entrar: EntrarNaSalaUseCase,
   ) {}
@@ -21,10 +23,21 @@ export class SalasController {
     return this.listar.execute()
   }
 
+  @Get('nome-sugerido')
+  sugerirNomeDaSala(@Query('nomeAtual') nomeAtual: unknown) {
+    return this.sugerirNome.execute(nomeAtual)
+  }
+
   // 201 padrão do Nest: diferente de entrar, aqui a sala é criada de verdade no SFU.
   @Post()
   criarSala(@Body() dto: CriarSalaDto, @Req() req: Request) {
-    return this.criar.execute(dto.nome, dto.senha, dto.seuNome, ipDoPedido(req))
+    return this.criar.execute({
+      nome: dto.nome,
+      senha: dto.senha,
+      privada: dto.privada,
+      seuNome: dto.seuNome,
+      ip: ipDoPedido(req),
+    })
   }
 
   // Nest usa 201 por padrão em @Post(); aqui não é criação de recurso — a sala já existe,

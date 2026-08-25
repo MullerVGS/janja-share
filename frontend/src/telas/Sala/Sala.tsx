@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { retirarCaptura } from '../../sala/capturaPendente'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
@@ -21,6 +21,7 @@ import { Botao } from '../../ui/Botao'
 import { Cabecalho } from './Cabecalho'
 import { Chat } from './Chat'
 import { Controles } from './Controles'
+import { EntradaDaSala } from './EntradaDaSala'
 import { Gaveta } from './Gaveta'
 import { AudioDaSala } from './Midia'
 import { NavegacaoDaSala } from './NavegacaoDaSala'
@@ -34,7 +35,7 @@ import estilos from './Sala.module.css'
 /** A sala reúne navegação, palco e painéis sem misturar nenhum deles com o fluxo da mídia. */
 export function Sala() {
   const { slug = '' } = useParams()
-  const { credenciaisDe, encerrar } = useSessao()
+  const { credenciaisDe, guardar, encerrar } = useSessao()
   const credenciais = credenciaisDe(slug)
   const navegar = useNavigate()
   const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
@@ -143,9 +144,17 @@ export function Sala() {
   }, [chatVisivel, chat.mensagens.length])
   const naoLidasNoChat = chatVisivel ? 0 : Math.max(0, chat.mensagens.length - lidasNoChat)
 
-  // Sala com senha exige passar pela porta de novo — sem credenciais guardadas para este slug,
-  // não há tela intermediária de aviso, só a volta silenciosa para o início.
-  if (!credenciais) return <Navigate to="/" replace />
+  // O link precisa ser uma porta de verdade, especialmente para Sala privada, que não aparece
+  // no saguão. A API decide se ela existe e se a senha está certa; aqui só se coleta o necessário.
+  if (!credenciais) {
+    return (
+      <EntradaDaSala
+        slug={slug}
+        aoEntrar={guardar}
+        aoVoltar={() => navegar('/', { replace: true })}
+      />
+    )
+  }
 
   // A peça em foco pode ter acabado de sair do ar; até o efeito acima decidir de novo, o palco
   // é a grade — nunca um quadro apontando para o vazio.

@@ -1,5 +1,5 @@
 import { slugDaSala } from '../src/shared/slug'
-import { gerarNomeDeSala } from '../src/salas/nomeAutomatico'
+import { gerarNomeDeSala, gerarNomeDeSalaDisponivel } from '../src/salas/nomeAutomatico'
 
 /** Sorteio determinístico: devolve sempre o primeiro item de cada lista. */
 const primeiro = () => 0
@@ -32,5 +32,16 @@ describe('gerarNomeDeSala', () => {
 
   it('é estável: mesmo sorteio, mesmo resultado', () => {
     expect(gerarNomeDeSala(new Set(), primeiro)).toBe(gerarNomeDeSala(new Set(), primeiro))
+  })
+
+  it('disponível considera tanto salas vivas quanto slugs ignorados pelo chamador', () => {
+    const base = gerarNomeDeSala(new Set(), primeiro)
+    const ignorado = slugDaSala(base)
+
+    const porSalaViva = gerarNomeDeSalaDisponivel([{ slug: ignorado }], [], primeiro)
+    const peloChamador = gerarNomeDeSalaDisponivel([], [ignorado], primeiro)
+
+    expect(slugDaSala(porSalaViva)).not.toBe(ignorado)
+    expect(slugDaSala(peloChamador)).not.toBe(ignorado)
   })
 })

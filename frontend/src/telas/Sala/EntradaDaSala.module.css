@@ -1,0 +1,27 @@
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
+
+.contexto {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: var(--texto-md);
+}
+
+.contexto strong {
+  color: var(--texto);
+}
+
+.acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--e2);
+}
+
+@media (max-width: 480px) {
+  .acoes {
+    flex-direction: column-reverse;
+  }
+}

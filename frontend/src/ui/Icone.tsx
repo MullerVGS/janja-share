@@ -220,6 +220,19 @@ export function IconeMais(props: Props) {
   )
 }
 
+export function IconeDado(props: Props) {
+  return (
+    <Traco {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
+      <circle cx="8" cy="8" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="8" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="16" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="16" r="0.8" fill="currentColor" stroke="none" />
+    </Traco>
+  )
+}
+
 export function IconePessoas(props: Props) {
   return (
     <Traco {...props}>
