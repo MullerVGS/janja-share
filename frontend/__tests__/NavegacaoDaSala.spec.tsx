@@ -69,6 +69,34 @@ describe('navegação da sala', () => {
     expect(navegacao).not.toHaveAttribute('data-canais-abertos')
   })
 
+  it('recolhe e mostra o painel na composição larga, e a escolha vale para a próxima sala', () => {
+    localStorage.clear()
+    const montar = () =>
+      render(
+        <NavegacaoDaSala
+          nomeDaSala="Jogatina"
+          nomeDaPessoa="Ana"
+          conexao={ConnectionState.Connected}
+          pessoas={[]}
+          telas={[]}
+          aoVoltar={vi.fn()}
+        />,
+      )
+
+    const primeira = montar()
+    const navegacao = screen.getByRole('navigation', { name: 'Navegação da sala' })
+    expect(navegacao).not.toHaveAttribute('data-recolhida')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recolher canais e pessoas' }))
+    expect(navegacao).toHaveAttribute('data-recolhida')
+    expect(screen.getByRole('button', { name: 'Mostrar canais e pessoas' })).toHaveAttribute('aria-expanded', 'false')
+
+    primeira.unmount()
+    montar()
+    expect(screen.getByRole('navigation', { name: 'Navegação da sala' })).toHaveAttribute('data-recolhida')
+    localStorage.clear()
+  })
+
   it('distingue reconexão de uma conexão inicial', () => {
     render(
       <NavegacaoDaSala

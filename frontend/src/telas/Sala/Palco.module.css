@@ -2,6 +2,9 @@
 .palco {
   position: absolute;
   inset: 0;
+  /* O rodapé que a barra flutuante de controles ocupa sobre o palco: a grade reserva essa
+     altura para nenhum quadro (e nenhum volume) ficar atrás dela. */
+  --reserva-da-barra: 84px;
   display: grid;
   gap: var(--e4);
   padding: clamp(12px, 2vw, 24px);
@@ -19,6 +22,7 @@
    tela para o teto de lotação deixar de caber na tela. */
 .palco[data-modo='grade'] {
   overflow-y: auto;
+  padding-bottom: var(--reserva-da-barra);
 }
 
 /* Uma tela na grade muda a hierarquia: ela é o que a captura do dono mostra, e quatro avatares
@@ -44,9 +48,13 @@
   aspect-ratio: auto;
 }
 
-/* Em foco a peça toma o palco, mas preserva uma pequena margem da interface. */
+/* Em foco a peça toma o palco, mas preserva uma pequena margem da interface. A linha única
+   estica até o rodapé: sem ela o quadro seguiria a proporção intrínseca do vídeo e deixaria
+   faixas vazias de palco em cima e embaixo — espaço que é da tela. */
 .palco[data-modo='foco'] {
   grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
   padding: clamp(8px, 1.4vw, 18px);
   gap: 0;
 }
@@ -200,7 +208,10 @@
   top: var(--e2);
   display: flex;
   align-items: center;
-  gap: 5px;
+  /* No quadro pequeno da grade, nome e controle de som não cabem lado a lado; a quebra deixa
+     o nome inteiro em cima e o controle embaixo, em vez de esmagar o nome a uma letra. */
+  flex-wrap: wrap;
+  gap: 2px 5px;
   max-width: calc(100% - var(--e8));
   padding: 3px 9px;
   border-radius: var(--raio-pilula);
@@ -226,15 +237,6 @@
 .microfoneFechado {
   color: var(--perigo);
   display: flex;
-}
-
-/* Sem hover, de propósito: o volume zerado é estado, não ação — quem passa o olho pela grade
-   precisa saber que abaixou um quadro sem precisar apontar o mouse para ele. */
-.selodeMudo {
-  flex: none;
-  font-size: var(--texto-xs);
-  font-weight: 600;
-  color: var(--texto-fraquissimo);
 }
 
 /* O vídeo está tocando noutra janela: sem este aviso, o quadro parece só ter congelado. */
@@ -280,11 +282,12 @@
 
 /* A pílula do quadro em foco: sempre à vista quando renderizada — a visibilidade já é decidida
    em React por `interfaceVisivel` (o mesmo relógio do Cabecalho e da barra), então nada de
-   opacidade condicionada a hover aqui. */
+   opacidade condicionada a hover aqui. Com o quadro esticado até o rodapé, ela sobe para não
+   ficar atrás da barra flutuante: as duas aparecem e somem juntas. */
 .comAInterface {
   position: absolute;
   left: 50%;
-  bottom: var(--e2);
+  bottom: calc(var(--reserva-da-barra) - var(--e2));
   transform: translateX(-50%);
   max-width: calc(100% - var(--e4));
 }

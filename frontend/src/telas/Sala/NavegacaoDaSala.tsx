@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ConnectionState } from 'livekit-client'
+import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import type { Peca } from '../../sala/palco'
 import { Avatar } from '../../ui/Avatar'
 import { iniciaisDoNome } from '../../ui/avatares'
@@ -44,13 +45,24 @@ function PessoaNaSala({ pessoa }: { pessoa: Peca }) {
 export function NavegacaoDaSala({ nomeDaSala, nomeDaPessoa, conexao, pessoas, telas, aoVoltar }: Props) {
   const conectada = conexao === ConnectionState.Connected
   const [canaisAbertos, setCanaisAbertos] = useState(false)
+  // Na composição larga o painel pode ser recolhido — o palco fica com os ~250px — e a escolha
+  // vale para a próxima sala. É estado diferente do overlay estreito, que nasce sempre fechado.
+  const [painelAberto, setPainelAberto] = useState(() => lerPreferencias().painelDeCanaisAberto)
   const estadoDaConexao = conectada ? 'conectado à sala' : (FRASE_DA_CONEXAO[conexao] ?? 'conectando…')
+
+  function alternarPainel() {
+    setPainelAberto((aberto) => {
+      gravarPreferencias({ painelDeCanaisAberto: !aberto })
+      return !aberto
+    })
+  }
 
   return (
     <nav
       className={estilos.navegacao}
       aria-label="Navegação da sala"
       data-canais-abertos={canaisAbertos || undefined}
+      data-recolhida={!painelAberto || undefined}
     >
       <div className={estilos.trilho}>
         <Trilho aoClicarNaMarca={aoVoltar} rotuloDaMarca="Voltar ao saguão">
@@ -65,6 +77,16 @@ export function NavegacaoDaSala({ nomeDaSala, nomeDaPessoa, conexao, pessoas, te
             aria-expanded={canaisAbertos}
             aria-controls="painel-canais"
             onClick={() => setCanaisAbertos((abertos) => !abertos)}
+          >
+            <IconePessoas tamanho={20} />
+          </button>
+          <button
+            type="button"
+            className={estilos.alternarPainel}
+            aria-label={painelAberto ? 'Recolher canais e pessoas' : 'Mostrar canais e pessoas'}
+            aria-expanded={painelAberto}
+            aria-controls="painel-canais"
+            onClick={alternarPainel}
           >
             <IconePessoas tamanho={20} />
           </button>

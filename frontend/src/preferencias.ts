@@ -14,6 +14,8 @@ const VERSAO = 1
 export interface Preferencias {
   larguraDaLateral: number
   abaDaLateral: Aba
+  /** O painel de canais e pessoas na composição larga; recolhido, o palco fica com o espaço. */
+  painelDeCanaisAberto: boolean
   /** O pedido da pessoa — o que o governador usa como teto. */
   perfil: PerfilDeQualidade
   /** A chave do governador. */
@@ -27,6 +29,7 @@ export interface Preferencias {
 export const PREFERENCIAS_PADRAO: Preferencias = {
   larguraDaLateral: 340,
   abaDaLateral: 'chat',
+  painelDeCanaisAberto: true,
   perfil: PERFIL_PADRAO,
   automatico: true,
   volumes: {},
@@ -39,6 +42,7 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   larguraDaLateral: (valor) =>
     typeof valor === 'number' && Number.isFinite(valor) && valor >= LARGURA_MINIMA_DA_LATERAL ? valor : undefined,
   abaDaLateral: (valor) => (ehAba(valor) ? valor : undefined),
+  painelDeCanaisAberto: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   perfil: (valor) => (ehPerfil(valor) ? valor : undefined),
   automatico: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   volumes: lerVolumes,
