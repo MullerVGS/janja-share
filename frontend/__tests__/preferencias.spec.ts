@@ -100,6 +100,16 @@ describe('preferências', () => {
     expect(lerPreferencias().volumes).toEqual({})
   })
 
+  it('o painel de canais nasce aberto; recolhido fica guardado, e valor estranho volta a aberto', () => {
+    expect(PREFERENCIAS_PADRAO.painelDeCanaisAberto).toBe(true)
+
+    gravarPreferencias({ painelDeCanaisAberto: false })
+    expect(lerPreferencias().painelDeCanaisAberto).toBe(false)
+
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, painelDeCanaisAberto: 'sim' }))
+    expect(lerPreferencias().painelDeCanaisAberto).toBe(true)
+  })
+
   it('o nome de exibição fica guardado; o padrão é vazio e um valor que não é string volta a ele', () => {
     expect(PREFERENCIAS_PADRAO.nome).toBe('')
 

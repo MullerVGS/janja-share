@@ -3,14 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Pilula } from '../src/telas/Sala/Pilula'
 import { habilitarPiP, habilitarTelaCheia } from './apoio/navegador'
-import { peca, volumesFalsos } from './apoio/pecas'
+import { peca } from './apoio/pecas'
 
 type Props = Parameters<typeof Pilula>[0]
 
 function montarPilula(parcial: Partial<Props> = {}) {
   const props: Props = {
     peca: peca('Bia', { ehTela: true }),
-    volumes: volumesFalsos(),
     zoom: { caber: vi.fn(), umPorUm: vi.fn() },
     telaCheia: { cheia: false, alternar: vi.fn() },
     pip: { emPiP: false, alternar: vi.fn() },
@@ -44,22 +43,15 @@ describe('pílula: os botões saem do papel de quem vê', () => {
     expect(screen.queryByRole('button', { name: /parar|trocar/i })).not.toBeInTheDocument()
   })
 
-  it('na câmera de outra pessoa: só o volume', () => {
+  it('quadro de pessoa não tem pílula nenhuma — o volume da voz mora na etiqueta, sempre à vista', () => {
     habilitarPiP()
     habilitarTelaCheia()
-    montarPilula({ peca: peca('Bia') })
-
-    expect(rotulos()).toEqual(['Calar a voz de Bia'])
-    expect(screen.getByRole('slider', { name: 'Volume da voz de Bia' })).toBeInTheDocument()
-  })
-
-  it('na sua própria câmera não há pílula nenhuma — nem volume do seu som, nem nada a apertar', () => {
-    const { container } = montarPilula({ peca: peca('Ana', { proprio: true }) })
+    const { container } = montarPilula({ peca: peca('Bia') })
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('câmera alheia sem áudio publicado também não tem pílula', () => {
-    const { container } = montarPilula({ peca: peca('Bia', { temAudio: false }) })
+  it('na sua própria câmera tampouco — nem volume do seu som, nem nada a apertar', () => {
+    const { container } = montarPilula({ peca: peca('Ana', { proprio: true }) })
     expect(container).toBeEmptyDOMElement()
   })
 
@@ -99,17 +91,5 @@ describe('pílula: o que cada botão faz', () => {
 
     expect(screen.getByRole('button', { name: 'Trazer da janelinha' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Sair da tela cheia' })).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('o mudo do quadro é o do nome e da fonte daquele quadro', async () => {
-    const usuario = userEvent.setup()
-    const volumes = volumesFalsos({ Bia: { pessoa: 0 } })
-    montarPilula({ peca: peca('Bia'), volumes })
-
-    const botao = screen.getByRole('button', { name: 'Devolver a voz de Bia' })
-    expect(botao).toHaveAttribute('aria-pressed', 'true')
-
-    await usuario.click(botao)
-    expect(volumes.alternarMudo).toHaveBeenCalledWith('Bia', 'pessoa')
   })
 })

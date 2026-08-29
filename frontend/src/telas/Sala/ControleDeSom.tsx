@@ -8,24 +8,20 @@ import estilos from './ControleDeSom.module.css'
 interface Props {
   peca: Peca
   volumes: ControleDeVolumes
-  /** A etiqueta do quadro usa a versão compacta; a pílula usa a normal. */
-  compacto?: boolean
 }
 
 /**
  * O volume daquele quadro, só neste navegador — a voz de quem fala, se a peça é de pessoa; o
  * som que a tela publica, se é de tela.
  *
- * As duas fontes têm o mesmo controle mas moram em lugares diferentes: a voz fica na pílula,
- * porque cala e volta junto do microfone o tempo todo e escondê-la no hover apagaria o aviso
- * bem na hora em que ele importa. O som da tela mora na etiqueta, sempre à vista, porque estava
- * perdido no hover entre outros seis botões — o próprio defeito que motivou isolar este
- * componente dos dois.
+ * As duas fontes têm o mesmo controle no mesmo lugar: a etiqueta, sempre à vista. O volume já
+ * morou numa pílula que só aparecia no hover, e ninguém o achava — esconder o controle apaga o
+ * aviso bem na hora em que ele importa. Esse é o defeito que motivou este componente.
  *
  * Com o microfone fechado o controle de voz não some: sumir confundiria "não há nada a calar
  * agora" com "esta pessoa nunca teve microfone", e a segunda pergunta continua tendo resposta.
  */
-export function ControleDeSom({ peca, volumes, compacto = false }: Props) {
+export function ControleDeSom({ peca, volumes }: Props) {
   const tipo: TipoDeAudio = peca.ehTela ? 'tela' : 'pessoa'
   const alvo = peca.ehTela ? `o som da tela de ${peca.nome}` : `a voz de ${peca.nome}`
   const alvoDoVolume = peca.ehTela ? `do som da tela de ${peca.nome}` : `da voz de ${peca.nome}`
@@ -37,10 +33,10 @@ export function ControleDeSom({ peca, volumes, compacto = false }: Props) {
 
   const IconeLigado = peca.ehTela ? IconeSom : IconeMicrofone
   const IconeDesligado = peca.ehTela ? IconeSomMudo : IconeMicrofoneMudo
-  const faixaDoSom = compacto && peca.ehTela ? peca.publicacaoDoAudio?.track?.mediaStreamTrack : undefined
+  const faixaDoSom = peca.ehTela ? peca.publicacaoDoAudio?.track?.mediaStreamTrack : undefined
 
   return (
-    <div className={compacto ? estilos.compacto : estilos.controle}>
+    <div className={estilos.controle}>
       <button
         type="button"
         className={estilos.acao}

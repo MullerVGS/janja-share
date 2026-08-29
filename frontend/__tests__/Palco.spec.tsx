@@ -140,6 +140,24 @@ describe('palco: a etiqueta', () => {
     expect(screen.getByRole('button', { name: 'Calar o som da tela de Sadia' })).toBeInTheDocument()
   })
 
+  it('a voz alheia também aparece sem hover — mesmo controle, mesmo lugar', () => {
+    montarPalco({ pecas: [peca('Caio'), peca('Ana', { proprio: true })] })
+
+    expect(screen.getByRole('button', { name: 'Calar a voz de Caio' })).toBeInTheDocument()
+    expect(screen.getByRole('slider', { name: 'Volume da voz de Caio' })).toBeInTheDocument()
+    // O seu próprio som não tem volume local: não há controle no seu quadro.
+    expect(screen.queryByRole('button', { name: /Calar a voz de Ana/ })).not.toBeInTheDocument()
+  })
+
+  it('com o controle à vista, o microfone fechado aparece nele — sem ícone avulso dobrado', () => {
+    const { container } = montarPalco({ pecas: [peca('Caio', { microfoneLigado: false })] })
+
+    const botao = screen.getByRole('button', { name: 'Calar a voz de Caio' })
+    expect(botao).toBeDisabled()
+    expect(botao).toHaveAttribute('title', 'microfone fechado')
+    expect(container.querySelectorAll('[title="microfone fechado"]')).toHaveLength(2)
+  })
+
   it('clicar no som da tela alheia cala e devolve pelo tipo "tela", não "pessoa"', () => {
     const volumes = volumesFalsos({ Sadia: { tela: 0 } })
     montarPalco({ pecas: [peca('Sadia', { ehTela: true, temAudio: true })], volumes })

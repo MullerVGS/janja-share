@@ -217,7 +217,7 @@ export function Sala() {
               data-interface={interfaceVisivel ? 'visivel' : 'oculta'}
             >
               <div className={estilos.alto}>
-                <Tira pecas={foraDoPalco} aoEscolher={focar} />
+                <Tira pecas={foraDoPalco} aoEscolher={focar} volumes={volumes} />
               </div>
 
               <div className={estilos.baixo}>

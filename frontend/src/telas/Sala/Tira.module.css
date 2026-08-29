@@ -7,25 +7,23 @@
   scrollbar-width: none;
 }
 
+/* A miniatura é um contêiner: o botão que promove ao palco cobre a imagem, e o rodapé — nome e
+   volume — fica por cima dele, clicável por conta própria. */
 .miniatura {
   position: relative;
   flex: none;
   width: 176px;
   aspect-ratio: 16 / 9;
-  padding: 0;
   overflow: hidden;
-  cursor: pointer;
   border: 1px solid var(--linha);
   border-radius: var(--raio-lg);
   background: var(--palco);
   box-shadow: var(--sombra-flutuante);
-  display: grid;
-  place-items: center;
   transition: border-color 0.12s ease, transform 0.12s ease;
 }
 
 .miniatura:hover,
-.miniatura:focus-visible {
+.miniatura:has(.escolher:focus-visible) {
   border-color: var(--acao);
   transform: scale(1.02);
 }
@@ -33,6 +31,17 @@
 .miniatura[data-falando] {
   border-color: var(--conectado);
   box-shadow: 0 0 0 1px var(--conectado), var(--sombra-md);
+}
+
+.escolher {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
 .video {
@@ -47,17 +56,28 @@
   color: var(--texto-fraco);
 }
 
-.nome {
+.rodape {
   position: absolute;
   left: var(--e1);
   right: var(--e1);
   bottom: var(--e1);
-  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 1px 4px 1px 6px;
   border-radius: 6px;
   background: var(--veu-suave);
+  backdrop-filter: blur(6px);
+}
+
+.nome {
+  min-width: 0;
+  flex: 1;
   color: var(--texto);
   font-size: var(--texto-xs);
   font-weight: 600;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -72,5 +92,10 @@
 
   .miniatura {
     width: 122px;
+  }
+
+  /* Na miniatura estreita o deslizador não cabe ao lado do nome; o mudo continua a um toque. */
+  .rodape input[type='range'] {
+    display: none;
   }
 }

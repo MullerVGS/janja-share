@@ -90,7 +90,7 @@ function Quadro({
     [aplicar, peca.chave],
   )
   // Aproximar uma miniatura da grade seria gesto sem propósito, e câmera não tem botão que
-  // desfaça o zoom (a pílula dela só regula som): a roda e o arraste valem na tela em foco.
+  // desfaça o zoom (quadro de pessoa não tem pílula): a roda e o arraste valem na tela em foco.
   const gestos = useGestosDoZoom({
     moldura,
     video,
@@ -106,12 +106,16 @@ function Quadro({
   const pilula = (
     <Pilula
       peca={peca}
-      volumes={volumes}
       zoom={{ caber: () => gestos.disparar({ tipo: 'caber' }), umPorUm: () => gestos.disparar({ tipo: 'umPorUm' }) }}
       telaCheia={telaCheia}
       pip={pip}
     />
   )
+
+  // O volume de tudo que soa — voz ou som de tela — mora na etiqueta, sempre à vista. O botão
+  // do controle já desenha o estado do microfone fechado; o ícone avulso fica para quem não
+  // tem controle a mostrar (a própria pessoa, ou quem nunca publicou áudio).
+  const comControleDeSom = !peca.proprio && peca.temAudio
 
   return (
     <div
@@ -175,7 +179,7 @@ function Quadro({
       )}
 
       <div className={estilos.etiqueta}>
-        {!peca.ehTela && !peca.microfoneLigado && (
+        {!peca.ehTela && !peca.microfoneLigado && !comControleDeSom && (
           <span className={estilos.microfoneFechado} title="microfone fechado">
             <IconeMicrofoneMudo tamanho={13} />
           </span>
@@ -185,12 +189,7 @@ function Quadro({
           {peca.proprio && ' (você)'}
           {peca.ehTela && ' · tela'}
         </span>
-        {!peca.proprio && peca.ehTela && peca.temAudio && (
-          <ControleDeSom peca={peca} volumes={volumes} compacto />
-        )}
-        {!peca.proprio && peca.temAudio && volumes.volumeDe(peca.nome, peca.ehTela ? 'tela' : 'pessoa') === 0 && (
-          <span className={estilos.selodeMudo}>mudo</span>
-        )}
+        {comControleDeSom && <ControleDeSom peca={peca} volumes={volumes} />}
       </div>
 
       {telaCheia.cheia ? (

@@ -42,6 +42,41 @@
   display: none;
 }
 
+/* O interruptor do painel na composição larga: recolher devolve ~250px ao palco sem tirar
+   nada do produto — um clique traz canais e pessoas de volta. */
+.alternarPainel {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  margin-top: var(--e1);
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: var(--superficie);
+  color: var(--texto-fraco);
+  cursor: pointer;
+  transition: border-radius 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+
+.alternarPainel:hover {
+  border-radius: 13px;
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
+}
+
+@media (min-width: 881px) {
+  .navegacao[data-recolhida] {
+    width: var(--largura-do-trilho);
+    grid-template-columns: var(--largura-do-trilho);
+  }
+
+  .navegacao[data-recolhida] .canais {
+    display: none;
+  }
+}
+
 .canais {
   min-width: 0;
   min-height: 0;
@@ -256,6 +291,10 @@
 
   .trilho {
     --trilho-padding-x: var(--e2);
+  }
+
+  .alternarPainel {
+    display: none;
   }
 
   .abrirCanais {

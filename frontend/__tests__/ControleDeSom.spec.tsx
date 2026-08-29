@@ -42,8 +42,8 @@ describe('controle de som: voz e tela não se confundem', () => {
  * `publicacaoDoAudio` é vídeo de mentira nestes testes: só interessa que a faixa certa chegue
  * ao indicador, não o que o WebAudio faz com ela — isso já é coberto em `SomSaindo.spec.tsx`.
  */
-describe('controle de som compacto: o indicador de nível é da publicação de áudio da tela', () => {
-  it('a compacta da tela liga o indicador à faixa de `publicacaoDoAudio`, não à de `publicacao`', () => {
+describe('controle de som: o indicador de nível é da publicação de áudio da tela', () => {
+  it('na tela, o indicador liga na faixa de `publicacaoDoAudio`, não na de `publicacao`', () => {
     const webAudio = habilitarWebAudio()
     const faixa = { id: 'som-da-tela' } as unknown as MediaStreamTrack
     const comAudio: Peca = {
@@ -51,7 +51,7 @@ describe('controle de som compacto: o indicador de nível é da publicação de 
       publicacaoDoAudio: { track: { mediaStreamTrack: faixa } } as unknown as Peca['publicacaoDoAudio'],
     }
 
-    render(<ControleDeSom peca={comAudio} volumes={VOLUMES} compacto />)
+    render(<ControleDeSom peca={comAudio} volumes={VOLUMES} />)
 
     expect(screen.getByTitle('som saindo')).toBeInTheDocument()
     expect(webAudio.faixas).toEqual([faixa])
@@ -59,15 +59,15 @@ describe('controle de som compacto: o indicador de nível é da publicação de 
 
   it('sem publicação de áudio o indicador não aparece', () => {
     habilitarWebAudio()
-    render(<ControleDeSom peca={TELA} volumes={VOLUMES} compacto />)
+    render(<ControleDeSom peca={TELA} volumes={VOLUMES} />)
     expect(screen.queryByTitle('som saindo')).not.toBeInTheDocument()
   })
 
-  it('fora do modo compacto o indicador não aparece, mesmo com a publicação presente', () => {
+  it('na voz o indicador não aparece — o nível da fala já se anuncia pela moldura de quem fala', () => {
     habilitarWebAudio()
     const comAudio: Peca = {
-      ...TELA,
-      publicacaoDoAudio: { track: { mediaStreamTrack: { id: 'som-da-tela' } } } as unknown as Peca['publicacaoDoAudio'],
+      ...PESSOA,
+      publicacaoDoAudio: { track: { mediaStreamTrack: { id: 'voz' } } } as unknown as Peca['publicacaoDoAudio'],
     }
 
     render(<ControleDeSom peca={comAudio} volumes={VOLUMES} />)

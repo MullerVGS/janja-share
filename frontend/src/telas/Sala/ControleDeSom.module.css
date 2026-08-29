@@ -1,13 +1,6 @@
-/* O mesmo controle mora em dois lugares — pílula e etiqueta — e cada um tem sua caixa: a
-   pílula já dá fundo e espaçamento, então o controle ali só alinha os dois elementos; a
-   etiqueta não, e a versão compacta tem que caber ao lado do nome sem esticar a fileira. */
+/* O controle mora nas etiquetas — do quadro e da miniatura da Tira — e tem que caber ao lado
+   do nome sem esticar a fileira; quem dá fundo e espaçamento é a etiqueta. */
 .controle {
-  display: flex;
-  align-items: center;
-  gap: var(--e1);
-}
-
-.compacto {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -19,16 +12,13 @@
    dois arquivos. */
 .acao {
   composes: acao from './Pilula.module.css';
-}
-
-.compacto .acao {
   padding: 2px;
 }
 
 .faixaDoVolume {
   flex: none;
-  width: 78px;
-  height: 3px;
+  width: 56px;
+  height: 12px;
   cursor: pointer;
   accent-color: var(--acao);
 }
@@ -36,8 +26,4 @@
 .faixaDoVolume:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.compacto .faixaDoVolume {
-  width: 56px;
 }
