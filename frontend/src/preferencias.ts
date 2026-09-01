@@ -1,5 +1,5 @@
 import { LARGURA_MINIMA_DA_LATERAL } from './sala/lateral'
-import { ehPerfil, PERFIL_PADRAO, type PerfilDeQualidade } from './sala/qualidade'
+import { ehCodec, ehPerfil, PERFIL_PADRAO, type Codec, type PerfilDeQualidade } from './sala/qualidade'
 import { lerVolumes, type Volumes } from './sala/volumes'
 
 /**
@@ -20,6 +20,18 @@ export interface Preferencias {
   perfil: PerfilDeQualidade
   /** A chave do governador. */
   automatico: boolean
+  /**
+   * A intenção da pessoa sobre o codec. `'auto'` entrega a escolha à máquina — que é o padrão,
+   * porque o codec certo é propriedade do encoder daquele computador, e não do que está na tela.
+   */
+  codecPreferido: 'auto' | Codec
+  /**
+   * O codec que provou funcionar nesta máquina, gravado a cada correção do automático.
+   *
+   * É o que transforma "corrige uma vez por transmissão" em "erra uma vez na vida": sem isto,
+   * toda live recomeçaria no palpite e pagaria de novo os primeiros trinta segundos ruins.
+   */
+  codecAprendido: Codec | null
   /** Volume local de cada pessoa e de cada tela, por nome. */
   volumes: Volumes
   /** Como os outros te veem. Editável no topo do Início. */
@@ -31,6 +43,8 @@ export const PREFERENCIAS_PADRAO: Preferencias = {
   barraLateralAberta: true,
   perfil: PERFIL_PADRAO,
   automatico: true,
+  codecPreferido: 'auto',
+  codecAprendido: null,
   volumes: {},
   nome: '',
 }
@@ -43,6 +57,8 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   barraLateralAberta: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   perfil: (valor) => (ehPerfil(valor) ? valor : undefined),
   automatico: (valor) => (typeof valor === 'boolean' ? valor : undefined),
+  codecPreferido: (valor) => (valor === 'auto' || ehCodec(valor) ? valor : undefined),
+  codecAprendido: (valor) => (ehCodec(valor) ? valor : valor === null ? null : undefined),
   volumes: lerVolumes,
   nome: (valor) => (typeof valor === 'string' ? valor : undefined),
 }
