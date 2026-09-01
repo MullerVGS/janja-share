@@ -23,6 +23,7 @@ import {
   Pulse,
   SidebarSimple,
   SignOut,
+  SlidersHorizontal,
   SpeakerHigh,
   SpeakerSlash,
   Users,
@@ -69,6 +70,9 @@ export const IconePixelAPixel = envolver(ArrowsOut)
 export const IconeCaber = envolver(FrameCorners)
 export const IconePainel = envolver(SidebarSimple)
 export const IconeMetricas = envolver(Pulse)
+/** A aba de qualidade no topo. Ali os vizinhos são glifos de traço único de 18px; a
+    composição `IconeAjustesDaTela` só se lê a partir de 24px, e menor vira borrão. */
+export const IconeQualidade = envolver(SlidersHorizontal, 18)
 export const IconeConvite = envolver(LinkPhosphor)
 export const IconeCopiar = envolver(LinkPhosphor)
 export const IconeCerto = envolver(Check)

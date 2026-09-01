@@ -1,13 +1,13 @@
 import { ConnectionState } from 'livekit-client'
 import type { Aba } from '../../sala/lateral'
 import {
-  IconeAjustesDaTela,
   IconeCerto,
   IconeChat,
   IconeConvite,
   IconeMetricas,
   IconePainel,
   IconePessoas,
+  IconeQualidade,
 } from '../../ui/Icone'
 import estilos from './Cabecalho.module.css'
 
@@ -100,7 +100,7 @@ export function Cabecalho({
           title="Qualidade da transmissão"
           onClick={() => aoAlternarAba('qualidade')}
         >
-          <IconeAjustesDaTela tamanho={20} />
+          <IconeQualidade tamanho={18} />
         </button>
       )}
 
