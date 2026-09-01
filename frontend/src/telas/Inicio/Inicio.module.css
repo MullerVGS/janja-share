@@ -30,10 +30,14 @@
   white-space: nowrap;
 }
 
+/* `flex-basis`, e não `width`: a `.entrada` que esta classe compõe é emitida **duas vezes** —
+   uma na folha do saguão e outra na do chunk da Sala. Depois de entrar numa sala e voltar, a
+   segunda cópia está no documento *depois* desta regra, e o `width: 100%` dela vence por ordem:
+   o campo estica, a marca é espremida a zero e o cabeçalho sai da tela. A base do flex decide o
+   tamanho no eixo principal e não entra nessa disputa. */
 .campoNome {
   composes: entrada from '../../ui/Campo.module.css';
-  width: 150px;
-  flex: none;
+  flex: 0 0 150px;
 }
 
 .rolagem {
