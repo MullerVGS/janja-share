@@ -5,55 +5,30 @@
   flex-direction: column;
 }
 
-.cabecalho {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--e2);
-  padding: var(--e4) var(--e4) var(--e3);
-  border-bottom: 1px solid var(--linha-sutil);
-}
-
-.titulo {
-  font-size: var(--texto-md);
-  font-weight: 700;
-  margin: 0;
-}
-
-.efemero {
-  font-size: var(--texto-xs);
-  color: var(--texto-fraquissimo);
-}
-
 .lista {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--e3) var(--e2);
+  gap: 14px;
+  padding: 14px;
   scrollbar-width: thin;
 }
 
 .vazio {
   margin: auto;
+  max-width: 28ch;
   padding: var(--e5);
   color: var(--texto-fraquissimo);
   font-size: var(--texto-sm);
+  text-align: center;
 }
 
 .mensagem {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 7px var(--e2);
-  border-radius: var(--raio-md);
-}
-
-.mensagem:hover {
-  background: var(--realce-minimo);
 }
 
 .conteudoDaMensagem {
@@ -63,27 +38,28 @@
 .linhaDoAutor {
   display: flex;
   align-items: baseline;
-  gap: var(--e2);
+  gap: 6px;
+  margin-bottom: 2px;
 }
 
 .autor {
-  font-size: var(--texto-sm);
-  font-weight: 700;
-  color: var(--texto);
-}
-
-.propria .autor {
-  color: var(--acao-texto);
-}
-
-.hora {
   font-size: var(--texto-xs);
   color: var(--texto-fraquissimo);
 }
 
+.propria .autor {
+  color: var(--acento-300);
+}
+
+.hora {
+  font-size: 10px;
+  color: var(--neutro-700);
+  font-variant-numeric: tabular-nums;
+}
+
 .texto {
   margin: 0;
-  color: var(--texto-fraco);
+  color: var(--neutro-200);
   font-size: var(--texto-md);
   line-height: 1.45;
   word-break: break-word;
@@ -92,44 +68,46 @@
 
 .falha {
   margin: 0;
-  padding: 0 var(--e4) var(--e2);
+  padding: 0 14px var(--e2);
   font-size: var(--texto-sm);
   color: var(--perigo-texto);
 }
 
 .formulario {
+  flex: none;
   display: flex;
   gap: var(--e2);
-  padding: var(--e3) var(--e3) var(--e4);
+  padding: var(--e3);
   border-top: 1px solid var(--linha);
 }
 
 .entrada {
+  composes: entrada from '../../ui/Campo.module.css';
   flex: 1;
   min-width: 0;
-  background: var(--superficie-hover);
-  border: 1px solid transparent;
-  border-radius: var(--raio-md);
-  padding: 10px var(--e3);
 }
 
-.entrada:focus-visible {
-  border-color: var(--acao);
-  outline: none;
-}
-
+/* O enviar é o primário do tema — contorno de acento —, reduzido ao quadrado do ícone. */
 .enviar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
   cursor: pointer;
-  border: none;
+  border: 1px solid var(--acao);
   border-radius: var(--raio-md);
-  padding: var(--e2) var(--e4);
-  font-size: var(--texto-sm);
-  font-weight: 600;
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
+  background: transparent;
+  color: var(--acao);
+  transition: background-color 0.12s ease;
+}
+
+.enviar:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--acao) 12%, transparent);
 }
 
 .enviar:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }

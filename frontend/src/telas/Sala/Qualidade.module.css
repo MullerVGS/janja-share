@@ -28,17 +28,17 @@
   gap: var(--e2);
 }
 
-/* Os dois botões do topo são o produto: ocupam o dobro de altura do resto e não competem por
-   atenção com nada, porque tudo o mais está fechado dentro de Avançado. */
+/* O segmentado de Conteúdo é o produto desta aba: ocupa mais altura que o resto e não compete
+   por atenção com nada, porque tudo o mais está fechado dentro de Avançado. */
 .presets {
   display: flex;
   flex-direction: column;
-  gap: var(--e2);
+  gap: 6px;
 }
 
 .presets button {
-  padding: var(--e3) var(--e2);
-  font-size: var(--texto-base);
+  padding: 9px var(--e2);
+  font-size: var(--texto-md);
 }
 
 .avancado {
@@ -49,7 +49,7 @@
 .sumario {
   cursor: pointer;
   font-size: var(--texto-sm);
-  font-weight: 600;
+  font-weight: var(--peso-titulo);
   color: var(--texto-fraco);
 }
 
@@ -78,7 +78,7 @@
   align-items: baseline;
   justify-content: space-between;
   font-size: var(--texto-sm);
-  font-weight: 600;
+  font-weight: var(--peso-titulo);
   color: var(--texto-fraco);
 }
 
@@ -98,7 +98,7 @@
   align-items: center;
   gap: var(--e2);
   font-size: var(--texto-sm);
-  font-weight: 600;
+  font-weight: var(--peso-titulo);
   color: var(--texto-fraco);
   cursor: pointer;
 }
@@ -114,10 +114,11 @@
   gap: var(--e2);
   margin: 0;
   padding: var(--e2) var(--e3);
-  border-radius: var(--raio-sm);
-  background: var(--superficie-alta);
-  font-size: var(--texto-sm);
-  color: var(--texto-fraco);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-md);
+  font-size: 11.5px;
+  color: var(--neutro-400);
+  font-variant-numeric: tabular-nums;
 }
 
 .estadoDoAuto[data-segurando] {
@@ -129,7 +130,7 @@
 /* Desligado é um estado que a pessoa precisa reconhecer de relance: sem contorno ele se
    confunde com a linha honesta do governador trabalhando. */
 .estadoDoAuto[data-desligado] {
-  border: 1px dashed var(--linha-forte);
+  border-style: dashed;
   color: var(--texto-fraquissimo);
 }
 
@@ -141,8 +142,8 @@
   margin: 0;
   font-size: var(--texto-sm);
   color: var(--texto-fraco);
-  background: var(--superficie-alta);
-  border-radius: var(--raio-sm);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-md);
   padding: var(--e2) var(--e3);
 }
 
@@ -150,7 +151,8 @@
   margin: 0;
   font-size: var(--texto-sm);
   color: var(--perigo-texto);
+  border: 1px solid color-mix(in srgb, var(--perigo) 45%, transparent);
   background: var(--perigo-fraca);
-  border-radius: var(--raio-sm);
+  border-radius: var(--raio-md);
   padding: var(--e2) var(--e3);
 }

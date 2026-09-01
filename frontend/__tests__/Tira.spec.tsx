@@ -11,12 +11,13 @@ function montarTira(parcial: Partial<Props> = {}) {
     pecas: [],
     aoEscolher: vi.fn(),
     volumes: volumesFalsos(),
+    visivel: true,
     ...parcial,
   }
   return { ...props, ...render(<Tira {...props} />) }
 }
 
-describe('tira de quem está fora do palco', () => {
+describe('miniaturas de quem está fora do destaque', () => {
   it('lista cada um pelo nome e clicar promove ao palco', async () => {
     const usuario = userEvent.setup()
     const { aoEscolher } = montarTira({
@@ -32,7 +33,7 @@ describe('tira de quem está fora do palco', () => {
     expect(aoEscolher).toHaveBeenCalledWith('tela:Bia')
   })
 
-  it('sem ninguém fora do palco não há tira nenhuma', () => {
+  it('sem ninguém fora do destaque não há coluna nenhuma', () => {
     const { container } = montarTira()
     expect(container).toBeEmptyDOMElement()
   })
@@ -44,7 +45,7 @@ describe('tira de quem está fora do palco', () => {
     expect(container.querySelector('[data-falando]')).not.toBeNull()
   })
 
-  it('o volume vem junto: calar uma voz não exige sair do foco — e não promove ninguém', async () => {
+  it('o volume vem junto: calar uma voz não exige pôr aquele quadro no palco — e o clique não promove', async () => {
     const usuario = userEvent.setup()
     const { aoEscolher, volumes } = montarTira({
       pecas: [peca('Caio'), peca('Ana', { proprio: true })],

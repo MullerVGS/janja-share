@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { Track, type LocalTrack, type Room, type TrackPublishOptions } from 'livekit-client'
+import { Track, type Room, type TrackPublishOptions } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { OPCOES_DO_AUDIO_DA_TELA } from '../src/sala/audioDaTela'
@@ -721,38 +721,5 @@ describe('useCompartilhamento: trocar de tela', () => {
     expect(result.current.ativo).toBe(true)
     expect(result.current.governador.tetoKbps).toBe(5_000)
     expect(result.current.perfilEfetivo.tetoKbps).toBe(5_000)
-  })
-})
-
-describe('useCompartilhamento: adotar (a captura que a home já abriu)', () => {
-  it('publica vídeo e áudio com as opções de cada um — mesmo padrão de ligar/trocarDeTela', async () => {
-    const sala = new SalaFalsa()
-    const { result, agir } = montar(sala)
-    const video = faixaFalsa('video')
-    const audio = faixaFalsa('audio')
-
-    await agir(() => result.current.adotar([video, audio] as unknown as LocalTrack[]))
-
-    expect(sala.video()?.track).toBe(video)
-    expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L3T3_KEY' })
-    expect(sala.audio()?.track).toBe(audio)
-    expect(sala.audio()?.options).toEqual(OPCOES_DO_AUDIO_DA_TELA)
-    expect(result.current.ativo).toBe(true)
-    expect(result.current.ocupado).toBe(false)
-    expect(result.current.erro).toBeNull()
-  })
-
-  it('sem vídeo entre as faixas, não há o que adotar — e o áudio sozinho é parado por pararOQueNaoFoiAoAr', async () => {
-    const sala = new SalaFalsa()
-    const { result, agir } = montar(sala)
-    const audio = faixaFalsa('audio')
-
-    await agir(() => result.current.adotar([audio] as unknown as LocalTrack[]))
-
-    expect(sala.localParticipant.publishTrack).not.toHaveBeenCalled()
-    expect(sala.audio()).toBeUndefined()
-    expect(audio.stop).toHaveBeenCalledOnce()
-    expect(result.current.ativo).toBe(false)
-    expect(result.current.ocupado).toBe(false)
   })
 })

@@ -1,28 +1,30 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { iniciais, type Peca } from '../../sala/palco'
+import type { Peca } from '../../sala/palco'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useCliqueOuDuplo } from '../../sala/useCliqueOuDuplo'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
 import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
+import { iniciaisDoNome } from '../../ui/avatares'
 import { Botao } from '../../ui/Botao'
-import { IconeMicrofoneMudo, IconePessoas } from '../../ui/Icone'
+import { IconePessoas, IconeTelaNoAr } from '../../ui/Icone'
 import { usePiP, useTelaCheia } from './assistir'
-import { useCrescerEEncolher } from './transicao'
-import { ControleDeSom } from './ControleDeSom'
 import { Video } from './Midia'
 import { Pilula } from './Pilula'
+import { Tira } from './Tira'
 import estilos from './Palco.module.css'
 
 interface Props {
-  /** O que está no palco: a grade inteira, ou só a peça em foco. */
-  pecas: Peca[]
-  emFoco: boolean
-  aoSoltarOFoco(): void
+  /** O quadro que ocupa o palco; `null` quando não há imagem nenhuma no ar. */
+  emDestaque: Peca | null
+  /** Os outros quadros, na coluna de miniaturas — vazio na imersão. */
+  miniaturas: Peca[]
   aoFocar(chave: string): void
+  /** O clique único na imagem: entra e sai da imersão. */
+  aoAlternarImersao(): void
   volumes: ControleDeVolumes
-  /** Se a interface flutuante (Cabecalho, Controles) está à mostra — `Sala.tsx` já calcula isso
-   * com `useAutoOcultar`; a pílula do quadro em foco segue o mesmo relógio, não o hover. */
+  /** Se a interface flutuante está à mostra — `Sala.tsx` calcula com `useAutoOcultar`; pílulas
+   * e miniaturas seguem o mesmo relógio, não o hover. */
   interfaceVisivel: boolean
   zoom: ControleDeZoom
   /** Rearma o cão de guarda daquela tela — o botão do quadro que desistiu de receber. */
@@ -39,7 +41,7 @@ const OCULTAR_A_PILULA_MS = 2000
  * clique, justamente a interface que ir a tela cheia pediu para não ver. O primeiro movimento
  * do ponteiro é o gatilho; daí em diante o relógio manda.
  */
-function PilulaDaTelaCheia({ children }: { children: ReactNode }) {
+function PilulasDaTelaCheia({ children }: { children: ReactNode }) {
   const [mexeu, setMexeu] = useState(false)
   const visivel = useAutoOcultar(false, OCULTAR_A_PILULA_MS)
 
@@ -50,7 +52,7 @@ function PilulaDaTelaCheia({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <div className={estilos.naTelaCheia} hidden={!(mexeu && visivel)}>
+    <div className={estilos.emTelaCheia} hidden={!(mexeu && visivel)}>
       {children}
     </div>
   )
@@ -65,57 +67,64 @@ function estiloDaImagem(peca: Peca, zoom: Zoom): CSSProperties | undefined {
   return peca.proprio ? { transform: 'scaleX(-1)' } : undefined
 }
 
-function Quadro({
+function nomeDoQuadro(peca: Peca): string {
+  if (peca.ehTela) return peca.proprio ? 'Sua tela' : `Tela de ${peca.nome}`
+  return peca.proprio ? `${peca.nome} (você)` : peca.nome
+}
+
+/**
+ * O quadro em destaque: a imagem ocupando o palco, com duas pílulas no rodapé — quem é, à
+ * esquerda; como assistir, à direita.
+ *
+ * Um clique na imagem entra na imersão (some tudo que é moldura); dois vão a tela cheia. Os
+ * cliques nas pílulas não chegam aqui: elas ficam fora da moldura, que é quem escuta o ponteiro.
+ */
+function Destaque({
   peca,
-  emFoco,
-  aoSoltarOFoco,
-  aoFocar,
+  aoAlternarImersao,
   volumes,
   interfaceVisivel,
   zoom,
   aoTentarDeNovo,
-}: Omit<Props, 'pecas'> & { peca: Peca }) {
+}: Omit<Props, 'emDestaque' | 'miniaturas' | 'aoFocar'> & { peca: Peca }) {
   const quadro = useRef<HTMLDivElement>(null)
   const moldura = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const telaCheia = useTelaCheia(quadro)
   const pip = usePiP(video)
-  // A peça que entra na grade cresce pela animação de montagem; a que estava em foco não remonta,
-  // e é esta que a faz encolher em vez de saltar.
-  useCrescerEEncolher(quadro, emFoco)
 
   const { aplicar } = zoom
   const aoGesto = useCallback(
     (gesto: Gesto, medidas: Medidas) => aplicar(peca.chave, gesto, medidas),
     [aplicar, peca.chave],
   )
-  // Aproximar uma miniatura da grade seria gesto sem propósito, e câmera não tem botão que
-  // desfaça o zoom (quadro de pessoa não tem pílula): a roda e o arraste valem na tela em foco.
-  const gestos = useGestosDoZoom({
-    moldura,
-    video,
-    ativo: peca.ehTela && (emFoco || telaCheia.cheia),
-    aoGesto,
-  })
+  // Câmera não tem botão que desfaça o zoom (quadro de pessoa não tem pílula de zoom): a roda e
+  // o arraste valem na tela em destaque.
+  const gestos = useGestosDoZoom({ moldura, video, ativo: peca.ehTela, aoGesto })
 
-  const clique = useCliqueOuDuplo(
-    () => (emFoco ? aoSoltarOFoco() : aoFocar(peca.chave)),
-    telaCheia.alternar,
+  const clique = useCliqueOuDuplo(aoAlternarImersao, telaCheia.alternar)
+
+  const pilulas = (
+    <>
+      <div className={estilos.pilulaDaIdentidade}>
+        {peca.ehTela && (
+          <span className={estilos.iconeDaIdentidade} aria-hidden="true">
+            <IconeTelaNoAr tamanho={15} />
+          </span>
+        )}
+        <span className={estilos.nomeDoQuadro}>{nomeDoQuadro(peca)}</span>
+        {peca.ehTela && <span className={estilos.pontoAoVivo} aria-hidden="true" />}
+      </div>
+
+      <Pilula
+        peca={peca}
+        volumes={volumes}
+        zoom={{ caber: () => gestos.disparar({ tipo: 'caber' }), umPorUm: () => gestos.disparar({ tipo: 'umPorUm' }) }}
+        telaCheia={telaCheia}
+        pip={pip}
+      />
+    </>
   )
-
-  const pilula = (
-    <Pilula
-      peca={peca}
-      zoom={{ caber: () => gestos.disparar({ tipo: 'caber' }), umPorUm: () => gestos.disparar({ tipo: 'umPorUm' }) }}
-      telaCheia={telaCheia}
-      pip={pip}
-    />
-  )
-
-  // O volume de tudo que soa — voz ou som de tela — mora na etiqueta, sempre à vista. O botão
-  // do controle já desenha o estado do microfone fechado; o ícone avulso fica para quem não
-  // tem controle a mostrar (a própria pessoa, ou quem nunca publicou áudio).
-  const comControleDeSom = !peca.proprio && peca.temAudio
 
   return (
     <div
@@ -126,11 +135,12 @@ function Quadro({
       data-falando={peca.falando || undefined}
     >
       {/* A moldura é a área da imagem: é nela que o clique, o duplo clique e os gestos do zoom
-          caem. A etiqueta e a pílula ficam de fora, e por isso seguem clicáveis. */}
+          caem. As pílulas ficam de fora, e por isso seguem clicáveis. */}
       <div
         ref={moldura}
         className={estilos.moldura}
         data-imagem=""
+        title="1 clique esconde os painéis · 2 cliques: tela cheia"
         onPointerDown={(evento) => {
           gestos.ponteiro.onPointerDown(evento)
           clique.onPointerDown(evento)
@@ -151,7 +161,7 @@ function Quadro({
           />
         ) : (
           <div className={estilos.semVideo}>
-            <span className={estilos.iniciais}>{iniciais(peca.nome)}</span>
+            <span className={estilos.iniciais}>{iniciaisDoNome(peca.nome)}</span>
           </div>
         )}
       </div>
@@ -178,65 +188,56 @@ function Quadro({
         </p>
       )}
 
-      <div className={estilos.etiqueta}>
-        {!peca.ehTela && !peca.microfoneLigado && !comControleDeSom && (
-          <span className={estilos.microfoneFechado} title="microfone fechado">
-            <IconeMicrofoneMudo tamanho={13} />
-          </span>
-        )}
-        <span className={estilos.nome}>
-          {peca.nome}
-          {peca.proprio && ' (você)'}
-          {peca.ehTela && ' · tela'}
-        </span>
-        {comControleDeSom && <ControleDeSom peca={peca} volumes={volumes} />}
-      </div>
-
       {telaCheia.cheia ? (
-        <PilulaDaTelaCheia>{pilula}</PilulaDaTelaCheia>
-      ) : emFoco ? (
-        // Em foco a pílula segue a interface flutuante, não o hover: sumiu tudo, ela some
-        // junto — sem isso ela ficaria a única peça de UI ainda visível na tela parada.
-        interfaceVisivel && <div className={estilos.comAInterface}>{pilula}</div>
+        <PilulasDaTelaCheia>{pilulas}</PilulasDaTelaCheia>
       ) : (
-        <div className={estilos.aoPassarOMouse}>{pilula}</div>
+        // A pílula segue a interface flutuante, não o hover: sumiu tudo, ela some junto — sem
+        // isso ela ficaria a única peça de UI ainda visível na tela parada.
+        interfaceVisivel && <div className={estilos.comAInterface}>{pilulas}</div>
       )}
     </div>
   )
 }
 
 /**
- * O palco em dois estados: uma peça ocupando tudo, ou a grade com tudo que existe na sala.
+ * O palco: um quadro em destaque ocupando o espaço e as outras imagens em miniatura ao lado.
  *
- * Quem decide qual é `foco.ts`; aqui só se desenha. A peça em foco continua sendo o mesmo
- * quadro que estava na grade (mesma chave, mesmo pai), e é isso que impede o vídeo de piscar
- * ao entrar e sair do foco.
+ * Quem decide o destaque é `foco.ts`; aqui só se desenha. Não há mais grade: pessoa sem imagem
+ * mora na faixa de avatares e na barra lateral, não em um retângulo do tamanho de uma tela.
  */
-export function Palco({ pecas, emFoco, aoSoltarOFoco, aoFocar, volumes, interfaceVisivel, zoom, aoTentarDeNovo }: Props) {
+export function Palco({
+  emDestaque,
+  miniaturas,
+  aoFocar,
+  aoAlternarImersao,
+  volumes,
+  interfaceVisivel,
+  zoom,
+  aoTentarDeNovo,
+}: Props) {
   return (
-    <div className={estilos.palco} data-modo={emFoco ? 'foco' : 'grade'}>
-      {pecas.map((peca) => (
-        <Quadro
-          key={peca.chave}
-          peca={peca}
-          emFoco={emFoco}
-          aoSoltarOFoco={aoSoltarOFoco}
-          aoFocar={aoFocar}
+    <div className={estilos.palco} data-modo={emDestaque ? 'destaque' : 'vazio'}>
+      {emDestaque ? (
+        <Destaque
+          key={emDestaque.chave}
+          peca={emDestaque}
+          aoAlternarImersao={aoAlternarImersao}
           volumes={volumes}
           interfaceVisivel={interfaceVisivel}
           zoom={zoom}
           aoTentarDeNovo={aoTentarDeNovo}
         />
-      ))}
-      {pecas.length === 0 && (
+      ) : (
         <div className={estilos.vazio}>
           <span className={estilos.iconeVazio} aria-hidden="true">
-            <IconePessoas tamanho={30} />
+            <IconePessoas tamanho={26} />
           </span>
-          <strong>Você é a primeira pessoa aqui.</strong>
+          <strong>Nada no ar ainda.</strong>
           <span>Convide alguém ou comece a compartilhar sua tela.</span>
         </div>
       )}
+
+      <Tira pecas={miniaturas} aoEscolher={aoFocar} volumes={volumes} visivel={interfaceVisivel} />
     </div>
   )
 }

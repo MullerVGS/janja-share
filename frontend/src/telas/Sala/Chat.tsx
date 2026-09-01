@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { LIMITE_DO_TEXTO } from '../../sala/chat'
 import type { Chat as ConversaDaSala } from '../../sala/useChat'
 import { Avatar } from '../../ui/Avatar'
+import { IconeEnviar } from '../../ui/Icone'
 import estilos from './Chat.module.css'
 
 function hora(ts: number): string {
@@ -10,7 +11,7 @@ function hora(ts: number): string {
 
 /**
  * Chat lateral efêmero. Sem histórico por decisão de projeto: quem entra vê a sala do jeito que
- * ela está, não o que foi dito antes — e é por isso que o cabeçalho avisa em vez de esconder.
+ * ela está, não o que foi dito antes.
  *
  * A conversa chega por prop porque o `useChat` mora na tela da sala: este painel abre e fecha, e
  * o que foi dito não pode depender de ele estar aberto.
@@ -36,19 +37,16 @@ export function Chat({ chat }: { chat: ConversaDaSala }) {
 
   return (
     <section className={estilos.chat} aria-label="Chat da sala">
-      <header className={estilos.cabecalho}>
-        <h2 className={estilos.titulo}>Chat</h2>
-        <span className={estilos.efemero}>some quando a sala fecha</span>
-      </header>
-
       <div className={estilos.lista} role="log" aria-live="polite" ref={lista}>
-        {mensagens.length === 0 && <p className={estilos.vazio}>Nada dito ainda.</p>}
+        {mensagens.length === 0 && (
+          <p className={estilos.vazio}>Nada dito ainda. O que for escrito aqui some quando a sala fecha.</p>
+        )}
         {mensagens.map((mensagem) => (
           <article
             key={mensagem.id}
             className={[estilos.mensagem, mensagem.propria ? estilos.propria : ''].filter(Boolean).join(' ')}
           >
-            <Avatar nome={mensagem.nome} tamanho="medio" />
+            <Avatar nome={mensagem.nome} tamanho="mini" proprio={mensagem.propria} />
             <div className={estilos.conteudoDaMensagem}>
               <div className={estilos.linhaDoAutor}>
                 <span className={estilos.autor}>{mensagem.nome}</span>
@@ -77,8 +75,14 @@ export function Chat({ chat }: { chat: ConversaDaSala }) {
           value={rascunho}
           onChange={(evento) => setRascunho(evento.target.value)}
         />
-        <button type="submit" className={estilos.enviar} disabled={rascunho.trim() === ''}>
-          Enviar
+        <button
+          type="submit"
+          className={estilos.enviar}
+          aria-label="Enviar"
+          title="Enviar"
+          disabled={rascunho.trim() === ''}
+        >
+          <IconeEnviar tamanho={16} />
         </button>
       </form>
     </section>

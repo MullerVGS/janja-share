@@ -1,3 +1,11 @@
+/* Inter em três pesos, servida pelo próprio bundle: a sala roda em rede local e atrás de
+   túnel, e um <link> para CDN de fonte é a única peça da interface que dependeria de sair. */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-ext-400.css';
+@import '@fontsource/inter/latin-ext-500.css';
+@import '@fontsource/inter/latin-ext-600.css';
 @import './tokens.css';
 
 /*
@@ -31,7 +39,7 @@ h1,
 h2,
 h3 {
   margin: 0 0 var(--e2);
-  font-weight: 600;
+  font-weight: var(--peso-titulo);
   line-height: 1.15;
   letter-spacing: -0.015em;
 }
@@ -68,6 +76,10 @@ button {
   color: inherit;
 }
 
+input[type='range'] {
+  accent-color: var(--acao);
+}
+
 button {
   -webkit-tap-highlight-color: transparent;
 }
@@ -84,7 +96,7 @@ svg {
   outline-offset: 2px;
 }
 ::selection {
-  background: var(--acao-media);
+  background: color-mix(in srgb, var(--acao) 30%, transparent);
 }
 
 @keyframes shGirar {
@@ -93,13 +105,14 @@ svg {
   }
 }
 
+/* O pulso do "ao vivo": o ponto de 6px que marca tela no ar, conexão e sala ativa. */
 @keyframes shPulsar {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.35;
+    opacity: 0.3;
   }
 }
 

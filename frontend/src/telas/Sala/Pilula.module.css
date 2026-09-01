@@ -1,33 +1,41 @@
-/* A pílula do rodapé do quadro: aparece com o ponteiro em cima (regra no Palco) e é a única
-   interface que o quadro desenha por cima da imagem. */
+/* A pílula inferior direita do quadro em destaque. Aparece e some com o resto da interface
+   flutuante (quem decide isso é o Palco), e é a única coisa que o quadro desenha por cima da
+   imagem além da etiqueta de identidade. */
 .pilula {
   display: flex;
   align-items: center;
-  gap: var(--e1);
-  padding: 3px var(--e2);
+  gap: 6px;
+  padding: 4px 10px;
   border-radius: var(--raio-pilula);
-  background: var(--veu);
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--fundo) 80%, transparent);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--linha);
   max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
+.separador {
+  width: 1px;
+  height: 16px;
+  flex: none;
+  background: var(--linha);
+}
+
 .acao {
   display: flex;
   flex: none;
   cursor: pointer;
-  padding: 5px;
-  border: 1px solid transparent;
-  border-radius: var(--raio-sm);
+  padding: 6px;
+  border: none;
+  border-radius: 7px;
   background: transparent;
-  color: var(--texto-fraco);
+  color: var(--neutro-300);
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .acao:hover:not(:disabled) {
-  background: var(--realce);
+  background: color-mix(in srgb, var(--texto) 10%, transparent);
   color: var(--texto);
 }
 
@@ -38,5 +46,5 @@
 
 .acao[aria-pressed='true'] {
   color: var(--acao);
-  background: var(--acao-fraca);
+  background: color-mix(in srgb, var(--acao) 14%, transparent);
 }

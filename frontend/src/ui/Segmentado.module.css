@@ -1,20 +1,19 @@
 .grupo {
   display: flex;
   flex-direction: column;
-  gap: var(--e2);
+  gap: 6px;
 }
 
 .rotulo {
-  font-size: var(--texto-sm);
-  font-weight: 600;
-  color: var(--texto-fraco);
+  font-size: var(--texto-xs);
+  color: var(--texto-fraquissimo);
 }
 
+/* Uma faixa só, com as opções separadas por um traço de 1px — nada de pílula flutuando dentro
+   de uma calha. A opção escolhida é tinta de acento, não acento chapado. */
 .trilha {
   display: flex;
-  gap: 3px;
-  padding: 3px;
-  background: var(--fundo-2);
+  overflow: hidden;
   border: 1px solid var(--linha);
   border-radius: var(--raio-md);
 }
@@ -23,21 +22,29 @@
   flex: 1;
   cursor: pointer;
   border: none;
+  border-left: 1px solid var(--linha);
   background: transparent;
-  color: var(--texto-fraco);
-  font-size: var(--texto-sm);
-  font-weight: 600;
+  color: var(--neutro-400);
+  font-size: 12px;
   padding: 6px 4px;
-  border-radius: 7px;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.opcao:hover {
-  background: var(--realce);
+.opcao:first-child {
+  border-left: none;
+}
+
+.opcao:hover:not([aria-checked='true']) {
+  background: color-mix(in srgb, var(--texto) 7%, transparent);
   color: var(--texto);
 }
 
 .opcao[aria-checked='true'] {
-  background: var(--acao-fraca);
-  color: var(--acao-texto);
+  background: color-mix(in srgb, var(--acao) 14%, transparent);
+  color: var(--acento-200);
+}
+
+.opcao:focus-visible {
+  outline: 2px solid var(--acao);
+  outline-offset: -2px;
 }

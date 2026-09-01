@@ -1,11 +1,17 @@
-import { useState } from 'react'
 import { ConnectionState } from 'livekit-client'
-import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import type { Peca } from '../../sala/palco'
 import { Avatar } from '../../ui/Avatar'
-import { iniciaisDoNome } from '../../ui/avatares'
-import { IconeMicrofone, IconeMicrofoneMudo, IconePessoas, IconeSalaDeVoz, IconeTela } from '../../ui/Icone'
-import { ItemDoTrilho, Trilho } from '../../ui/Trilho'
+import { Botao } from '../../ui/Botao'
+import {
+  IconeCerto,
+  IconeConvite,
+  IconeFalando,
+  IconeMicrofone,
+  IconeMicrofoneMudo,
+  IconePainel,
+  IconeSair,
+  IconeTelaNoAr,
+} from '../../ui/Icone'
 import estilos from './NavegacaoDaSala.module.css'
 
 interface Props {
@@ -14,7 +20,14 @@ interface Props {
   conexao: ConnectionState
   pessoas: Peca[]
   telas: Peca[]
-  aoVoltar(): void
+  /** A chave do quadro em destaque — a linha da tela que está no palco fica acesa. */
+  emDestaque: string | null
+  aoFocar(chave: string): void
+  aberta: boolean
+  aoRecolher(): void
+  conviteCopiado: boolean
+  aoCopiarConvite(): void
+  aoSair(): void
 }
 
 const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
@@ -24,134 +37,141 @@ const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
   [ConnectionState.Disconnected]: 'desconectado',
 }
 
+function frasePlural(quantidade: number, singular: string, plural: string): string {
+  return `${quantidade} ${quantidade === 1 ? singular : plural}`
+}
+
 function PessoaNaSala({ pessoa }: { pessoa: Peca }) {
+  const dica = pessoa.falando ? 'falando' : pessoa.microfoneLigado ? 'microfone aberto' : 'microfone fechado'
   return (
-    <li className={estilos.pessoa} data-falando={pessoa.falando || undefined}>
-      <Avatar nome={pessoa.nome} tamanho="pequeno" status={pessoa.falando ? 'falando' : undefined} />
-      <span className={estilos.nomeDaPessoa}>
-        {pessoa.nome}
-        {pessoa.proprio && <span className={estilos.voce}>você</span>}
-      </span>
-      <span
-        className={pessoa.microfoneLigado ? estilos.microfone : estilos.microfoneFechado}
-        title={pessoa.microfoneLigado ? 'microfone aberto' : 'microfone fechado'}
-      >
-        {pessoa.microfoneLigado ? <IconeMicrofone tamanho={14} /> : <IconeMicrofoneMudo tamanho={14} />}
+    <li className={estilos.pessoa}>
+      <Avatar nome={pessoa.nome} tamanho="pequeno" falando={pessoa.falando} proprio={pessoa.proprio} />
+      <span className={estilos.nomeDaPessoa}>{pessoa.nome}</span>
+      {pessoa.proprio && <span className={estilos.voce}>você</span>}
+      <span className={estilos.microfone} data-aberto={pessoa.microfoneLigado || undefined} title={dica}>
+        {pessoa.falando ? (
+          <IconeFalando tamanho={14} />
+        ) : pessoa.microfoneLigado ? (
+          <IconeMicrofone tamanho={14} />
+        ) : (
+          <IconeMicrofoneMudo tamanho={14} />
+        )}
       </span>
     </li>
   )
 }
 
-export function NavegacaoDaSala({ nomeDaSala, nomeDaPessoa, conexao, pessoas, telas, aoVoltar }: Props) {
+/**
+ * A barra lateral: quem está na sala e o que está no ar.
+ *
+ * As duas listas respondem perguntas diferentes — presença e imagem — e por isso não são a
+ * mesma: uma pessoa aparece uma vez na de cima esteja ela compartilhando ou não, e cada tela no
+ * ar é uma linha clicável que põe aquela imagem no palco.
+ *
+ * O convite fica no topo porque é a primeira coisa que se faz numa sala recém-criada, e a saída
+ * fica no rodapé, junto de quem você é — as duas pontas do "estou aqui".
+ */
+export function NavegacaoDaSala({
+  nomeDaSala,
+  nomeDaPessoa,
+  conexao,
+  pessoas,
+  telas,
+  emDestaque,
+  aoFocar,
+  aberta,
+  aoRecolher,
+  conviteCopiado,
+  aoCopiarConvite,
+  aoSair,
+}: Props) {
   const conectada = conexao === ConnectionState.Connected
-  const [canaisAbertos, setCanaisAbertos] = useState(false)
-  // Na composição larga o painel pode ser recolhido — o palco fica com os ~250px — e a escolha
-  // vale para a próxima sala. É estado diferente do overlay estreito, que nasce sempre fechado.
-  const [painelAberto, setPainelAberto] = useState(() => lerPreferencias().painelDeCanaisAberto)
   const estadoDaConexao = conectada ? 'conectado à sala' : (FRASE_DA_CONEXAO[conexao] ?? 'conectando…')
-
-  function alternarPainel() {
-    setPainelAberto((aberto) => {
-      gravarPreferencias({ painelDeCanaisAberto: !aberto })
-      return !aberto
-    })
-  }
 
   return (
     <nav
       className={estilos.navegacao}
-      aria-label="Navegação da sala"
-      data-canais-abertos={canaisAbertos || undefined}
-      data-recolhida={!painelAberto || undefined}
+      aria-label="Pessoas e telas da sala"
+      data-aberta={aberta || undefined}
+      aria-hidden={aberta ? undefined : true}
+      inert={!aberta}
     >
-      <div className={estilos.trilho}>
-        <Trilho aoClicarNaMarca={aoVoltar} rotuloDaMarca="Voltar ao saguão">
-          <ItemDoTrilho className={estilos.salaAtual} rotulo={`Sala ${nomeDaSala}`} ativo>
-            {iniciaisDoNome(nomeDaSala)}
-          </ItemDoTrilho>
-          <span className={estilos.estadoDoTrilho} data-conectado={conectada || undefined} aria-hidden="true" />
-          <button
-            type="button"
-            className={estilos.abrirCanais}
-            aria-label={canaisAbertos ? 'Fechar canais e pessoas' : 'Abrir canais e pessoas'}
-            aria-expanded={canaisAbertos}
-            aria-controls="painel-canais"
-            onClick={() => setCanaisAbertos((abertos) => !abertos)}
-          >
-            <IconePessoas tamanho={20} />
-          </button>
-          <button
-            type="button"
-            className={estilos.alternarPainel}
-            aria-label={painelAberto ? 'Recolher canais e pessoas' : 'Mostrar canais e pessoas'}
-            aria-expanded={painelAberto}
-            aria-controls="painel-canais"
-            onClick={alternarPainel}
-          >
-            <IconePessoas tamanho={20} />
-          </button>
-        </Trilho>
+      <header className={estilos.cabecalho}>
+        <span className={estilos.identificacao}>
+          <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
+          <span className={estilos.subtitulo}>
+            sala efêmera ·{' '}
+            <span className={estilos.telasNoAr}>{frasePlural(telas.length, 'tela no ar', 'telas no ar')}</span>
+          </span>
+        </span>
+        <button
+          type="button"
+          className={estilos.recolher}
+          aria-label="Recolher painel"
+          title="Recolher painel"
+          onClick={aoRecolher}
+        >
+          <IconePainel tamanho={17} />
+        </button>
+      </header>
+
+      <div className={estilos.convite}>
+        <Botao aparencia="primario" blocoInteiro onClick={aoCopiarConvite}>
+          {conviteCopiado ? <IconeCerto tamanho={16} /> : <IconeConvite tamanho={16} />}
+          {conviteCopiado ? 'Convite copiado' : 'Copiar convite'}
+        </Botao>
       </div>
 
-      <div className={estilos.canais} id="painel-canais">
-        <header className={estilos.cabecalho}>
-          <span className={estilos.nomeDaSalaAgrupado}>
-            <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
-            <span className={estilos.efemera}>sala efêmera</span>
-          </span>
-          <button
-            type="button"
-            className={estilos.fecharCanais}
-            aria-label="Fechar canais e pessoas"
-            onClick={() => setCanaisAbertos(false)}
-          >
-            ×
-          </button>
-        </header>
+      <div className={estilos.rolagem}>
+        <h2 className={estilos.tituloDoGrupo}>Na sala · {pessoas.length}</h2>
+        <ul className={estilos.lista}>
+          {pessoas.map((pessoa) => (
+            <PessoaNaSala key={pessoa.chave} pessoa={pessoa} />
+          ))}
+        </ul>
 
-        <div className={estilos.rolagem}>
-          <section className={estilos.grupo} aria-labelledby="titulo-voz">
-            <h2 className={estilos.tituloDoGrupo} id="titulo-voz">
-              Canais de voz
-            </h2>
-            <div className={estilos.canalAtivo}>
-              <IconeSalaDeVoz tamanho={19} />
-              <span>Sala ao vivo</span>
-              <span className={estilos.contagem}>{pessoas.length}</span>
-            </div>
-            <ul className={estilos.listaDePessoas}>
-              {pessoas.map((pessoa) => (
-                <PessoaNaSala key={pessoa.chave} pessoa={pessoa} />
+        {telas.length > 0 && (
+          <>
+            <h2 className={estilos.tituloDoGrupo}>Telas no ar · {telas.length}</h2>
+            <ul className={estilos.lista}>
+              {telas.map((tela) => (
+                <li key={tela.chave}>
+                  <button
+                    type="button"
+                    className={estilos.tela}
+                    data-ativa={tela.chave === emDestaque || undefined}
+                    onClick={() => aoFocar(tela.chave)}
+                  >
+                    <IconeTelaNoAr tamanho={16} />
+                    <span className={estilos.rotuloDaTela}>{tela.proprio ? 'Sua tela' : `Tela de ${tela.nome}`}</span>
+                    <span className={estilos.pontoAoVivo} aria-hidden="true" />
+                  </button>
+                </li>
               ))}
             </ul>
-          </section>
-
-          {telas.length > 0 && (
-            <section className={estilos.grupo} aria-labelledby="titulo-telas">
-              <h2 className={estilos.tituloDoGrupo} id="titulo-telas">
-                Compartilhamentos
-              </h2>
-              <ul className={estilos.listaDeTelas}>
-                {telas.map((tela) => (
-                  <li key={tela.chave} className={estilos.telaNoAr}>
-                    <IconeTela tamanho={16} />
-                    <span>{tela.proprio ? 'Sua tela' : `Tela de ${tela.nome}`}</span>
-                    <span className={estilos.aoVivo}>ao vivo</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </div>
-
-        <footer className={estilos.identidade}>
-          <Avatar nome={nomeDaPessoa} tamanho="pequeno" status={conectada ? 'online' : undefined} />
-          <span className={estilos.identidadeTexto}>
-            <strong>{nomeDaPessoa}</strong>
-            <span>{estadoDaConexao}</span>
-          </span>
-        </footer>
+          </>
+        )}
       </div>
+
+      <footer className={estilos.identidade}>
+        <Avatar nome={nomeDaPessoa} tamanho="medio" proprio />
+        <span className={estilos.identidadeTexto}>
+          <strong>{nomeDaPessoa}</strong>
+          <span className={estilos.estadoDaConexao} data-conectado={conectada || undefined}>
+            <span className={estilos.pontoDaConexao} aria-hidden="true" />
+            {estadoDaConexao}
+          </span>
+        </span>
+        <button
+          type="button"
+          className={estilos.sair}
+          aria-label="Sair da sala"
+          title="Sair da sala"
+          onClick={aoSair}
+        >
+          <IconeSair tamanho={16} />
+        </button>
+      </footer>
     </nav>
   )
 }

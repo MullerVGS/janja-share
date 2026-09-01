@@ -42,6 +42,7 @@ export function Transmissao({ telemetria, perfilEfetivo, decisoes, nomeDe }: Pro
     <div className={estilos.aba}>
       {emissor && (
         <section className={estilos.secao} aria-label="Minha transmissão">
+          <h3 className={estilos.subtitulo}>Minha transmissão</h3>
           {!emissor.ativo && (
             <p className={estilos.pausado} role="status">
               pausado: ninguém assistindo — o encoder volta sozinho quando alguém abrir a tela.
@@ -93,7 +94,7 @@ function GraficosDoEmissor({
         titulo="FPS"
         series={[
           { nome: 'codificado', valores: historico.map((a) => a.fpsCodificado), cor: 'acao', destaque: true },
-          { nome: 'captura', valores: historico.map((a) => a.fpsCaptura), cor: 'turquesa' },
+          { nome: 'captura', valores: historico.map((a) => a.fpsCaptura), cor: 'apoio' },
         ]}
         referencias={[{ nome: 'alvo', valor: perfil.fps }]}
         faixas={limitacoes}
@@ -108,7 +109,7 @@ function GraficosDoEmissor({
         titulo="Bitrate"
         series={[
           { nome: 'saindo', valores: historico.map((a) => a.kbps), cor: 'acao', destaque: true },
-          { nome: 'disponível estimada', valores: historico.map((a) => a.bandaDisponivelKbps), cor: 'turquesa' },
+          { nome: 'disponível estimada', valores: historico.map((a) => a.bandaDisponivelKbps), cor: 'apoio' },
         ]}
         referencias={[{ nome: 'teto', valor: perfil.tetoKbps, foraDoEixo: true }]}
         faixas={limitacoes}
@@ -119,7 +120,7 @@ function GraficosDoEmissor({
         titulo="Resolução"
         series={[
           { nome: 'codificada', valores: historico.map((a) => a.altura), cor: 'acao', destaque: true },
-          { nome: 'captura', valores: historico.map((a) => a.alturaDaCaptura), cor: 'turquesa' },
+          { nome: 'captura', valores: historico.map((a) => a.alturaDaCaptura), cor: 'apoio' },
         ]}
         referencias={alturaPedida === null ? [] : [{ nome: 'alvo', valor: alturaPedida }]}
         faixas={limitacoes}
@@ -141,7 +142,7 @@ function RecebendoDe({ nome, historico }: { nome: string; historico: Historico<A
           titulo="FPS"
           series={[
             { nome: 'decodificado', valores: historico.map((a) => a.fpsDecodificado), cor: 'acao', destaque: true },
-            { nome: 'recebido', valores: historico.map((a) => a.fpsRecebido), cor: 'turquesa' },
+            { nome: 'recebido', valores: historico.map((a) => a.fpsRecebido), cor: 'apoio' },
           ]}
           formatar={fps}
         />

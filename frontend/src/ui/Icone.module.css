@@ -1,0 +1,19 @@
+/* A caixa da composição "dentro da TV": o monitor cobre a caixa inteira e o símbolo pequeno
+   flutua por cima, subido 2px para cair na área de imagem e não no pé do monitor. */
+.naTv {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moldura {
+  position: absolute;
+  inset: 0;
+}
+
+.dentro {
+  position: relative;
+  top: -2px;
+}

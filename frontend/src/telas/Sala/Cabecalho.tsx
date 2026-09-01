@@ -1,81 +1,134 @@
-import { useEffect, useState } from 'react'
 import { ConnectionState } from 'livekit-client'
-import { IconeCerto, IconeCopiar, IconePainel, IconePessoas } from '../../ui/Icone'
+import type { Aba } from '../../sala/lateral'
+import {
+  IconeAjustesDaTela,
+  IconeCerto,
+  IconeChat,
+  IconeConvite,
+  IconeMetricas,
+  IconePainel,
+  IconePessoas,
+} from '../../ui/Icone'
 import estilos from './Cabecalho.module.css'
 
 interface Props {
   nomeDaSala: string
   conexao: ConnectionState
   pessoas: number
-  gavetaAberta: boolean
-  aoAlternarGaveta(): void
+  /** Abre e fecha a barra lateral de pessoas e telas. */
+  aoAlternarLateral(): void
+  lateralAberta: boolean
+  /** A aba que a gaveta está mostrando agora, ou `null` com ela fechada. */
+  abaAMostra: Aba | null
+  aoAlternarAba(aba: Aba): void
+  transmitindo: boolean
+  naoLidasNoChat: number
+  /** `true` durante os 1,6 s em que o convite já foi copiado. */
+  conviteCopiado: boolean
+  aoCopiarConvite(): void
 }
 
 const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
-  [ConnectionState.Connecting]: 'Conectando…',
-  [ConnectionState.Reconnecting]: 'Reconectando…',
-  [ConnectionState.SignalReconnecting]: 'Reconectando…',
-  [ConnectionState.Disconnected]: 'Desconectado.',
+  [ConnectionState.Connecting]: 'conectando…',
+  [ConnectionState.Reconnecting]: 'reconectando…',
+  [ConnectionState.SignalReconnecting]: 'reconectando…',
+  [ConnectionState.Disconnected]: 'desconectado',
 }
 
-/** O topo persistente da sala: localização, presença, link e acesso ao painel lateral. */
-export function Cabecalho({ nomeDaSala, conexao, pessoas, gavetaAberta, aoAlternarGaveta }: Props) {
-  const frase = FRASE_DA_CONEXAO[conexao]
-  const [linkCopiado, setLinkCopiado] = useState(false)
-
-  // "Copiado!" dura 2 s — o mesmo prazo do "Copiado" da aba Transmissão.
-  useEffect(() => {
-    if (!linkCopiado) return
-    const volta = setTimeout(() => setLinkCopiado(false), 2000)
-    return () => clearTimeout(volta)
-  }, [linkCopiado])
-
-  async function copiarLink() {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setLinkCopiado(true)
-    } catch {
-      // Sem permissão ou sem a API: a URL já está na barra de endereço, ninguém fica sem saída.
-    }
-  }
+/** O topo persistente da sala: onde você está, quem está junto e os painéis. */
+export function Cabecalho({
+  nomeDaSala,
+  conexao,
+  pessoas,
+  aoAlternarLateral,
+  lateralAberta,
+  abaAMostra,
+  aoAlternarAba,
+  transmitindo,
+  naoLidasNoChat,
+  conviteCopiado,
+  aoCopiarConvite,
+}: Props) {
+  const conectada = conexao === ConnectionState.Connected
+  const frase = conectada ? 'conectado' : (FRASE_DA_CONEXAO[conexao] ?? 'conectando…')
 
   return (
     <header className={estilos.cabecalho}>
-      <span className={estilos.canal} aria-hidden="true">
-        #
-      </span>
-      <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
+      <button
+        type="button"
+        className={estilos.pessoas}
+        aria-pressed={lateralAberta}
+        aria-label="Pessoas e telas"
+        title="Pessoas e telas"
+        onClick={aoAlternarLateral}
+      >
+        <IconePainel tamanho={18} />
+        <IconePessoas tamanho={16} />
+        <span className={estilos.contagem}>{pessoas}</span>
+      </button>
+
       <span className={estilos.separador} aria-hidden="true" />
-      <span
-        className={estilos.pulso}
-        data-conectado={conexao === ConnectionState.Connected || undefined}
-        aria-hidden="true"
-      />
-      <span className={estilos.estado}>
-        {!frase && <IconePessoas tamanho={15} />}
-        {frase ?? `${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'}`}
-      </span>
+
+      <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
+      <span className={estilos.efemera}>efêmera</span>
 
       <span className={estilos.espacador} />
+
+      <span className={estilos.estado} data-conectado={conectada || undefined}>
+        <span className={estilos.pulso} aria-hidden="true" />
+        {frase}
+      </span>
 
       <button
         type="button"
         className={estilos.botao}
-        aria-label={linkCopiado ? 'Link copiado!' : 'Copiar link'}
-        title={linkCopiado ? 'Link copiado!' : 'Copiar link'}
-        onClick={() => void copiarLink()}
+        aria-label={conviteCopiado ? 'Convite copiado!' : 'Copiar convite'}
+        title={conviteCopiado ? 'Convite copiado!' : 'Copiar convite'}
+        onClick={aoCopiarConvite}
       >
-        {linkCopiado ? <IconeCerto tamanho={17} /> : <IconeCopiar tamanho={17} />}
+        {conviteCopiado ? <IconeCerto tamanho={18} /> : <IconeConvite tamanho={18} />}
+      </button>
+
+      {/* Os ajustes da tela só existem enquanto há tela sua no ar — é o único momento em que o
+          painel de qualidade tem o que dizer. */}
+      {transmitindo && (
+        <button
+          type="button"
+          className={estilos.botao}
+          aria-pressed={abaAMostra === 'qualidade'}
+          aria-label="Qualidade da transmissão"
+          title="Qualidade da transmissão"
+          onClick={() => aoAlternarAba('qualidade')}
+        >
+          <IconeAjustesDaTela tamanho={20} />
+        </button>
+      )}
+
+      <button
+        type="button"
+        className={estilos.botao}
+        aria-pressed={abaAMostra === 'metricas'}
+        aria-label="Métricas da transmissão"
+        title="Métricas da transmissão"
+        onClick={() => aoAlternarAba('metricas')}
+      >
+        <IconeMetricas tamanho={18} />
       </button>
 
       <button
         type="button"
         className={estilos.botao}
-        aria-pressed={gavetaAberta}
-        aria-label={gavetaAberta ? 'Fechar o painel' : 'Abrir o painel'}
-        onClick={aoAlternarGaveta}
+        aria-pressed={abaAMostra === 'chat'}
+        aria-label="Conversa"
+        title="Conversa"
+        onClick={() => aoAlternarAba('chat')}
       >
-        <IconePainel tamanho={17} />
+        <IconeChat tamanho={18} />
+        {naoLidasNoChat > 0 && (
+          <span className={estilos.contador} aria-label={`${naoLidasNoChat} mensagens não lidas`}>
+            {naoLidasNoChat}
+          </span>
+        )}
       </button>
     </header>
   )

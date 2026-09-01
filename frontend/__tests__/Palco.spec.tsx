@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within, type RenderResult } from '@testing-library/react'
+import { Track, type TrackPublication } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Peca } from '../src/sala/palco'
 import { useZoom } from '../src/sala/useZoom'
@@ -6,12 +7,16 @@ import type { ControleDeVolumes } from '../src/sala/useVolumes'
 import { Palco } from '../src/telas/Sala/Palco'
 import { habilitarTelaCheia } from './apoio/navegador'
 import { peca, volumesFalsos } from './apoio/pecas'
+import { publicacaoFalsa } from './apoio/salaFalsa'
+
+/** Uma câmera aberta: peça de pessoa com imagem, que é o que a põe no palco. */
+const publicacaoDeCamera = () => publicacaoFalsa(Track.Source.Camera) as unknown as TrackPublication
 
 interface Cenario {
-  pecas: Peca[]
-  emFoco?: boolean
-  aoSoltarOFoco?: () => void
+  emDestaque?: Peca | null
+  miniaturas?: Peca[]
   aoFocar?: (chave: string) => void
+  aoAlternarImersao?: () => void
   volumes?: ControleDeVolumes
   /** A sala inteira começa com a interface visível; testar o oposto é escolha explícita do teste. */
   interfaceVisivel?: boolean
@@ -19,21 +24,21 @@ interface Cenario {
 }
 
 function Palquinho({
-  pecas,
-  emFoco = false,
-  aoSoltarOFoco = vi.fn(),
+  emDestaque = null,
+  miniaturas = [],
   aoFocar = vi.fn(),
+  aoAlternarImersao = vi.fn(),
   volumes = volumesFalsos(),
   interfaceVisivel = true,
   aoTentarDeNovo = vi.fn(),
 }: Cenario) {
-  const zoom = useZoom(pecas)
+  const zoom = useZoom(emDestaque ? [emDestaque, ...miniaturas] : miniaturas)
   return (
     <Palco
-      pecas={pecas}
-      emFoco={emFoco}
-      aoSoltarOFoco={aoSoltarOFoco}
+      emDestaque={emDestaque}
+      miniaturas={miniaturas}
       aoFocar={aoFocar}
+      aoAlternarImersao={aoAlternarImersao}
       volumes={volumes}
       interfaceVisivel={interfaceVisivel}
       zoom={zoom}
@@ -47,8 +52,8 @@ function montarPalco(cenario: Cenario) {
 }
 
 /** A área da imagem: onde o clique, o duplo clique e os gestos do zoom acontecem. */
-function imagemDe(resultado: RenderResult, indice = 0): HTMLElement {
-  return resultado.container.querySelectorAll('[data-imagem]')[indice] as HTMLElement
+function imagemDe(resultado: RenderResult): HTMLElement {
+  return resultado.container.querySelector('[data-imagem]') as HTMLElement
 }
 
 function bater(elemento: HTMLElement) {
@@ -68,8 +73,8 @@ function clicarDuas(elemento: HTMLElement) {
 }
 
 /** O jsdom não mede nada: quem responde pelo tamanho do quadro e da imagem é o teste. */
-function medir(resultado: RenderResult, indice = 0) {
-  const imagem = imagemDe(resultado, indice)
+function medir(resultado: RenderResult) {
+  const imagem = imagemDe(resultado)
   imagem.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 500 }) as DOMRect
   const video = imagem.querySelector('video') as HTMLVideoElement
   Object.defineProperty(video, 'videoWidth', { value: 1000, configurable: true })
@@ -85,72 +90,69 @@ function girar(elemento: HTMLElement, deltaY: number): WheelEvent {
   return evento
 }
 
-/** O `Element.animate` não existe no jsdom, e o `getBoundingClientRect` mede sempre zero. */
-const medidaDeVerdade = Element.prototype.getBoundingClientRect
-
-function medirTudoComo(retangulo: { left: number; top: number; width: number; height: number }) {
-  Element.prototype.getBoundingClientRect = () => retangulo as DOMRect
-}
-
-function gravarAnimacoes(): Keyframe[][] {
-  const gravadas: Keyframe[][] = []
-  Element.prototype.animate = ((quadros: Keyframe[]) => {
-    gravadas.push(quadros)
-    return {} as Animation
-  }) as Element['animate']
-  return gravadas
-}
-
 beforeEach(() => vi.useFakeTimers())
-afterEach(() => {
-  vi.useRealTimers()
-  Element.prototype.getBoundingClientRect = medidaDeVerdade
-  Reflect.deleteProperty(Element.prototype, 'animate')
-})
+afterEach(() => vi.useRealTimers())
 
-describe('palco: a grade', () => {
-  it('lista tudo que existe na sala — as telas e as pessoas', () => {
-    montarPalco({ pecas: [peca('Bia', { ehTela: true }), peca('Bia'), peca('Ana', { proprio: true })] })
+describe('palco: o quadro em destaque', () => {
+  it('a pílula da esquerda diz de quem é a imagem', () => {
+    montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
+    expect(screen.getByText('Tela de Bia')).toBeInTheDocument()
 
-    expect(screen.getByText('Bia · tela')).toBeInTheDocument()
-    expect(screen.getByText('Bia')).toBeInTheDocument()
+    montarPalco({ emDestaque: peca('Ana', { proprio: true }) })
     expect(screen.getByText('Ana (você)')).toBeInTheDocument()
   })
 
-  it('sem ninguém, diz que a sala está vazia', () => {
-    montarPalco({ pecas: [] })
-    expect(screen.getByText('Você é a primeira pessoa aqui.')).toBeInTheDocument()
+  it('sem imagem nenhuma no ar, o palco diz isso em vez de desenhar um retângulo vazio', () => {
+    montarPalco({ emDestaque: null })
+    expect(screen.getByText('Nada no ar ainda.')).toBeInTheDocument()
   })
 
-  it('clicar num quadro foca nele — e só depois dos 250 ms que o separam do duplo clique', () => {
-    const aoFocar = vi.fn()
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true }), peca('Caio')], aoFocar })
-
-    bater(imagemDe(resultado, 1))
-    expect(aoFocar).not.toHaveBeenCalled()
-
-    act(() => vi.advanceTimersByTime(250))
-    expect(aoFocar).toHaveBeenCalledWith('pessoa:Caio')
+  it('quem está sem imagem aparece pelas iniciais, sem vídeo nenhum para aproximar', () => {
+    const resultado = montarPalco({ emDestaque: peca('Ana', { proprio: true, publicacao: undefined }) })
+    expect(resultado.container.querySelector('video')).toBeNull()
+    expect(screen.getByText('AN')).toBeInTheDocument()
   })
 })
 
-describe('palco: a etiqueta', () => {
-  it('o som da tela alheia aparece sem hover', () => {
-    montarPalco({ pecas: [peca('Sadia', { ehTela: true, temAudio: true })] })
+describe('palco: as miniaturas', () => {
+  it('clicar numa miniatura a põe no destaque', () => {
+    const aoFocar = vi.fn()
+    montarPalco({
+      emDestaque: peca('Bia', { ehTela: true }),
+      miniaturas: [peca('Caio', { ehTela: true })],
+      aoFocar,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pôr a tela de Caio no palco' }))
+    expect(aoFocar).toHaveBeenCalledExactlyOnceWith('tela:Caio')
+  })
+
+  it('sem ninguém fora do destaque, não há coluna de miniaturas', () => {
+    montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
+    expect(screen.queryByRole('button', { name: /^Pôr /})).not.toBeInTheDocument()
+  })
+})
+
+describe('palco: o volume do quadro em destaque', () => {
+  it('o som da tela alheia aparece sem hover, na pílula da direita', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, temAudio: true }) })
     expect(screen.getByRole('button', { name: 'Calar o som da tela de Sadia' })).toBeInTheDocument()
   })
 
   it('a voz alheia também aparece sem hover — mesmo controle, mesmo lugar', () => {
-    montarPalco({ pecas: [peca('Caio'), peca('Ana', { proprio: true })] })
+    montarPalco({ emDestaque: peca('Caio') })
 
     expect(screen.getByRole('button', { name: 'Calar a voz de Caio' })).toBeInTheDocument()
     expect(screen.getByRole('slider', { name: 'Volume da voz de Caio' })).toBeInTheDocument()
-    // O seu próprio som não tem volume local: não há controle no seu quadro.
+  })
+
+  it('o seu próprio quadro não tem volume local: não há controle nenhum', () => {
+    montarPalco({ emDestaque: peca('Ana', { proprio: true }) })
     expect(screen.queryByRole('button', { name: /Calar a voz de Ana/ })).not.toBeInTheDocument()
   })
 
   it('com o controle à vista, o microfone fechado aparece nele — sem ícone avulso dobrado', () => {
-    const { container } = montarPalco({ pecas: [peca('Caio', { microfoneLigado: false })] })
+    const { container } = montarPalco({ emDestaque: peca('Caio', { microfoneLigado: false }) })
 
     const botao = screen.getByRole('button', { name: 'Calar a voz de Caio' })
     expect(botao).toBeDisabled()
@@ -160,7 +162,7 @@ describe('palco: a etiqueta', () => {
 
   it('clicar no som da tela alheia cala e devolve pelo tipo "tela", não "pessoa"', () => {
     const volumes = volumesFalsos({ Sadia: { tela: 0 } })
-    montarPalco({ pecas: [peca('Sadia', { ehTela: true, temAudio: true })], volumes })
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, temAudio: true }), volumes })
 
     const botao = screen.getByRole('button', { name: 'Devolver o som da tela de Sadia' })
     expect(botao).toHaveAttribute('aria-pressed', 'true')
@@ -172,7 +174,7 @@ describe('palco: a etiqueta', () => {
 
 describe('palco: o aviso do cão de guarda', () => {
   it('enquanto tenta, conta que a tela ainda não chegou — e não oferece botão nenhum', () => {
-    montarPalco({ pecas: [peca('Sadia', { ehTela: true, recepcao: 'retomando' })] })
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, recepcao: 'retomando' }) })
 
     expect(screen.getByRole('status')).toHaveTextContent('a tela de Sadia ainda não chegou aqui — tentando de novo…')
     expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
@@ -185,7 +187,7 @@ describe('palco: o aviso do cão de guarda', () => {
    */
   it('depois de desistir, o botão rearma o vigia daquela tela — sem depender de quem transmite', () => {
     const aoTentarDeNovo = vi.fn()
-    montarPalco({ pecas: [peca('Sadia', { ehTela: true, recepcao: 'desistiu' })], aoTentarDeNovo })
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, recepcao: 'desistiu' }), aoTentarDeNovo })
 
     expect(screen.getByRole('status')).toHaveTextContent('a tela de Sadia nunca chegou aqui.')
     // A frase antiga mandava pedir para a outra pessoa reiniciar: é o que o botão substitui.
@@ -198,10 +200,7 @@ describe('palco: o aviso do cão de guarda', () => {
 
   it('em tela cheia o aviso continua desenhado — é status, não moldura', () => {
     const telaCheia = habilitarTelaCheia()
-    const resultado = montarPalco({
-      pecas: [peca('Sadia', { ehTela: true, recepcao: 'desistiu' })],
-      emFoco: true,
-    })
+    const resultado = montarPalco({ emDestaque: peca('Sadia', { ehTela: true, recepcao: 'desistiu' }) })
 
     clicarDuas(imagemDe(resultado))
     expect(telaCheia.atual).not.toBeNull()
@@ -213,52 +212,41 @@ describe('palco: o aviso do cão de guarda', () => {
   })
 
   it('tela que chega bem não tem aviso nenhum', () => {
-    montarPalco({ pecas: [peca('Sadia', { ehTela: true, recepcao: 'ok' })] })
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, recepcao: 'ok' }) })
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
 
-describe('palco: o foco', () => {
-  it('clicar na imagem em foco solta o foco — é o "clicar na live faz ela ficar menor"', () => {
-    const aoSoltarOFoco = vi.fn()
+describe('palco: clique e duplo clique na imagem', () => {
+  it('um clique alterna a imersão — é o "clicar na live esconde os painéis"', () => {
+    const aoAlternarImersao = vi.fn()
     const aoFocar = vi.fn()
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true, aoSoltarOFoco, aoFocar })
+    const resultado = montarPalco({ emDestaque: peca('Bia', { ehTela: true }), aoAlternarImersao, aoFocar })
 
     clicar(imagemDe(resultado))
 
-    expect(aoSoltarOFoco).toHaveBeenCalledOnce()
+    expect(aoAlternarImersao).toHaveBeenCalledOnce()
     expect(aoFocar).not.toHaveBeenCalled()
   })
 
-  it('a peça em foco ocupa tudo; a grade divide o espaço', () => {
-    const emFoco = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true })
-    expect(emFoco.container.firstElementChild).toHaveAttribute('data-modo', 'foco')
-
-    const naGrade = montarPalco({ pecas: [peca('Bia', { ehTela: true })] })
-    expect(naGrade.container.firstElementChild).toHaveAttribute('data-modo', 'grade')
-  })
-})
-
-describe('palco: tela cheia', () => {
-  it('o duplo clique põe o quadro em tela cheia e o Esc devolve', () => {
+  it('o duplo clique põe o quadro em tela cheia e o Esc devolve — sem passar pela imersão', () => {
     const telaCheia = habilitarTelaCheia()
-    const aoSoltarOFoco = vi.fn()
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true, aoSoltarOFoco })
+    const aoAlternarImersao = vi.fn()
+    const resultado = montarPalco({ emDestaque: peca('Bia', { ehTela: true }), aoAlternarImersao })
 
     clicarDuas(imagemDe(resultado))
 
     expect(telaCheia.atual).toBe(resultado.container.querySelector('[data-tela]'))
-    // O duplo clique não é um clique: o foco não pode ter sido solto no caminho.
     act(() => vi.advanceTimersByTime(250))
-    expect(aoSoltarOFoco).not.toHaveBeenCalled()
+    expect(aoAlternarImersao).not.toHaveBeenCalled()
 
     act(() => telaCheia.sair())
     expect(resultado.container.querySelector('[data-cheia]')).toBeNull()
   })
 
-  it('lá dentro nada é desenhado até o mouse mexer, e a pílula some 2 s depois', () => {
+  it('em tela cheia nada é desenhado até o mouse mexer, e a pílula some 2 s depois', () => {
     const telaCheia = habilitarTelaCheia()
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true })
+    const resultado = montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
     const umPorUm = { name: 'Ver em 1:1' } as const
 
     clicarDuas(imagemDe(resultado))
@@ -275,58 +263,25 @@ describe('palco: tela cheia', () => {
     act(() => vi.advanceTimersByTime(1))
     expect(screen.queryByRole('button', umPorUm)).toBeNull()
   })
+})
 
-  it('fora da grade (em foco) a pílula segue `interfaceVisivel` — não mais o hover', () => {
+describe('palco: as pílulas seguem a interface flutuante', () => {
+  it('com a interface à mostra elas existem; escondida, não', () => {
     // `within(container)`, e não a query já ligada ao `render`: as duas montagens desta prova
     // vivem no mesmo `document.body`, e a query ligada busca o corpo inteiro por padrão.
-    const visivel = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true, interfaceVisivel: true })
-    expect(imagemDe(visivel)).toBeInTheDocument()
+    const visivel = montarPalco({ emDestaque: peca('Bia', { ehTela: true }), interfaceVisivel: true })
     expect(within(visivel.container).getByRole('button', { name: 'Ver em 1:1' })).toBeInTheDocument()
+    expect(within(visivel.container).getByText('Tela de Bia')).toBeInTheDocument()
 
-    const oculta = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true, interfaceVisivel: false })
+    const oculta = montarPalco({ emDestaque: peca('Bia', { ehTela: true }), interfaceVisivel: false })
     expect(within(oculta.container).queryByRole('button', { name: 'Ver em 1:1' })).not.toBeInTheDocument()
-  })
-
-  it('na grade (fora do foco) a pílula continua sempre desenhada — quem a esconde ali é o hover, no CSS', () => {
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], interfaceVisivel: false })
-    expect(resultado.getByRole('button', { name: 'Ver em 1:1' })).toBeInTheDocument()
+    expect(within(oculta.container).queryByText('Tela de Bia')).not.toBeInTheDocument()
   })
 })
 
-describe('palco: a peça cresce e encolhe', () => {
-  it('sair do foco anima a peça do tamanho que ela tinha até o que ela passou a ter', () => {
-    const animacoes = gravarAnimacoes()
-    medirTudoComo({ left: 0, top: 0, width: 600, height: 300 })
-    const pecas = [peca('Bia', { ehTela: true })]
-    const resultado = render(<Palquinho pecas={pecas} emFoco />)
-
-    medirTudoComo({ left: 10, top: 10, width: 300, height: 150 })
-    resultado.rerender(<Palquinho pecas={pecas} emFoco={false} />)
-
-    expect(animacoes).toHaveLength(1)
-    expect(animacoes[0]?.[0]).toMatchObject({
-      transform: 'translate(-10px, -10px) scale(2, 2)',
-      transformOrigin: 'top left',
-    })
-    expect(animacoes[0]?.[1]).toMatchObject({ transform: 'none' })
-  })
-
-  it('re-render sem troca de modo não anima nada', () => {
-    const animacoes = gravarAnimacoes()
-    medirTudoComo({ left: 0, top: 0, width: 600, height: 300 })
-    const pecas = [peca('Bia', { ehTela: true })]
-    const resultado = render(<Palquinho pecas={pecas} emFoco />)
-
-    medirTudoComo({ left: 10, top: 10, width: 300, height: 150 })
-    resultado.rerender(<Palquinho pecas={pecas} emFoco />)
-
-    expect(animacoes).toHaveLength(0)
-  })
-})
-
-describe('palco: o zoom no quadro', () => {
-  it('em foco, a roda aproxima a imagem e segura a rolagem da página', () => {
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true })
+describe('palco: o zoom no quadro em destaque', () => {
+  it('a roda aproxima a imagem e segura a rolagem da página', () => {
+    const resultado = montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
     const { imagem, video } = medir(resultado)
     expect(video.style.transform).toBe('translate(0px, 0px) scale(1)')
 
@@ -336,18 +291,17 @@ describe('palco: o zoom no quadro', () => {
     expect(video.style.transform).toBe('translate(0px, 0px) scale(1.1)')
   })
 
-  it('na grade a roda não faz nada — aproximar uma miniatura seria gesto sem propósito', () => {
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })] })
-    const { imagem, video } = medir(resultado)
+  it('numa câmera a roda não faz nada — aproximar um rosto seria gesto sem propósito', () => {
+    const resultado = montarPalco({ emDestaque: peca('Caio', { publicacao: publicacaoDeCamera() }) })
+    const { imagem } = medir(resultado)
 
     const evento = girar(imagem, -100)
 
     expect(evento.defaultPrevented).toBe(false)
-    expect(video.style.transform).toBe('translate(0px, 0px) scale(1)')
   })
 
   it('caber e 1:1 da pílula mexem no zoom daquela peça', () => {
-    const resultado = montarPalco({ pecas: [peca('Bia', { ehTela: true })], emFoco: true })
+    const resultado = montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
     const { imagem, video } = medir(resultado)
     girar(imagem, -100)
 
@@ -359,11 +313,5 @@ describe('palco: o zoom no quadro', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Fazer a tela caber no quadro' }))
     expect(video.style.transform).toBe('translate(0px, 0px) scale(1)')
-  })
-
-  it('quem está sem imagem aparece pelas iniciais, sem vídeo nenhum para aproximar', () => {
-    const resultado = montarPalco({ pecas: [peca('Ana', { proprio: true, publicacao: undefined })] })
-    expect(resultado.container.querySelector('video')).toBeNull()
-    expect(screen.getByText('AN')).toBeInTheDocument()
   })
 })

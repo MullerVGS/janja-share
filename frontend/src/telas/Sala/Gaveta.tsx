@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { ABAS, LARGURA_MINIMA_DA_LATERAL, limitarLargura, type Aba } from '../../sala/lateral'
+import { IconeFechar, IconeMetricas } from '../../ui/Icone'
 import type { Resumo } from './resumo'
 import estilos from './Gaveta.module.css'
 
@@ -7,6 +8,7 @@ interface Props {
   aberta: boolean
   aba: Aba
   aoTrocarAba(aba: Aba): void
+  aoFechar(): void
   /** A aba de Qualidade só tem o que dizer com tela sua no ar; sem isso ela nem aparece. */
   transmitindo: boolean
   largura: number
@@ -16,7 +18,7 @@ interface Props {
   /** A linha de resumo enquanto transmite; `null` esconde a barra. */
   resumo: Resumo | null
   qualidade: ReactNode
-  transmissao: ReactNode
+  metricas: ReactNode
   chat: ReactNode
 }
 
@@ -28,8 +30,8 @@ const PASSO_DO_TECLADO = 16
  * Fica montada mesmo fechada, e o chat fica montado mesmo em outra aba: o rascunho escrito e a
  * rolagem não podem sumir porque a pessoa foi olhar um gráfico. Fechada, sai da árvore de
  * acessibilidade e do caminho do teclado (`inert`) — montada não é o mesmo que alcançável.
- * Qualidade e Transmissão montam só quando visíveis: a Transmissão redesenha a 1 Hz, e não
- * vale pagar isso escondida.
+ * Qualidade e Métricas montam só quando visíveis: as Métricas redesenham a 1 Hz, e não vale
+ * pagar isso escondida.
  *
  * A largura anda por variável CSS escrita direto no elemento durante o arraste; o React só
  * fica sabendo quando a pessoa solta. No desktop o painel divide o corpo com o palco; em telas
@@ -39,13 +41,14 @@ export function Gaveta({
   aberta,
   aba,
   aoTrocarAba,
+  aoFechar,
   transmitindo,
   largura,
   aoRedimensionar,
   naoLidasNoChat,
   resumo,
   qualidade,
-  transmissao,
+  metricas,
   chat,
 }: Props) {
   const coluna = useRef<HTMLElement>(null)
@@ -112,40 +115,55 @@ export function Gaveta({
         onKeyDown={teclar}
       />
 
+      {/* O resumo é a porta das Métricas: quem transmite lê a linha o tempo todo, e só abre o
+          painel inteiro quando ela diz algo que não esperava. */}
       {resumo && (
         <button
           type="button"
           className={estilos.resumo}
           data-tom={resumo.tom}
           aria-label="Resumo da transmissão — abrir detalhes"
-          onClick={() => aoTrocarAba('transmissao')}
+          onClick={() => aoTrocarAba('metricas')}
         >
+          <span className={estilos.iconeDoResumo} aria-hidden="true">
+            <IconeMetricas tamanho={13} />
+          </span>
           <span className={estilos.partesDoResumo}>{resumo.partes.join(' · ')}</span>
-          <span className={estilos.separadorDoResumo}> · </span>
           <span className={estilos.estadoDoResumo}>{resumo.estado}</span>
         </button>
       )}
 
-      <div className={estilos.abas} role="tablist" aria-label="Painéis da sala">
-        {abas.map((opcao) => (
-          <button
-            key={opcao.valor}
-            type="button"
-            role="tab"
-            id={`aba-${opcao.valor}`}
-            aria-selected={aba === opcao.valor}
-            aria-controls={`painel-${opcao.valor}`}
-            className={estilos.aba}
-            onClick={() => aoTrocarAba(opcao.valor)}
-          >
-            {opcao.rotulo}
-            {opcao.valor === 'chat' && naoLidasNoChat > 0 && (
-              <span className={estilos.contador} aria-label={`${naoLidasNoChat} mensagens não lidas`}>
-                {naoLidasNoChat}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className={estilos.abas}>
+        <div className={estilos.trilhaDasAbas} role="tablist" aria-label="Painéis da sala">
+          {abas.map((opcao) => (
+            <button
+              key={opcao.valor}
+              type="button"
+              role="tab"
+              id={`aba-${opcao.valor}`}
+              aria-selected={aba === opcao.valor}
+              aria-controls={`painel-${opcao.valor}`}
+              className={estilos.aba}
+              onClick={() => aoTrocarAba(opcao.valor)}
+            >
+              {opcao.rotulo}
+              {opcao.valor === 'chat' && naoLidasNoChat > 0 && (
+                <span className={estilos.contador} aria-label={`${naoLidasNoChat} mensagens não lidas`}>
+                  {naoLidasNoChat}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className={estilos.fechar}
+          aria-label="Fechar painel"
+          title="Fechar painel"
+          onClick={aoFechar}
+        >
+          <IconeFechar tamanho={14} />
+        </button>
       </div>
 
       {aba === 'qualidade' && (
@@ -153,9 +171,9 @@ export function Gaveta({
           {qualidade}
         </div>
       )}
-      {aba === 'transmissao' && (
-        <div className={estilos.painel} role="tabpanel" id="painel-transmissao" aria-labelledby="aba-transmissao">
-          {transmissao}
+      {aba === 'metricas' && (
+        <div className={estilos.painel} role="tabpanel" id="painel-metricas" aria-labelledby="aba-metricas">
+          {metricas}
         </div>
       )}
       <div

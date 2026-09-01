@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Gaveta } from '../src/telas/Sala/Gaveta'
@@ -11,13 +11,14 @@ function montarProps(parcial: Partial<Props> = {}): Props {
     aberta: true,
     aba: 'qualidade',
     aoTrocarAba: vi.fn(),
+    aoFechar: vi.fn(),
     transmitindo: true,
     largura: 340,
     aoRedimensionar: vi.fn(),
     naoLidasNoChat: 0,
     resumo: null,
     qualidade: <p>painel de qualidade</p>,
-    transmissao: <p>painel de transmissão</p>,
+    metricas: <p>painel de métricas</p>,
     chat: <p>painel de chat</p>,
     ...parcial,
   }
@@ -31,11 +32,11 @@ function montarGaveta(parcial: Partial<Props> = {}) {
 
 describe('gaveta da sala', () => {
   it('mostra as três abas e só o painel da aba ativa — menos o chat, que fica montado escondido', () => {
-    montarGaveta({ aba: 'transmissao' })
+    montarGaveta({ aba: 'metricas' })
 
-    expect(screen.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Chat', 'Qualidade', 'Transmissão'])
-    expect(screen.getByRole('tab', { name: 'Transmissão' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText('painel de transmissão')).toBeVisible()
+    expect(screen.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Conversa', 'Qualidade', 'Métricas'])
+    expect(screen.getByRole('tab', { name: 'Métricas' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('painel de métricas')).toBeVisible()
     expect(screen.queryByText('painel de qualidade')).not.toBeInTheDocument()
     expect(screen.getByText('painel de chat')).not.toBeVisible()
   })
@@ -47,9 +48,9 @@ describe('gaveta da sala', () => {
     // Quem corrige a aba ao parar de transmitir é a Sala; aqui ela chega já corrigida.
     resultado.rerender(<Gaveta {...montarProps({ aba: 'chat', transmitindo: false })} />)
 
-    expect(screen.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Chat', 'Transmissão'])
+    expect(screen.getAllByRole('tab').map((aba) => aba.textContent)).toEqual(['Conversa', 'Métricas'])
     expect(screen.queryByText('painel de qualidade')).not.toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Chat/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: /Conversa/ })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByText('painel de chat')).toBeVisible()
   })
 
@@ -57,13 +58,13 @@ describe('gaveta da sala', () => {
     const usuario = userEvent.setup()
     const { aoTrocarAba } = montarGaveta()
 
-    await usuario.click(screen.getByRole('tab', { name: 'Chat' }))
+    await usuario.click(screen.getByRole('tab', { name: 'Conversa' }))
     expect(aoTrocarAba).toHaveBeenCalledWith('chat')
   })
 
   it('a aba do chat carrega o contador de não lidas; zero não aparece', () => {
     const { resultado } = montarGaveta({ naoLidasNoChat: 3 })
-    expect(screen.getByRole('tab', { name: /Chat/ })).toHaveTextContent('3')
+    expect(screen.getByRole('tab', { name: /Conversa/ })).toHaveTextContent('3')
     expect(screen.getByLabelText('3 mensagens não lidas')).toBeInTheDocument()
 
     resultado.rerender(<Gaveta {...montarProps({ naoLidasNoChat: 0 })} />)
@@ -86,7 +87,7 @@ describe('gaveta da sala', () => {
     expect(gaveta).not.toHaveAttribute('inert')
   })
 
-  it('a barra de resumo só existe transmitindo; o clique leva à Transmissão', async () => {
+  it('a barra de resumo só existe transmitindo; o clique leva às Métricas', async () => {
     const usuario = userEvent.setup()
     const { resultado, aoTrocarAba } = montarGaveta()
     expect(screen.queryByRole('button', { name: /resumo/i })).not.toBeInTheDocument()
@@ -94,11 +95,13 @@ describe('gaveta da sala', () => {
     const resumo: Resumo = { partes: ['VP9', '1080p', '30 fps', '3,0 Mb/s'], estado: 'ok', tom: 'ok' }
     resultado.rerender(<Gaveta {...montarProps({ resumo, aoTrocarAba })} />)
     const barra = screen.getByRole('button', { name: /resumo da transmissão/i })
-    expect(barra).toHaveTextContent('VP9 · 1080p · 30 fps · 3,0 Mb/s · ok')
+    // A forma à esquerda; o estado encostado na outra ponta da linha, e por isso sem separador.
+    expect(barra).toHaveTextContent('VP9 · 1080p · 30 fps · 3,0 Mb/s')
+    expect(within(barra).getByText('ok')).toBeInTheDocument()
     expect(barra).toHaveAttribute('data-tom', 'ok')
 
     await usuario.click(barra)
-    expect(aoTrocarAba).toHaveBeenCalledWith('transmissao')
+    expect(aoTrocarAba).toHaveBeenCalledWith('metricas')
   })
 
   it('a largura vem por variável CSS e o arraste do divisor a muda, dentro dos limites, persistindo ao soltar', () => {

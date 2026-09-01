@@ -1,4 +1,4 @@
-import { ehAba, LARGURA_MINIMA_DA_LATERAL, type Aba } from './sala/lateral'
+import { LARGURA_MINIMA_DA_LATERAL } from './sala/lateral'
 import { ehPerfil, PERFIL_PADRAO, type PerfilDeQualidade } from './sala/qualidade'
 import { lerVolumes, type Volumes } from './sala/volumes'
 
@@ -13,9 +13,9 @@ const VERSAO = 1
 
 export interface Preferencias {
   larguraDaLateral: number
-  abaDaLateral: Aba
-  /** O painel de canais e pessoas na composição larga; recolhido, o palco fica com o espaço. */
-  painelDeCanaisAberto: boolean
+  /** A barra lateral de pessoas e telas na composição larga; recolhida, o palco fica com o
+   * espaço. Em tela estreita ela é camada e nasce sempre fechada, sem consultar isto. */
+  barraLateralAberta: boolean
   /** O pedido da pessoa — o que o governador usa como teto. */
   perfil: PerfilDeQualidade
   /** A chave do governador. */
@@ -28,8 +28,7 @@ export interface Preferencias {
 
 export const PREFERENCIAS_PADRAO: Preferencias = {
   larguraDaLateral: 340,
-  abaDaLateral: 'chat',
-  painelDeCanaisAberto: true,
+  barraLateralAberta: true,
   perfil: PERFIL_PADRAO,
   automatico: true,
   volumes: {},
@@ -41,8 +40,7 @@ type Leitor<T> = (valor: unknown) => T | undefined
 const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   larguraDaLateral: (valor) =>
     typeof valor === 'number' && Number.isFinite(valor) && valor >= LARGURA_MINIMA_DA_LATERAL ? valor : undefined,
-  abaDaLateral: (valor) => (ehAba(valor) ? valor : undefined),
-  painelDeCanaisAberto: (valor) => (typeof valor === 'boolean' ? valor : undefined),
+  barraLateralAberta: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   perfil: (valor) => (ehPerfil(valor) ? valor : undefined),
   automatico: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   volumes: lerVolumes,

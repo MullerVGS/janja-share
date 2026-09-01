@@ -1,32 +1,33 @@
 .campo {
   display: flex;
   flex-direction: column;
-  gap: var(--e1);
+  gap: 5px;
 }
 
 .rotulo {
-  font-size: var(--texto-sm);
-  font-weight: 600;
-  color: var(--texto-fraco);
-  letter-spacing: 0.01em;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--texto) 70%, transparent);
 }
 
 .entrada {
   width: 100%;
-  background: var(--fundo-2);
-  border: 1px solid var(--linha-forte);
-  border-radius: 6px;
-  padding: 10px var(--e3);
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 14px;
   color: var(--texto);
+  caret-color: var(--acao);
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-md);
   transition: border-color 0.12s ease;
 }
 
 .entrada::placeholder {
-  color: var(--texto-fraquissimo);
+  color: var(--neutro-600);
 }
 
 .entrada:hover {
-  border-color: var(--texto-fraquissimo);
+  border-color: color-mix(in srgb, var(--texto) 45%, transparent);
 }
 
 .entrada:focus-visible {

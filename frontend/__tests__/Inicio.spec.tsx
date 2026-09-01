@@ -1,23 +1,13 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { type LocalTrack } from 'livekit-client'
 import { Route, Routes, useParams } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SalaNaLista } from '../src/api/salas'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
-import { capturarTela } from '../src/sala/captura'
-import { retirarCaptura } from '../src/sala/capturaPendente'
 import { useSessao } from '../src/sessao/sessao'
 import { Inicio } from '../src/telas/Inicio/Inicio'
 import { montar } from './apoio/montar'
 import { chamadas, servir } from './apoio/servidorFalso'
-
-// A captura é o único ponto controlável: abrir o seletor nativo não existe no jsdom.
-vi.mock('../src/sala/captura', () => ({ capturarTela: vi.fn() }))
-
-function faixaFalsa(kind: 'video' | 'audio'): LocalTrack {
-  return { kind, stop: vi.fn() } as unknown as LocalTrack
-}
 
 /** Fica no lugar da sala: prova que a navegação aconteceu e que a sessão guardou o slug certo. */
 function SalaFalsa() {
@@ -58,9 +48,9 @@ const ROTA_DE_SUGESTAO = {
   'GET /api/salas/nome-sugerido': { corpo: { nome: 'Varanda Tranquila' } },
 }
 
-function linhaDe(nome: string): HTMLElement {
+function cartaoDe(nome: string): HTMLElement {
   const item = screen.getByText(nome).closest('li')
-  if (!item) throw new Error(`linha "${nome}" não é um <li>`)
+  if (!item) throw new Error(`cartão "${nome}" não é um <li>`)
   return item as HTMLElement
 }
 
@@ -71,9 +61,6 @@ function prepararNome(nome = 'Ana') {
 // `preferencias` mora em `localStorage`, e o `preparo.ts` global só limpa o `sessionStorage` — sem
 // isto, o nome digitado num teste vazaria para o próximo (que espera partir de nome vazio).
 afterEach(() => localStorage.clear())
-// Captura pendente é módulo, não componente: sem isto, uma captura guardada e não retirada por
-// um teste vazaria para o próximo.
-afterEach(() => retirarCaptura())
 
 describe('início: lista de salas', () => {
   it('renderiza as salas da API', async () => {
@@ -90,8 +77,8 @@ describe('início: lista de salas', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    expect(within(linhaDe('Jogatina')).getByText(/2 telas no ar/)).toBeInTheDocument()
-    expect(within(linhaDe('Reunião')).queryByText(/telas no ar/)).not.toBeInTheDocument()
+    expect(within(cartaoDe('Jogatina')).getByText(/2 telas no ar/)).toBeInTheDocument()
+    expect(within(cartaoDe('Reunião')).queryByText(/telas no ar/)).not.toBeInTheDocument()
   })
 
   it('mostra o cadeado só na sala com senha', async () => {
@@ -99,8 +86,8 @@ describe('início: lista de salas', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    expect(within(linhaDe('Reunião')).getByTitle('Sala com senha')).toBeInTheDocument()
-    expect(within(linhaDe('Jogatina')).queryByTitle('Sala com senha')).not.toBeInTheDocument()
+    expect(within(cartaoDe('Reunião')).getByTitle('Sala com senha')).toBeInTheDocument()
+    expect(within(cartaoDe('Jogatina')).queryByTitle('Sala com senha')).not.toBeInTheDocument()
   })
 
   it('sala vazia em carência fica apagada, com "ninguém agora"', async () => {
@@ -108,7 +95,7 @@ describe('início: lista de salas', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    const linha = linhaDe('Reunião')
+    const linha = cartaoDe('Reunião')
     expect(within(linha).getByText('ninguém agora')).toBeInTheDocument()
     expect(linha).toHaveAttribute('data-vazia')
   })
@@ -118,7 +105,7 @@ describe('início: lista de salas', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    const botao = within(linhaDe('Lotada')).getByRole('button', { name: /cheia/i })
+    const botao = within(cartaoDe('Lotada')).getByRole('button', { name: /cheia/i })
     expect(botao).toBeDisabled()
   })
 
@@ -169,8 +156,8 @@ describe('início: poll de fundo (5s) que falha não apaga a lista nem o que a p
     montarInicio()
 
     await screen.findByText('Reunião')
-    await usuario.click(within(linhaDe('Reunião')).getByRole('button', { name: 'Entrar' }))
-    await usuario.type(within(linhaDe('Reunião')).getByLabelText('Senha'), 'meio-digitada')
+    await usuario.click(within(cartaoDe('Reunião')).getByRole('button', { name: 'Entrar' }))
+    await usuario.type(within(cartaoDe('Reunião')).getByLabelText('Senha'), 'meio-digitada')
     expect(chamadasGet).toBe(1)
 
     // `Async`, e não `advanceTimersByTime`: precisa dar vez ao microtask do `fetch` mockado
@@ -186,7 +173,7 @@ describe('início: poll de fundo (5s) que falha não apaga a lista nem o que a p
     )
     // A lista continua — a linha não desmontou, e a senha meio-digitada não sumiu.
     expect(screen.getByText('Reunião')).toBeInTheDocument()
-    expect(within(linhaDe('Reunião')).getByLabelText('Senha')).toHaveValue('meio-digitada')
+    expect(within(cartaoDe('Reunião')).getByLabelText('Senha')).toHaveValue('meio-digitada')
   })
 })
 
@@ -203,7 +190,7 @@ describe('início: linha de sala — robustez', () => {
     montarInicio()
 
     await screen.findByText('Duplicada')
-    expect(within(linhaDe('Duplicada')).getAllByTitle('Bia')).toHaveLength(2)
+    expect(within(cartaoDe('Duplicada')).getAllByTitle('Bia')).toHaveLength(2)
     const avisosDeChave = consoleErro.mock.calls.filter((chamada) => String(chamada[0]).includes('key'))
     expect(avisosDeChave).toEqual([])
     consoleErro.mockRestore()
@@ -213,7 +200,7 @@ describe('início: linha de sala — robustez', () => {
     servir({ 'GET /api/salas': { corpo: SALAS } })
     montarInicio()
 
-    const linha = await screen.findByText('Lotada').then(() => linhaDe('Lotada'))
+    const linha = await screen.findByText('Lotada').then(() => cartaoDe('Lotada'))
     expect(within(linha).getAllByTitle(/^P\d+$/)).toHaveLength(6)
     expect(within(linha).getByText('+6')).toBeInTheDocument()
   })
@@ -224,7 +211,7 @@ describe('início: linha de sala — robustez', () => {
     montarInicio()
 
     await screen.findByText('Reunião')
-    const linha = linhaDe('Reunião')
+    const linha = cartaoDe('Reunião')
     await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
     await usuario.type(within(linha).getByLabelText('Senha'), 'alguma coisa')
 
@@ -248,7 +235,7 @@ describe('início: linha de sala — robustez', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    const linha = linhaDe('Jogatina')
+    const linha = cartaoDe('Jogatina')
     await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
 
     expect(await within(linha).findByRole('alert')).toHaveTextContent('Escolha um nome com 1 a 40 caracteres.')
@@ -276,12 +263,12 @@ describe('início: seu nome', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    await usuario.click(within(linhaDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
+    await usuario.click(within(cartaoDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
 
     expect(chamadas.some((c) => c.caminho === '/api/salas/jogatina/entrar')).toBe(false)
-    const campoNome = within(linhaDe('Jogatina')).getByLabelText('Seu nome')
+    const campoNome = within(cartaoDe('Jogatina')).getByLabelText('Seu nome')
     await usuario.type(campoNome, 'Duda')
-    await usuario.click(within(linhaDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
+    await usuario.click(within(cartaoDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText(/entrou em jogatina como Duda/)).toBeInTheDocument()
     expect(lerPreferencias().nome).toBe('Duda')
@@ -310,7 +297,7 @@ describe('início: entrar', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    await usuario.click(within(linhaDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
+    await usuario.click(within(cartaoDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText(/entrou em jogatina como Ana/)).toBeInTheDocument()
     const entrada = chamadas.find((c) => c.caminho === '/api/salas/jogatina/entrar')
@@ -324,9 +311,9 @@ describe('início: entrar', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    await usuario.click(within(linhaDe('Reunião')).getByRole('button', { name: 'Entrar' }))
+    await usuario.click(within(cartaoDe('Reunião')).getByRole('button', { name: 'Entrar' }))
 
-    expect(within(linhaDe('Reunião')).getByLabelText('Senha')).toBeInTheDocument()
+    expect(within(cartaoDe('Reunião')).getByLabelText('Senha')).toBeInTheDocument()
     expect(chamadas.some((c) => c.caminho.includes('/entrar'))).toBe(false)
   })
 
@@ -340,7 +327,7 @@ describe('início: entrar', () => {
     montarInicio()
 
     await screen.findByText('Jogatina')
-    const linha = linhaDe('Reunião')
+    const linha = cartaoDe('Reunião')
     await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
     await usuario.type(within(linha).getByLabelText('Senha'), 'errada')
     await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
@@ -492,76 +479,5 @@ describe('início: criar sala', () => {
     await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
 
     expect(gatilho).toHaveFocus()
-  })
-})
-
-describe('início: compartilhar minha tela (ação primária)', () => {
-  it('sem nome preenchido, o clique no primário não chama criarSala nem abre o seletor', async () => {
-    servir({ 'GET /api/salas': { corpo: [] } })
-    const usuario = userEvent.setup()
-    montarInicio()
-
-    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
-
-    expect(vi.mocked(capturarTela)).not.toHaveBeenCalled()
-    expect(chamadas.some((c) => c.metodo === 'POST' && c.caminho === '/api/salas')).toBe(false)
-    expect(screen.getByText(/escreva seu nome/i)).toBeInTheDocument()
-  })
-
-  it('clique único: captura a tela, cria a sala, guarda a captura pra sala buscar e navega', async () => {
-    prepararNome('Ana')
-    servir({
-      'GET /api/salas': { corpo: [] },
-      'POST /api/salas': { status: 201, corpo: credenciais('nova-sala', 'Ana') },
-    })
-    const video = faixaFalsa('video')
-    vi.mocked(capturarTela).mockResolvedValueOnce([video])
-    const usuario = userEvent.setup()
-    montarInicio()
-
-    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
-
-    expect(await screen.findByText(/entrou em nova-sala como Ana/)).toBeInTheDocument()
-    const criacao = chamadas.find((c) => c.metodo === 'POST' && c.caminho === '/api/salas')
-    expect(criacao?.corpo).toEqual({ seuNome: 'Ana' })
-    // A sala falsa deste teste não busca a captura — sobra pendente, provando que foi guardada.
-    expect(retirarCaptura()).toEqual([video])
-  })
-
-  it('cancelar o seletor nativo não cria sala nem mostra erro — é a pessoa desistindo', async () => {
-    prepararNome('Ana')
-    servir({ 'GET /api/salas': { corpo: [] } })
-    vi.mocked(capturarTela).mockRejectedValueOnce(
-      Object.assign(new Error('cancelado'), { name: 'NotAllowedError' }),
-    )
-    const usuario = userEvent.setup()
-    montarInicio()
-
-    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
-
-    expect(chamadas.some((c) => c.metodo === 'POST' && c.caminho === '/api/salas')).toBe(false)
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(retirarCaptura()).toBeNull()
-  })
-
-  it('se criar a sala falhar depois da captura, as faixas capturadas são paradas e o erro aparece', async () => {
-    prepararNome('Ana')
-    servir({
-      'GET /api/salas': { corpo: [] },
-      'POST /api/salas': { status: 503, corpo: { erro: 'sfu_indisponivel' } },
-    })
-    const video = faixaFalsa('video')
-    vi.mocked(capturarTela).mockResolvedValueOnce([video])
-    const usuario = userEvent.setup()
-    montarInicio()
-
-    await usuario.click(await screen.findByRole('button', { name: 'Compartilhar minha tela' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'O servidor de mídia não respondeu. Tente de novo em instantes.',
-    )
-    expect(video.stop).toHaveBeenCalledOnce()
-    // Sem sala, ninguém vem buscar a captura — teria ficado órfã se não tivesse sido parada aqui.
-    expect(retirarCaptura()).toBeNull()
   })
 })

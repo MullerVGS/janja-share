@@ -114,12 +114,3 @@ export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, Es
 
   return { telas, pessoas }
 }
-
-/** Iniciais para o círculo de quem está sem câmera. */
-export function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter(Boolean)
-  if (partes.length === 0) return '?'
-  const primeira = partes[0] as string
-  if (partes.length === 1) return primeira.slice(0, 2).toUpperCase()
-  return `${primeira[0] ?? ''}${(partes[partes.length - 1] as string)[0] ?? ''}`.toUpperCase()
-}

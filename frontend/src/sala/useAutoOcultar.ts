@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 
-const OCULTAR_DEPOIS_DE_MS = 2500
+const OCULTAR_DEPOIS_DE_MS = 2600
 
 /**
  * Se a interface flutuante do palco está à mostra. Some depois de `atrasoMs` sem o ponteiro se
- * mexer (default 2500 — a interface do palco; a pílula de tela cheia usa 2000, por isso o
+ * mexer (default 2600 — a interface do palco; a pílula de tela cheia usa 2000, por isso o
  * atraso é parâmetro, não constante); qualquer movimento traz de volta e reinicia a contagem.
  * `travado` (gaveta aberta, menu aberto, foco de teclado dentro) trava visível o tempo todo —
  * ao destravar, o relógio recomeça do zero, não do que sobrava antes da trava.

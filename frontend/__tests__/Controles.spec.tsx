@@ -34,6 +34,7 @@ function montarBarra(parcial: Partial<Props> = {}) {
     chatAberto: false,
     naoLidasNoChat: 0,
     aoAlternarChat: vi.fn(),
+    aoAbrirQualidade: vi.fn(),
     aoFalhar: vi.fn(),
     aoSair: vi.fn(),
     ...parcial,
@@ -50,7 +51,7 @@ describe('a barra flutuante', () => {
     expect(rotulos()).toEqual(['Abrir microfone', 'Abrir câmera', 'Compartilhar tela', 'Chat', 'Sair da sala'])
   })
 
-  it('transmitindo: trocar de tela e o áudio dela entram na barra, e trocar chama o compartilhamento', async () => {
+  it('transmitindo: trocar, o áudio e os ajustes da tela entram na barra, e trocar chama o compartilhamento', async () => {
     const usuario = userEvent.setup()
     const compartilhamento = compartilhamentoFalso({ ativo: true }) as Compartilhamento
     montarBarra({ compartilhamento })
@@ -61,6 +62,7 @@ describe('a barra flutuante', () => {
       'Parar de compartilhar a tela',
       'Trocar de tela',
       'Áudio da tela — marque "compartilhar áudio" no seletor',
+      'Qualidade da transmissão',
       'Chat',
       'Sair da sala',
     ])

@@ -1,17 +1,17 @@
-/* Flutuante e centrada no rodapé. Cada ação tem sua própria superfície, enquanto a caixa
-   externa só cria contraste sobre câmeras e telas claras. */
+/* Flutuante e centrada no rodapé do palco. A caixa é uma pílula de vidro: contorno de divisor
+   sobre superfície translúcida, para dar contraste em cima de telas claras sem virar bloco. */
 .barra {
   max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   overflow-x: auto;
-  padding: 7px;
-  border-radius: 16px;
-  background: var(--veu);
-  backdrop-filter: blur(12px);
+  padding: 6px;
+  border-radius: var(--raio-lg);
   border: 1px solid var(--linha);
-  box-shadow: var(--sombra-flutuante);
+  background: color-mix(in srgb, var(--superficie) 90%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sombra-md);
   scrollbar-width: none;
 }
 
@@ -20,20 +20,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   width: 44px;
   height: 44px;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: var(--raio-botao-da-barra);
   border: 1px solid transparent;
-  background: var(--controle);
-  color: var(--texto);
-  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
+  background: transparent;
+  color: var(--neutro-200);
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
 .botao:hover:not(:disabled) {
-  background: var(--superficie-selecionada);
-  color: var(--texto);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--texto) 9%, transparent);
 }
 
 .botao:disabled {
@@ -41,56 +40,77 @@
   cursor: not-allowed;
 }
 
-.botao[aria-pressed='true'] {
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
+/* Microfone e câmera fechados: o botão apagado é o estado, não o contorno. */
+.botao[data-tom='fechado'] {
+  background: var(--neutro-800);
+  color: var(--neutro-400);
 }
 
-.perigo {
-  color: var(--texto-sobre-acento);
-  background: var(--perigo);
+/* A sua tela no ar — o único halo da interface. */
+.botao[data-tom='aceso'] {
+  border-color: var(--acao);
+  color: var(--acao);
+  box-shadow: var(--brilho-do-acento);
 }
 
-.perigo:hover:not(:disabled) {
-  background: var(--perigo-forte);
-  color: var(--texto-sobre-acento);
+.botao[data-tom='ativo'] {
+  background: color-mix(in srgb, var(--acao) 14%, transparent);
+  color: var(--acao);
+}
+
+.botao[data-tom='convite'] {
+  color: var(--acento-300);
+}
+
+.botao[data-tom='convite']:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--acao) 12%, transparent);
+}
+
+.botao[data-tom='perigo'] {
+  color: var(--perigo);
+}
+
+.botao[data-tom='perigo']:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--perigo-forte) 16%, transparent);
 }
 
 .separador {
   width: 1px;
-  height: 26px;
-  background: var(--linha-forte);
-  margin: 0 4px;
+  height: 22px;
+  flex: none;
+  margin: 0 3px;
+  background: var(--linha);
+}
+
+.contador {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--raio-pilula);
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
+  font-size: 9px;
+  font-weight: var(--peso-forte);
 }
 
 @media (max-width: 520px) {
   .barra {
-    gap: 4px;
+    gap: 2px;
     padding: 5px;
-    border-radius: 14px;
   }
 
   .botao {
     width: 40px;
     height: 40px;
-    border-radius: 10px;
   }
 
   .separador {
     margin: 0 1px;
   }
-}
-
-.contador {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  min-width: 18px;
-  padding: 0 5px;
-  border-radius: var(--raio-pilula);
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
-  font-size: var(--texto-xs);
-  font-weight: 700;
-  line-height: 18px;
 }

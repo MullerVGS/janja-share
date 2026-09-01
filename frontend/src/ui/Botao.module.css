@@ -4,15 +4,15 @@
   justify-content: center;
   gap: 7px;
   cursor: pointer;
-  font-weight: 620;
-  font-size: var(--texto-md);
+  font-weight: var(--peso-titulo);
+  font-size: 14px;
   line-height: 1.2;
   color: var(--texto);
   background: transparent;
   border: 1px solid transparent;
   padding: 9px var(--e4);
   border-radius: var(--raio-md);
-  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
 .botao:disabled {
@@ -20,38 +20,43 @@
   cursor: not-allowed;
 }
 
+/* O primário é contorno de acento, nunca preenchido: o único bloco de cor cheia da interface é
+   o vídeo, e um botão chapado disputaria com ele. O peso vem da borda e do texto. */
 .primario {
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
+  color: var(--acao);
+  border-color: var(--acao);
 }
 .primario:hover:not(:disabled) {
-  background: var(--acao-forte);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--acao) 12%, transparent);
+}
+.primario:active:not(:disabled) {
+  background: color-mix(in srgb, var(--acao) 22%, transparent);
 }
 
 .secundario {
-  border-color: transparent;
-  background: var(--controle);
+  border-color: var(--linha);
 }
 .secundario:hover:not(:disabled) {
-  background: var(--superficie-selecionada);
+  background: color-mix(in srgb, var(--texto) 7%, transparent);
+}
+.secundario:active:not(:disabled) {
+  background: color-mix(in srgb, var(--texto) 14%, transparent);
 }
 
 .fantasma {
-  color: var(--texto-fraco);
+  color: var(--acao);
+  padding-inline: var(--e1);
 }
 .fantasma:hover:not(:disabled) {
-  background: var(--realce);
-  color: var(--texto);
+  background: color-mix(in srgb, var(--acao) 10%, transparent);
 }
 
 .perigo {
-  border-color: var(--perigo-fraca);
+  border-color: color-mix(in srgb, var(--perigo) 45%, transparent);
   color: var(--perigo-texto);
-  background: var(--perigo-fraca);
 }
 .perigo:hover:not(:disabled) {
-  background: var(--perigo-media);
+  background: var(--perigo-fraca);
 }
 
 .blocoInteiro {

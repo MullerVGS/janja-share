@@ -4,7 +4,7 @@
   min-width: 0;
   display: flex;
   overflow: hidden;
-  background: var(--conteudo);
+  background: var(--fundo);
 }
 
 .conteudoDaSala {
@@ -13,7 +13,6 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--conteudo);
 }
 
 .corpoDaSala {
@@ -31,38 +30,41 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  background: var(--conteudo);
 }
 
-/* Controles e miniaturas flutuam sobre o palco. O contêiner não captura cliques; somente as
-   peças interativas dentro dele voltam a receber ponteiro. */
+/* O véu das camadas: cobre o palco inteiro atrás da barra lateral ou da gaveta, e fechá-las é
+   clicar em qualquer lugar dele. */
+.veu {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--fundo) 65%, black);
+}
+
+/* A faixa de avatares e a barra de controles flutuam sobre o palco. O contêiner não captura
+   cliques; somente as peças interativas dentro dele voltam a receber ponteiro. */
 .interface {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: var(--e3);
-  padding: var(--e3) var(--e3) var(--e4);
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px var(--e3) 14px;
   pointer-events: none;
-  transition: opacity 0.18s ease, visibility 0.18s;
+  transition: opacity 0.25s ease;
 }
 
 .interface[data-interface='oculta'] {
   opacity: 0;
-  visibility: hidden;
+  pointer-events: none;
+  transition-duration: 0.45s;
 }
 
-.alto {
-  min-height: 0;
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-
+.alto,
 .baixo {
-  flex: none;
+  max-width: 100%;
   display: flex;
   justify-content: center;
 }
@@ -72,18 +74,22 @@
   pointer-events: auto;
 }
 
+.interface[data-interface='oculta'] .alto > *,
+.interface[data-interface='oculta'] .baixo > * {
+  pointer-events: none;
+}
+
 /* Erro é alarme, não moldura: permanece por cima de navegação, palco e painéis. */
 .avisos {
   position: absolute;
   top: calc(var(--altura-do-topo) + var(--e3));
   left: 50%;
-  z-index: 6;
+  z-index: 60;
   width: min(580px, calc(100% - var(--e10)));
   display: flex;
   flex-direction: column;
   gap: var(--e2);
   transform: translateX(-50%);
-  filter: drop-shadow(var(--sombra-md));
 }
 
 .avisos:empty {
@@ -96,9 +102,9 @@
   }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 680px) {
   .interface {
-    padding: var(--e2) var(--e2) var(--e3);
+    padding: 10px var(--e2) 12px;
   }
 
   .avisos {

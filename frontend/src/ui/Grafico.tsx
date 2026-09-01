@@ -3,7 +3,7 @@ import { TETO_DO_HISTORICO } from '../telemetria/historico'
 import { caminho, dominioY, marcasY, posicoesX, yDe, type Faixa, type Serie } from './grafico'
 import estilos from './Grafico.module.css'
 
-export type CorDaSerie = 'acao' | 'turquesa'
+export type CorDaSerie = 'acao' | 'apoio'
 
 export interface SerieDoGrafico {
   nome: string

@@ -95,8 +95,6 @@ export interface Compartilhamento {
   reiniciar(): Promise<void>
   /** Reabre o seletor para escolher outra tela; cancelar deixa a de agora no ar. */
   trocarDeTela(): Promise<void>
-  /** Publica faixas capturadas fora daqui — a captura que a home abriu antes de navegar. */
-  adotar(faixas: LocalTrack[]): Promise<void>
   /**
    * True só durante o vaivém interno de unpublish+republish de `trocarDeTela` — a própria tela
    * some e volta da lista de telas publicadas nesse meio-tempo. Existe para quem monta o palco
@@ -393,28 +391,6 @@ export function useCompartilhamento(
   }, [sala, perfil])
 
   /** Publica faixas capturadas fora daqui — a captura que a home abriu antes de navegar. */
-  const adotar = useCallback(
-    async (faixas: LocalTrack[]) => {
-      if (!sala) return
-      const participante = sala.localParticipant
-      setErro(null)
-      setMudando(true)
-      try {
-        const video = faixas.find((faixa) => faixa.kind === Track.Kind.Video)
-        if (!video) return
-        await participante.publishTrack(video, opcoesDePublicacao(perfil))
-        const audio = faixas.find((faixa) => faixa.kind === Track.Kind.Audio)
-        if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
-      } catch (falha) {
-        setErro(falha instanceof Error ? falha.message : 'não foi possível compartilhar a tela')
-      } finally {
-        pararOQueNaoFoiAoAr(sala, faixas)
-        setMudando(false)
-      }
-    },
-    [sala, perfil],
-  )
-
   /**
    * Calar o som da tela é `mute()` na publicação, não despublicar: a faixa continua no ar,
    * quem assiste vê o silêncio chegar na hora, e voltar a falar não custa uma renegociação.
@@ -448,7 +424,6 @@ export function useCompartilhamento(
     alternar,
     reiniciar,
     trocarDeTela,
-    adotar,
     trocandoTela,
   }
 }

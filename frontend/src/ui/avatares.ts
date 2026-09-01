@@ -1,17 +1,12 @@
-// Vermelho fica reservado a parar, sair e erro; avatares usam somente cores de identidade.
-const MATIZES = ['--acao', '--atencao', '--conectado', '--turquesa'] as const
-
+/**
+ * As iniciais que representam alguém sem foto — no avatar da lista, na faixa do palco e no
+ * círculo grande de quem está sem câmera. Uma regra só para os três: duas letras sempre que o
+ * nome der, porque uma letra sozinha confunde metade da sala numa lista de dez pessoas.
+ */
 export function iniciaisDoNome(nome: string): string {
   const termos = nome.trim().split(/\s+/).filter(Boolean)
   if (termos.length === 0) return '?'
-  const primeira = termos[0]!.charAt(0)
-  const ultima = termos.length > 1 ? termos[termos.length - 1]!.charAt(0) : ''
-  return (primeira + ultima).toUpperCase()
-}
-
-export function corDoNome(nome: string): string {
-  let hash = 0
-  for (let i = 0; i < nome.length; i++) hash = (hash * 31 + nome.charCodeAt(i)) | 0
-  const indice = Math.abs(hash) % MATIZES.length
-  return `var(${MATIZES[indice]})`
+  const primeiro = termos[0]!
+  if (termos.length === 1) return primeiro.slice(0, 2).toUpperCase()
+  return (primeiro.charAt(0) + termos[termos.length - 1]!.charAt(0)).toUpperCase()
 }

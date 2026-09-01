@@ -1,10 +1,23 @@
+/* A coluna de 190px à direita do destaque. A opacidade é quem some — não a caixa: tirar a
+   coluna do fluxo faria o destaque crescer e encolher a cada 2,6 s de mouse parado. */
 .tira {
+  flex: none;
+  width: var(--largura-das-miniaturas);
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  max-height: 100%;
+  gap: 10px;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+
+.tira[data-visivel] {
+  opacity: 1;
+  pointer-events: auto;
+  transition-duration: 0.25s;
 }
 
 /* A miniatura é um contêiner: o botão que promove ao palco cobre a imagem, e o rodapé — nome e
@@ -12,25 +25,22 @@
 .miniatura {
   position: relative;
   flex: none;
-  width: 176px;
+  width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 1px solid var(--linha);
-  border-radius: var(--raio-lg);
-  background: var(--palco);
-  box-shadow: var(--sombra-flutuante);
-  transition: border-color 0.12s ease, transform 0.12s ease;
+  border-radius: 10px;
+  background: var(--vidro-do-quadro);
+  transition: border-color 0.12s ease;
 }
 
 .miniatura:hover,
 .miniatura:has(.escolher:focus-visible) {
   border-color: var(--acao);
-  transform: scale(1.02);
 }
 
 .miniatura[data-falando] {
-  border-color: var(--conectado);
-  box-shadow: 0 0 0 1px var(--conectado), var(--sombra-md);
+  border-color: var(--acao);
 }
 
 .escolher {
@@ -52,46 +62,68 @@
 
 .iniciais {
   font-size: var(--texto-lg);
-  font-weight: 700;
-  color: var(--texto-fraco);
+  font-weight: var(--peso-forte);
+  color: var(--neutro-400);
+}
+
+.pontoAoVivo {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acao);
+  animation: shPulsar 2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .rodape {
   position: absolute;
-  left: var(--e1);
-  right: var(--e1);
-  bottom: var(--e1);
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  padding: 1px 4px 1px 6px;
-  border-radius: 6px;
-  background: var(--veu-suave);
-  backdrop-filter: blur(6px);
+  padding: 4px 8px;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--fundo) 82%, transparent) 45%);
 }
 
 .nome {
   min-width: 0;
   flex: 1;
-  color: var(--texto);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--neutro-300);
   font-size: var(--texto-xs);
-  font-weight: 600;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-@media (max-width: 620px) {
+.iconeDaTela {
+  flex: none;
+  display: flex;
+  color: var(--acao);
+}
+
+/* No estreito a coluna vira uma faixa que rola sob o destaque. */
+@media (max-width: 1080px) {
   .tira {
+    width: auto;
     max-width: 100%;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
   }
 
   .miniatura {
-    width: 122px;
+    width: 152px;
   }
 
   /* Na miniatura estreita o deslizador não cabe ao lado do nome; o mudo continua a um toque. */
