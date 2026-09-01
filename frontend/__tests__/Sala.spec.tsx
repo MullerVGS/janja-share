@@ -266,8 +266,35 @@ describe('sala: o palco', () => {
       expect(screen.queryByRole('button', { name: 'Pôr a tela de Bia no palco' })).not.toBeInTheDocument(),
     )
     expect(screen.getByRole('navigation', { hidden: true })).not.toHaveAttribute('data-aberta')
-    // O destaque continua lá: a imersão esconde a moldura, não a imagem.
-    expect(palcoDe(container)).toHaveTextContent('Sua tela')
+    // A moldura apaga na hora, etiqueta do quadro inclusive — e a imagem, que é o ponto da
+    // imersão, continua lá.
+    expect(palcoDe(container)).not.toHaveTextContent('Sua tela')
+    expect(container.querySelector('[data-imagem]')).toBeInTheDocument()
+  })
+
+  it('na imersão o topo entra na camada que some: apaga no clique e volta ao mover o ponteiro', async () => {
+    const usuario = userEvent.setup()
+    comDuasTelas()
+    const { container } = montarSala()
+    // O topo só está "na camada" quando tem um contêiner de auto-ocultar acima dele.
+    const topo = () =>
+      screen.getByRole('button', { name: 'Pessoas e telas' }).closest<HTMLElement>('[data-interface]')
+    expect(topo()).toBeNull()
+
+    await usuario.click(container.querySelector('[data-imagem]') as HTMLElement)
+
+    // Sem esperar relógio nenhum: o clique que pede a tela inteira apaga a moldura na hora.
+    await waitFor(() => expect(topo()).toHaveAttribute('data-interface', 'oculta'))
+    // E deixou a coluna: agora mora dentro do palco, que ficou com a altura toda.
+    expect(screen.getByRole('main', { name: 'Palco da sala' })).toContainElement(topo())
+
+    act(() => {
+      window.dispatchEvent(new Event('pointermove'))
+    })
+    expect(topo()).toHaveAttribute('data-interface', 'visivel')
+
+    await usuario.click(container.querySelector('[data-imagem]') as HTMLElement)
+    await waitFor(() => expect(topo()).toBeNull())
   })
 
   it('abrir a barra lateral sai da imersão', async () => {
@@ -280,6 +307,10 @@ describe('sala: o palco', () => {
       expect(screen.queryByRole('button', { name: 'Pôr a tela de Bia no palco' })).not.toBeInTheDocument(),
     )
 
+    // Na imersão o topo está apagado e não recebe ponteiro; mover o mouse é o que o traz de volta.
+    act(() => {
+      window.dispatchEvent(new Event('pointermove'))
+    })
     await usuario.click(screen.getByRole('button', { name: 'Pessoas e telas' }))
 
     expect(screen.getByRole('navigation')).toHaveAttribute('data-aberta')

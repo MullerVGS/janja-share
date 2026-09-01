@@ -41,6 +41,23 @@
   background: color-mix(in srgb, var(--fundo) 65%, black);
 }
 
+/* O topo na imersão: fora da coluna, por cima do palco e no mesmo relógio da moldura. Cobre a
+   largura do palco e só ela — a gaveta, quando aberta, fica ao lado e continua inteira. */
+.topoFlutuante {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 12;
+  transition: opacity 0.25s ease;
+}
+
+.topoFlutuante[data-interface='oculta'] {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: 0.45s;
+}
+
 /* A faixa de avatares e a barra de controles flutuam sobre o palco. O contêiner não captura
    cliques; somente as peças interativas dentro dele voltam a receber ponteiro. */
 .interface {
@@ -97,7 +114,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .interface {
+  .interface,
+  .topoFlutuante {
     transition: none;
   }
 }
