@@ -36,9 +36,15 @@ import estilos from './Sala.module.css'
 export function Sala() {
   const { slug = '' } = useParams()
   const { credenciaisDe, guardar, encerrar } = useSessao()
-  const credenciais = credenciaisDe(slug)
+  // A validade guardada decide só se vale abrir um `connect()` novo. Uma vez conectada, a sala
+  // vive de tokens que o servidor renova sozinho (`refreshToken`) — o JWT original vencer não
+  // muda nada. Reler a sessão a cada render era o que expulsava, para o formulário, quem
+  // passava das 8h assistindo.
+  const [entrada, setEntrada] = useState(() => ({ slug, credenciais: credenciaisDe(slug) }))
+  if (entrada.slug !== slug) setEntrada({ slug, credenciais: credenciaisDe(slug) })
+  const { credenciais } = entrada
   const navegar = useNavigate()
-  const { sala, conexao, erro, versao, audioLiberado, liberarAudio } = useSala(credenciais)
+  const { sala, conexao, erro, queda, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const telemetria = useTelemetria(sala)
   const compartilhamento = useCompartilhamento(sala, telemetria.emissor, telemetria.espectadores)
 
@@ -150,7 +156,10 @@ export function Sala() {
     return (
       <EntradaDaSala
         slug={slug}
-        aoEntrar={guardar}
+        aoEntrar={(novas) => {
+          guardar(novas)
+          setEntrada({ slug, credenciais: novas })
+        }}
         aoVoltar={() => navegar('/', { replace: true })}
       />
     )
@@ -267,6 +276,7 @@ export function Sala() {
       {/* Os avisos não se escondem com o resto: erro não é moldura, é alarme. */}
       <div className={estilos.avisos}>
         {erro && <Aviso tom="erro">Não foi possível conectar à sala: {erro}</Aviso>}
+        {queda && <Aviso tom="erro">Conexão perdida. Voltando para a sala… (tentativa {queda.tentativa})</Aviso>}
 
         {!audioLiberado && (
           <Aviso tom="neutro">

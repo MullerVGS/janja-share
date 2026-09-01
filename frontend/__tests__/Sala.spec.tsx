@@ -15,7 +15,13 @@ import { credenciaisFalsas, guardarSessao } from './apoio/sessaoFalsa'
 import { chamadas, servir } from './apoio/servidorFalso'
 
 /** O que os hooks do SDK devolvem; o teste mexe aqui e re-renderiza. */
-const falso = vi.hoisted(() => ({ compartilhando: false, trocandoTela: false, sala: null as Room | null, versao: 0 }))
+const falso = vi.hoisted(() => ({
+  compartilhando: false,
+  trocandoTela: false,
+  sala: null as Room | null,
+  versao: 0,
+  queda: null as { tentativa: number } | null,
+}))
 
 vi.mock('../src/sala/useSala', async () => {
   const { ConnectionState } = await import('livekit-client')
@@ -24,6 +30,7 @@ vi.mock('../src/sala/useSala', async () => {
       sala: falso.sala,
       conexao: ConnectionState.Connected,
       erro: null,
+      queda: falso.queda,
       versao: falso.versao,
       audioLiberado: true,
       liberarAudio() {},
@@ -105,6 +112,7 @@ afterEach(() => {
   falso.trocandoTela = false
   falso.sala = null
   falso.versao = 0
+  falso.queda = null
   localStorage.clear()
 })
 
@@ -478,5 +486,33 @@ describe('sala: sem credenciais para o slug', () => {
 
     expect(screen.getByRole('dialog', { name: 'Entrar na sala' })).toBeInTheDocument()
     expect(screen.getByText('#share')).toBeInTheDocument()
+  })
+})
+
+describe('sala: a validade da credencial decide só a entrada', () => {
+  it('o JWT vencer durante a sala não derruba ninguém — o servidor renova o token da conexão viva', () => {
+    const daquiAUmMinuto = Date.now() + 60_000
+    guardarSessao(credenciaisFalsas(daquiAUmMinuto), daquiAUmMinuto)
+    montar(
+      <Routes>
+        <Route path="/sala/:slug" element={<Cenario />} />
+      </Routes>,
+      '/sala/share',
+    )
+    expect(screen.getByRole('main', { name: 'Palco da sala' })).toBeInTheDocument()
+
+    // Duas horas depois, um evento qualquer do palco re-renderiza a Sala — era aqui que a
+    // credencial "vencida" virava null, a sala desconectava e a pessoa caía no formulário.
+    vi.spyOn(Date, 'now').mockReturnValue(daquiAUmMinuto + 2 * 60 * 60 * 1000)
+    fireEvent.click(screen.getByRole('button', { name: 'mexer no palco' }))
+
+    expect(screen.getByRole('main', { name: 'Palco da sala' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Entrar na sala' })).not.toBeInTheDocument()
+  })
+
+  it('a sala caída avisa que está voltando sozinha, e em que tentativa vai', () => {
+    falso.queda = { tentativa: 3 }
+    montarSala()
+    expect(screen.getByText(/conexão perdida/i)).toHaveTextContent('tentativa 3')
   })
 })
