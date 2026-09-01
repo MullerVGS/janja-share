@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { amostraVaziaDoEmissor } from '../../src/telemetria/amostra'
-import { inferirLimitacao } from '../../src/telemetria/limitacao'
+import { encoderIncapaz, inferirLimitacao } from '../../src/telemetria/limitacao'
 
 const PEDIDO = { tetoKbps: 8_000, fps: 60 }
 
@@ -47,5 +47,30 @@ describe('inferirLimitacao', () => {
 
   it('sem kbps medido não há veredicto', () => {
     expect(inferirLimitacao({ ...comoOTutti(), kbps: null }, PEDIDO)).toBeNull()
+  })
+})
+
+describe('encoderIncapaz', () => {
+  it('o caso medido é incapaz: 9% do autorizado com os quadros para trás', () => {
+    expect(encoderIncapaz(comoOTutti(), PEDIDO)).toBe(true)
+  })
+
+  it('encoder apenas apertado não é incapaz — isso é caso de degrau, não de trocar codec', () => {
+    const apertado = { ...amostraVaziaDoEmissor(1_000), kbps: 3_000, fpsCodificado: 30, fpsCaptura: 60, perda: 0 }
+    expect(inferirLimitacao(apertado, PEDIDO)).toBe('cpu')
+    expect(encoderIncapaz(apertado, PEDIDO)).toBe(false)
+  })
+
+  it('sem kbps medido não se acusa incapacidade', () => {
+    expect(encoderIncapaz({ ...comoOTutti(), kbps: null }, PEDIDO)).toBe(false)
+  })
+
+  it('tela parada não é encoder incapaz', () => {
+    const parada = { ...amostraVaziaDoEmissor(1_000), kbps: 100, fpsCodificado: 5, fpsCaptura: 5, perda: 0 }
+    expect(encoderIncapaz(parada, PEDIDO)).toBe(false)
+  })
+
+  it('rede perdendo não é encoder incapaz, por pior que esteja a entrega', () => {
+    expect(encoderIncapaz({ ...comoOTutti(), perda: 8 }, PEDIDO)).toBe(false)
   })
 })

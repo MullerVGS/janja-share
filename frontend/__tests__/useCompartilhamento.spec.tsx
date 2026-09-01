@@ -364,7 +364,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     // `ligar()` já publicou as duas faixas na captura inicial; as contagens abaixo são só da republicação.
     sala.localParticipant.publishTrack.mockClear()
 
-    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    await agir(() => result.current.definirCodecPreferido('av1'))
 
     const { unpublishTrack, publishTrack } = sala.localParticipant
     expect(unpublishTrack.mock.calls).toEqual([
@@ -385,19 +385,22 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     expect(faixaDeVideo?.mediaStreamTrack.readyState).toBe('live')
   })
 
-  it('trocar o conteúdo troca o codec do preset e republica do mesmo jeito; sem áudio, só o vídeo', async () => {
+  it('trocar o conteúdo não mexe no codec nem republica: conteúdo não escolhe encoder', async () => {
     const sala = new SalaFalsa()
     sala.comAudio = false
     const { result, ligar, agir } = montar(sala)
     await ligar()
-    // `ligar()` já publicou a faixa de vídeo na captura inicial; a contagem abaixo é só da republicação.
+    const codecAntes = sala.video()?.track.codec
     sala.localParticipant.publishTrack.mockClear()
 
     await agir(() => result.current.definirPerfil({ ...PRESET_DO_CONTEUDO.jogo }))
 
-    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledTimes(1)
-    expect(sala.localParticipant.publishTrack).toHaveBeenCalledTimes(1)
-    expect(sala.video()?.track.codec).toBe('h264')
+    // O pedido muda no que é de conteúdo — fps e o eixo a ceder —, e a faixa fica onde está.
+    expect(result.current.perfil.fps).toBe(60)
+    expect(result.current.perfil.ceder).toBe('resolucao')
+    expect(sala.localParticipant.unpublishTrack).not.toHaveBeenCalled()
+    expect(sala.localParticipant.publishTrack).not.toHaveBeenCalled()
+    expect(sala.video()?.track.codec).toBe(codecAntes)
   })
 
   it('o mesmo codec não republica nada', async () => {
@@ -415,7 +418,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     const { result, ligar, batida } = montar(sala)
     await ligar()
 
-    act(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    act(() => result.current.definirCodecPreferido('av1'))
     await batida()
     await batida()
     expect(sala.video()).toBeUndefined()
@@ -438,7 +441,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     const opcoesAntigas = sala.video()?.options
     sala.localParticipant.publishTrack.mockRejectedValueOnce(new Error('codec not supported'))
 
-    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    await agir(() => result.current.definirCodecPreferido('av1'))
 
     expect(result.current.codecPendente).toBe('av1')
     expect(result.current.perfil.codec).toBe('av1')
@@ -464,7 +467,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
       return undefined
     })
 
-    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    await agir(() => result.current.definirCodecPreferido('av1'))
 
     expect(sala.localParticipant.publishTrack).not.toHaveBeenCalled()
     expect(result.current.codecPendente).toBe('av1')
@@ -485,7 +488,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
       return publicar?.(faixa, opcoes) as Promise<Publicacao>
     })
 
-    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    await agir(() => result.current.definirCodecPreferido('av1'))
 
     expect(sala.video()?.track.codec).toBe('av1')
     expect(result.current.codecPendente).toBeNull()
@@ -499,7 +502,7 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     const { result, ligar, agir } = montar(sala)
     await ligar()
     sala.localParticipant.publishTrack.mockRejectedValueOnce(new Error('nope'))
-    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    await agir(() => result.current.definirCodecPreferido('av1'))
     expect(result.current.codecPendente).toBe('av1')
     sala.localParticipant.setScreenShareEnabled.mockClear()
     seletor.abrir.mockClear()
@@ -522,9 +525,9 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     const { result, ligar, batida, ateAssentar, reler } = montar(sala)
     await ligar()
 
-    act(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    act(() => result.current.definirCodecPreferido('av1'))
     await batida()
-    act(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'h264' }))
+    act(() => result.current.definirCodecPreferido('h264'))
     await ateAssentar()
     reler()
 
@@ -582,7 +585,7 @@ describe('useCompartilhamento: áudio da tela', () => {
     await ligar()
     await agir(() => result.current.alternarAudioDaTela())
 
-    await agir(() => result.current.definirPerfil({ ...result.current.perfil, codec: 'av1' }))
+    await agir(() => result.current.definirCodecPreferido('av1'))
 
     expect(sala.video()?.track.codec).toBe('av1')
     expect(sala.audio()).toBeDefined()

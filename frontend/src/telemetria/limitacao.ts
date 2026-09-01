@@ -20,6 +20,14 @@ import type { AmostraDoEmissor, Limitacao } from './amostra'
 
 /** Abaixo disto o encoder está deixando na mesa o que lhe foi autorizado. */
 export const APROVEITAMENTO_BAIXO = 0.5
+/**
+ * Bem abaixo do outro, e a distância entre os dois é o ponto: um encoder apertado por uma
+ * máquina ocupada entrega menos do que podia e é caso de ceder degrau; um encoder que entrega
+ * um décimo do autorizado não está apertado, está **incapaz** daquele codec — e degradar a
+ * imagem não conserta a implementação embaixo dele. O caso medido que originou isto entregava
+ * 0,09.
+ */
+export const APROVEITAMENTO_PATOLOGICO = 0.25
 /** Abaixo disto o encoder está ficando para trás da fonte. */
 export const ACOMPANHAMENTO_BAIXO = 0.7
 /**
@@ -82,4 +90,26 @@ export function inferirLimitacao(amostra: AmostraDoEmissor, pedido: PedidoDoEnco
   if (acompanhamento.estimado && aproveitamento >= APROVEITAMENTO_BAIXO / 2) return null
 
   return 'cpu'
+}
+
+/**
+ * O encoder não dá conta **deste codec** — o que é diferente de estar apertado.
+ *
+ * Existe para separar as duas respostas que a mesma limitação por CPU comporta. Uma máquina
+ * ocupada codificando no codec certo cede alguns quadros e se resolve com um degrau; uma
+ * máquina que caiu num encoder por software entrega uma fração ínfima do autorizado, e aí
+ * nenhum degrau resolve, porque o problema não é quanto se pede e sim quem está codificando.
+ *
+ * Sem esta distinção, a primeira janela de CPU de qualquer transmissão trocaria o codec — e
+ * quem já estava no codec certo pagaria um pisca para não ganhar nada.
+ */
+export function encoderIncapaz(amostra: AmostraDoEmissor, pedido: PedidoDoEncoder): boolean {
+  if (!amostra.ativo) return false
+  if ((amostra.perda ?? 0) > PERDA_DA_REDE) return false
+
+  const aproveitamento = aproveitamentoDe(amostra, pedido)
+  if (aproveitamento === null || aproveitamento >= APROVEITAMENTO_PATOLOGICO) return false
+
+  const acompanhamento = acompanhamentoDe(amostra, pedido)
+  return acompanhamento !== null && acompanhamento.valor < ACOMPANHAMENTO_BAIXO
 }

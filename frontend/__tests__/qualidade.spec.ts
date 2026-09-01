@@ -197,10 +197,10 @@ describe('presets por conteúdo', () => {
     })
   })
 
-  it('Jogo: 1080p a 60 fps, partindo de 8000 kbps, H.264, cede resolução', () => {
+  it('Jogo: 1080p a 60 fps, partindo de 8000 kbps, cede resolução — e o codec não é do conteúdo', () => {
     expect(PRESET_DO_CONTEUDO.jogo).toEqual({
       conteudo: 'jogo',
-      codec: 'h264',
+      codec: 'vp9',
       resolucao: '1080p',
       fps: 60,
       ceder: 'resolucao',
@@ -220,7 +220,7 @@ describe('presets por conteúdo', () => {
 describe('troca de conteúdo', () => {
   it('aplica codec, quadros, teto e o eixo a ceder do preset escolhido', () => {
     const depois = trocarConteudo(PRESET_DO_CONTEUDO.texto, 'jogo')
-    expect(depois).toMatchObject({ conteudo: 'jogo', codec: 'h264', fps: 60, tetoKbps: 8000, ceder: 'resolucao' })
+    expect(depois).toMatchObject({ conteudo: 'jogo', fps: 60, tetoKbps: 8000, ceder: 'resolucao' })
   })
 
   it('preserva a resolução escolhida — quem desceu para 720p por causa da rede não volta a 1080p', () => {

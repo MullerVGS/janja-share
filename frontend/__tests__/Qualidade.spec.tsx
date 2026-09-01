@@ -31,7 +31,7 @@ describe('aba Qualidade: controles', () => {
     montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' } })
 
     expect(screen.getByRole('radio', { name: 'Jogo' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'H.264' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'VP9' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '720p' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '60' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Resolução' })).toBeChecked()

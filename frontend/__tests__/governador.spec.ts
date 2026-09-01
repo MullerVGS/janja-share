@@ -16,7 +16,9 @@ import type { Espectador } from '../src/telemetria/relato'
 const QUADROS: PerfilDeQualidade = { ...PERFIL_PADRAO, fps: 60, ceder: 'quadros' }
 const RESOLUCAO: PerfilDeQualidade = { ...PERFIL_PADRAO, resolucao: '1080p', fps: 30, ceder: 'resolucao' }
 const TEXTO: PerfilDeQualidade = PRESET_DO_CONTEUDO.texto // VP9 (SVC), cede quadros
-const JOGO: PerfilDeQualidade = PRESET_DO_CONTEUDO.jogo // H.264 (sem SVC), cede resolução
+const JOGO: PerfilDeQualidade = PRESET_DO_CONTEUDO.jogo // cede resolução; o codec vem da máquina
+/** Codec sem SVC: o SFU não tem camada menor para dar ao espectador lento, e o pior deles é o teto. */
+const SEM_SVC: PerfilDeQualidade = { ...PRESET_DO_CONTEUDO.jogo, codec: 'h264' }
 
 /**
  * Um espectador visto agora, com o relato que o caso precisa e o resto vazio.
@@ -461,7 +463,7 @@ describe('governador: o outro lado', () => {
 
   it('em codec sem SVC, espectador perdendo pacote faz descer, não só segurar', () => {
     const sofrendo = [espectador({ perda: 8 })]
-    const sessao = new Sessao(JOGO).comEspectadores(sofrendo).segundos(20, NO_AR)
+    const sessao = new Sessao(SEM_SVC).comEspectadores(sofrendo).segundos(20, NO_AR)
     expect(sessao.degrau).not.toBeNull()
   })
 
@@ -553,8 +555,14 @@ describe('governador: memória e descrição', () => {
 })
 
 
-/** Cedendo resolução (540 de 1080) — é o que o governador exige para agir com o preset Jogo. */
-const CEDENDO: Parcial = { ...NO_AR, altura: 540 }
+/**
+ * Cedendo resolução (540 de 1080) e com a assinatura de encoder **incapaz**: 700 kbps de um teto
+ * de 8000 e 12 dos 60 quadros da fonte. É o retrato do caso medido, e é o que o governador exige
+ * para gastar a correção de codec — CPU apertada sozinha não basta.
+ */
+const CEDENDO: Parcial = { ...NO_AR, altura: 540, kbps: 700, fpsCodificado: 12, fpsCaptura: 60 }
+/** Cedendo resolução por CPU, mas entregando bem: caso de degrau, nunca de trocar codec. */
+const CEDENDO_SEM_SER_INCAPAZ: Parcial = { ...NO_AR, altura: 540, kbps: 6_000, fpsCodificado: 55, fpsCaptura: 60 }
 /** A assinatura de encoder afogado, sem `limitadoPor`: é o que o Firefox entrega. */
 const AFOGADO_SEM_MOTIVO: Parcial = { ...CEDENDO, limitadoPor: null, kbps: 700, fpsCodificado: 12, fpsCaptura: 60 }
 
@@ -579,6 +587,13 @@ describe('governador: eixo de codec', () => {
     const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, { ...CEDENDO, limitadoPor: 'banda' })
     expect(sessao.estado.codec).toBeNull()
     expect(sessao.estado.tetoKbps).not.toBeNull()
+  })
+
+  it('encoder apertado mas entregando bem cede degrau, e não gasta a correção de codec', () => {
+    const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, { ...CEDENDO_SEM_SER_INCAPAZ, limitadoPor: 'cpu' })
+    expect(sessao.estado.codec).toBeNull()
+    expect(sessao.estado.codecCorrigido).toBe(false)
+    expect(sessao.degrau).not.toBeNull()
   })
 
   it('sem candidato não troca nada, e o degrau segue seu curso', () => {
