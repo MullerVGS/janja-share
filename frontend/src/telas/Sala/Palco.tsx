@@ -43,7 +43,7 @@ const OCULTAR_A_PILULA_MS = 2000
  */
 function PilulasDaTelaCheia({ children }: { children: ReactNode }) {
   const [mexeu, setMexeu] = useState(false)
-  const visivel = useAutoOcultar(false, OCULTAR_A_PILULA_MS)
+  const [visivel] = useAutoOcultar(false, OCULTAR_A_PILULA_MS)
 
   useEffect(() => {
     const aoMover = () => setMexeu(true)

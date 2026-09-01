@@ -107,7 +107,7 @@ export function Sala() {
   // Nunca some com a gaveta aberta ou com o teclado dentro do palco: sumir é para quem largou o
   // mouse parado, não para quem está no meio de alguma coisa.
   const focoDeTeclado = useFocoDeTeclado(areaDoPalco)
-  const interfaceVisivel = useAutoOcultar(gaveta.aberta || focoDeTeclado)
+  const [interfaceVisivel, ocultarAMoldura] = useAutoOcultar(gaveta.aberta || focoDeTeclado)
 
   const telasAntes = useRef<string[]>([])
   useEffect(() => {
@@ -159,6 +159,18 @@ export function Sala() {
     }
     setLateralFixa(mostrar)
     gravarPreferencias({ barraLateralAberta: mostrar })
+  }
+
+  /**
+   * O clique único no palco: a moldura sai de cena e o quadro fica com a tela toda.
+   *
+   * Entrar apaga a moldura **na hora** — esperar os 2,6 s do relógio faria o clique parecer sem
+   * efeito. Ela continua a um movimento do ponteiro de distância, e volta a sumir sozinha.
+   */
+  function alternarImersao() {
+    const entrando = !imersao
+    setImersao(entrando)
+    if (entrando) ocultarAMoldura()
   }
 
   function fecharCamadas() {
@@ -227,6 +239,22 @@ export function Sala() {
     navegar('/', { replace: true })
   }
 
+  const cabecalho = (
+    <Cabecalho
+      nomeDaSala={credenciais.nomeDaSala}
+      conexao={conexao}
+      pessoas={palco.pessoas.length}
+      aoAlternarLateral={alternarLateral}
+      lateralAberta={lateralAberta}
+      abaAMostra={gaveta.aberta ? abaDaGaveta : null}
+      aoAlternarAba={alternarPainel}
+      transmitindo={compartilhamento.ativo}
+      naoLidasNoChat={naoLidasNoChat}
+      conviteCopiado={conviteCopiado}
+      aoCopiarConvite={() => void copiarConvite()}
+    />
+  )
+
   return (
     <div className={estilos.sala}>
       <NavegacaoDaSala
@@ -249,27 +277,28 @@ export function Sala() {
       {camadaAberta && <div className={estilos.veu} onClick={fecharCamadas} aria-hidden="true" />}
 
       <section className={estilos.conteudoDaSala} aria-label={`Sala ${credenciais.nomeDaSala}`}>
-        <Cabecalho
-          nomeDaSala={credenciais.nomeDaSala}
-          conexao={conexao}
-          pessoas={palco.pessoas.length}
-          aoAlternarLateral={alternarLateral}
-          lateralAberta={lateralAberta}
-          abaAMostra={gaveta.aberta ? abaDaGaveta : null}
-          aoAlternarAba={alternarPainel}
-          transmitindo={compartilhamento.ativo}
-          naoLidasNoChat={naoLidasNoChat}
-          conviteCopiado={conviteCopiado}
-          aoCopiarConvite={() => void copiarConvite()}
-        />
+        {!imersao && cabecalho}
 
         <div className={estilos.corpoDaSala}>
           <main ref={areaDoPalco} className={estilos.areaDoPalco} aria-label="Palco da sala">
+            {/* Na imersão o topo deixa a coluna e passa a flutuar sobre o palco, no relógio da
+                moldura: some junto com os controles e volta junto com eles. Fica dentro do
+                <main> de propósito — assim cobre só o palco (nunca a gaveta aberta ao lado) e o
+                foco de teclado nele continua travando a moldura visível. */}
+            {imersao && (
+              <div
+                className={estilos.topoFlutuante}
+                data-interface={interfaceVisivel ? 'visivel' : 'oculta'}
+              >
+                {cabecalho}
+              </div>
+            )}
+
             <Palco
               emDestaque={emDestaque}
               miniaturas={miniaturas}
               aoFocar={focar}
-              aoAlternarImersao={() => setImersao((atual) => !atual)}
+              aoAlternarImersao={alternarImersao}
               volumes={volumes}
               interfaceVisivel={interfaceVisivel}
               zoom={zoom}
