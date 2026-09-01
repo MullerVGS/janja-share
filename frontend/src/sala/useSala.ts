@@ -1,6 +1,28 @@
 import { useEffect, useState } from 'react'
-import { ConnectionState, Room, RoomEvent } from 'livekit-client'
+import {
+  ConnectionError,
+  ConnectionErrorReason,
+  ConnectionState,
+  CriticalTimers,
+  DefaultReconnectPolicy,
+  DisconnectReason,
+  Room,
+  RoomEvent,
+} from 'livekit-client'
 import type { Credenciais } from '../api/salas'
+
+/**
+ * Quanto o SDK insiste antes de desistir de uma conexão que caiu. De fábrica são dez
+ * tentativas (~44 s) — pouco para um notebook acordando ou um celular trocando de rede. Enquanto
+ * ele insiste, a sessão é a mesma: quem transmitia volta transmitindo.
+ */
+export const ATRASOS_DA_RECONEXAO_MS: number[] = [0, 300, 1200, 2700, 4800, ...Array<number>(25).fill(7000)]
+
+/**
+ * Quando o SDK desiste, a sala religa por conta própria: `connect()` de novo, com as mesmas
+ * credenciais, esperando cada vez mais entre tentativas (a última espera vale para sempre).
+ */
+export const ESPERAS_DO_RELIGAR_MS: number[] = [1000, 2000, 4000, 8000, 15000]
 
 /**
  * Conecta na sala e mantém a UI em dia com o SDK.
@@ -27,8 +49,10 @@ const EVENTOS_DO_PALCO: RoomEvent[] = [
 export interface EstadoDaSala {
   sala: Room | null
   conexao: ConnectionState
-  /** Falha fatal de conexão — o `connect` que nunca completou. */
+  /** Falha fatal de conexão — o `connect` que nunca completou, ou uma queda de que não dá para voltar. */
   erro: string | null
+  /** A sala caiu e está tentando voltar sozinha; `null` quando não está caída. */
+  queda: { tentativa: number } | null
   /** Muda a cada evento do palco; existe para forçar a releitura do `Room`. */
   versao: number
   /** O Chrome bloqueia áudio antes de um gesto do usuário; quando bloqueia, isto fica falso. */
@@ -36,10 +60,22 @@ export interface EstadoDaSala {
   liberarAudio(): void
 }
 
+/**
+ * O que faz o religar parar: o servidor não achou a sala (ela morreu enquanto a pessoa estava
+ * fora — o SDK entrega o 404 como `NotAllowed`) ou recusou a credencial (a sessão venceu). Rede
+ * fora, SFU indisponível e afins voltam `null` — insistir é a resposta certa para eles.
+ */
+function motivoParaDesistir(falha: unknown): string | null {
+  if (!(falha instanceof ConnectionError) || falha.reason !== ConnectionErrorReason.NotAllowed) return null
+  if (falha.status === 404) return 'A sala foi encerrada enquanto você estava fora.'
+  return 'A sessão venceu. Entre na sala de novo.'
+}
+
 export function useSala(credenciais: Credenciais | null): EstadoDaSala {
   const [sala, setSala] = useState<Room | null>(null)
   const [conexao, setConexao] = useState<ConnectionState>(ConnectionState.Disconnected)
   const [erro, setErro] = useState<string | null>(null)
+  const [queda, setQueda] = useState<{ tentativa: number } | null>(null)
   const [versao, setVersao] = useState(0)
   const [audioLiberado, setAudioLiberado] = useState(true)
 
@@ -55,6 +91,7 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
       // entende. O teto de bitrate e o governador já limitam o uplink — dynacast só ganhava
       // banda quando ninguém assistia, e é justamente aí que ninguém se importa.
       dynacast: false,
+      reconnectPolicy: new DefaultReconnectPolicy(ATRASOS_DA_RECONEXAO_MS),
     })
 
     const marcar = () => setVersao((v) => v + 1)
@@ -71,11 +108,55 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
     setSala(nova)
     setConexao(ConnectionState.Connecting)
     setErro(null)
+    setQueda(null)
 
     // Uma sala descartada não fala mais pela UI. Sem esta guarda, o `connect` interrompido pela
     // limpeza (o StrictMode monta duas vezes em desenvolvimento) pintaria um erro de conexão
     // por cima da sala nova, que está conectando bem.
     let vivo = true
+    let espera: ReturnType<typeof setTimeout> | undefined
+    const { urlSfu, token } = credenciais
+    // Uma fila de tentativas por vez: o `connect` que falha faz a sala anunciar a queda de novo,
+    // e cada anúncio abriria outra fila em paralelo.
+    let religando = false
+
+    // O SDK desistiu. A pessoa não pediu para sair, então a sala volta sozinha — a não ser que
+    // voltar não faça sentido (ver `motivoParaDesistir`).
+    function religar(tentativa: number) {
+      religando = true
+      setQueda({ tentativa })
+      const atraso = ESPERAS_DO_RELIGAR_MS[tentativa - 1] ?? ESPERAS_DO_RELIGAR_MS.at(-1)
+      // No relógio do worker: a queda costuma acontecer justamente com a aba em segundo plano.
+      espera = CriticalTimers.setTimeout(() => {
+        nova
+          .connect(urlSfu, token)
+          .then(() => {
+            religando = false
+            if (vivo) setQueda(null)
+          })
+          .catch((falha: unknown) => {
+            if (!vivo) return
+            const desistir = motivoParaDesistir(falha)
+            if (!desistir) {
+              religar(tentativa + 1)
+              return
+            }
+            religando = false
+            setQueda(null)
+            setErro(desistir)
+          })
+      }, atraso)
+    }
+
+    nova.on(RoomEvent.Disconnected, (motivo?: DisconnectReason) => {
+      if (!vivo || religando || motivo === DisconnectReason.CLIENT_INITIATED) return
+      // Outra aba tomou a identidade: religar viraria cabo de guerra entre as duas.
+      if (motivo === DisconnectReason.DUPLICATE_IDENTITY) {
+        setErro('Você entrou nesta sala em outra aba; esta ficou de fora.')
+        return
+      }
+      religar(1)
+    })
 
     nova
       .connect(credenciais.urlSfu, credenciais.token)
@@ -88,6 +169,7 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
 
     return () => {
       vivo = false
+      if (espera !== undefined) CriticalTimers.clearTimeout(espera)
       nova.removeAllListeners()
       void nova.disconnect()
       setSala(null)
@@ -98,6 +180,7 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
     sala,
     conexao,
     erro,
+    queda,
     versao,
     audioLiberado,
     liberarAudio: () => {
