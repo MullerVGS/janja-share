@@ -14,3 +14,11 @@ O cliente que compartilha governa a qualidade usando telemetria do `RTCRtpSender
 ## Consequências
 
 O comportamento fica testável e específico para Tela, ao custo de manter telemetria, protocolo de relatos e política de recuperação no frontend.
+
+## Revisão
+
+O ADR 0009 estende esta política em dois pontos. O governador passa a decidir também o codec —
+que republica a faixa, e portanto extrapola o "sem renegociar nem republicar" original. E a
+telemetria que o alimenta deixou de depender de campos exclusivos do Chrome: `motivoDe` lê
+`limitadoPor ?? inferido`, o que faz esta política existir também no Firefox, onde antes ela
+estava inerte.
