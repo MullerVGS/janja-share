@@ -1,6 +1,7 @@
 import type { AmostraDoEmissor, AmostraDoEspectador } from '../telemetria/amostra'
 import { sumiu, type Espectador } from '../telemetria/relato'
-import { alturaDaResolucao, CODECS, resolucaoDaAltura, RESOLUCOES, TETO, type PerfilDeQualidade } from './qualidade'
+import { inferirLimitacao } from '../telemetria/limitacao'
+import { alturaDaResolucao, CODECS, resolucaoDaAltura, RESOLUCOES, TETO, type Codec, type PerfilDeQualidade } from './qualidade'
 
 /**
  * O governador: transforma a adaptação contínua do Chrome em degraus estáveis — e procura, em
@@ -85,6 +86,16 @@ export interface EstadoDoGovernador {
    * o desfaz.
    */
   tetoNoAlvo: boolean
+  /** Codec escolhido pela correção; `null` = o da partida vale. */
+  codec: Codec | null
+  /**
+   * A correção única já foi gasta nesta transmissão.
+   *
+   * Uma só porque cada troca republica a faixa e pisca ~1 s para a Sala inteira. Um pisca cedo,
+   * quando quase ninguém reparou, é barato; um pisca a cada janela ruim seria remédio pior que a
+   * doença.
+   */
+  codecCorrigido: boolean
   motivo: MotivoDoGovernador | null
   /** Degraus que falharam logo depois de uma subida; não se volta a eles até a pessoa mexer. */
   queimados: readonly number[]
@@ -108,6 +119,8 @@ export const GOVERNADOR_PARADO: EstadoDoGovernador = {
   degrau: null,
   tetoKbps: null,
   tetoNoAlvo: false,
+  codec: null,
+  codecCorrigido: false,
   motivo: null,
   queimados: [],
   alturaSemDegrau: null,
@@ -117,15 +130,34 @@ export const GOVERNADOR_PARADO: EstadoDoGovernador = {
   decisoes: [],
 }
 
-/** O que acontece quando a pessoa mexe num controle: tudo zera, e a próxima janela começa agora. */
-export function zerarGovernador(historico: readonly AmostraDoEmissor[]): EstadoDoGovernador {
+/**
+ * O que acontece quando a pessoa mexe num controle: tudo zera, e a próxima janela começa agora.
+ *
+ * O codec é a exceção, e pela mesma razão que o teto sobrevive à troca de tela: ele descreve o
+ * **encoder daquela máquina**, não o pedido. Devolver o codec reprovado porque a pessoa mexeu no
+ * slider de bitrate republicaria a faixa de volta para o que já tinha falhado.
+ */
+export function zerarGovernador(
+  historico: readonly AmostraDoEmissor[],
+  anterior?: EstadoDoGovernador,
+): EstadoDoGovernador {
   const nova = historico[historico.length - 1]
-  return nova ? { ...GOVERNADOR_PARADO, janelaDesdeMs: nova.emMs } : GOVERNADOR_PARADO
+  const codec = anterior?.codec ?? null
+  const codecCorrigido = anterior?.codecCorrigido ?? false
+  // Sem histórico e sem codec a preservar, devolve a própria constante em vez de uma cópia:
+  // quem compara estado por referência conta com isso.
+  if (!nova && codec === null && !codecCorrigido) return GOVERNADOR_PARADO
+  const base: EstadoDoGovernador = { ...GOVERNADOR_PARADO, codec, codecCorrigido }
+  return nova ? { ...base, janelaDesdeMs: nova.emMs } : base
 }
 
-function motivoDe(amostra: AmostraDoEmissor): MotivoDoGovernador | null {
+function motivoDe(amostra: AmostraDoEmissor, pedido: PerfilDeQualidade): MotivoDoGovernador | null {
   if (!amostra.ativo) return null
-  return amostra.limitadoPor === 'cpu' || amostra.limitadoPor === 'banda' ? amostra.limitadoPor : null
+  // Onde o navegador informa, a medida vale; onde não informa, a inferência entra. É isto que
+  // faz o governador existir fora do Chrome — sem `qualityLimitationReason` ele nunca via
+  // limitação alguma e passava a transmissão inteira dizendo "subindo".
+  const limitacao = amostra.limitadoPor ?? inferirLimitacao(amostra, pedido)
+  return limitacao === 'cpu' || limitacao === 'banda' ? limitacao : null
 }
 
 function media(valores: (number | null)[]): number | null {
@@ -245,6 +277,7 @@ export function decidir(
   historico: readonly AmostraDoEmissor[],
   pedido: PerfilDeQualidade,
   espectadores: readonly Espectador[] = [],
+  candidatoDeCodec: Codec | null = null,
 ): EstadoDoGovernador {
   const nova = historico[historico.length - 1]
   if (!nova) return estado
@@ -263,12 +296,12 @@ export function decidir(
 
   // Sem limitação e sem passado, os 30 s contam da primeira amostra: é o que permite a primeira
   // subida numa transmissão que nunca cedeu nada.
-  const limpoDesdeMs = motivoDe(nova) !== null ? agora : (estado.limpoDesdeMs ?? agora)
+  const limpoDesdeMs = motivoDe(nova, pedido) !== null ? agora : (estado.limpoDesdeMs ?? agora)
   const sofrendo = alguemSofrendo(espectadores, agora)
   const perdendo = alguemPerdendo(espectadores, agora)
 
   const janelaCheia = janela.length >= JANELA
-  const limitadas = janela.filter((amostra) => motivoDe(amostra) !== null)
+  const limitadas = janela.filter((amostra) => motivoDe(amostra, pedido) !== null)
   const medida = media(limitadas.map(medidaDe))
   // Em quadros, o encoder oscila perto do alvo e 0,9× separa ruído de cessão; em resolução
   // ele só muda por degraus grandes, e qualquer altura abaixo do alvo já é cessão.
@@ -280,8 +313,23 @@ export function decidir(
   const doEspectador = janelaCheia && perdendo && !CODECS[pedido.codec].svc
 
   if (doEmissor || doEspectador) {
-    const porBanda = limitadas.filter((amostra) => motivoDe(amostra) === 'banda').length
+    const porBanda = limitadas.filter((amostra) => motivoDe(amostra, pedido) === 'banda').length
     const motivo: MotivoDoGovernador = doEmissor && porBanda * 2 <= limitadas.length ? 'cpu' : 'banda'
+
+    // Sob CPU o codec vem antes de tudo, e é a extensão do argumento que o bitrate já faz logo
+    // abaixo: apertar o encoder não devolve ciclo de CPU nenhum — trocar o encoder devolve.
+    // Degradar quadros ou pixels antes de tentar outro codec é pagar em imagem por um problema
+    // que a troca resolveria de graça. Sob banda nada disso vale: lá o teto é o eixo barato.
+    if (motivo === 'cpu' && !estado.codecCorrigido && candidatoDeCodec !== null) {
+      return {
+        ...estado,
+        codec: candidatoDeCodec,
+        codecCorrigido: true,
+        motivo,
+        limpoDesdeMs: agora,
+        janelaDesdeMs: agora,
+      }
+    }
 
     // O bitrate vai primeiro: é o eixo que quem assiste não vê mexer. Só que ele não devolve
     // ciclo nenhum — sob CPU o único caminho é encodar menos, e gastar uma janela apertando o
@@ -362,7 +410,8 @@ export function decidir(
 
 /** Pedido ⊕ teto ⊕ degrau: o perfil que de fato vai para a captura e para o encoder. */
 export function perfilEfetivo(pedido: PerfilDeQualidade, estado: EstadoDoGovernador): PerfilDeQualidade {
-  const comTeto = estado.tetoKbps === null ? pedido : { ...pedido, tetoKbps: estado.tetoKbps }
+  const comCodec = estado.codec === null ? pedido : { ...pedido, codec: estado.codec }
+  const comTeto = estado.tetoKbps === null ? comCodec : { ...comCodec, tetoKbps: estado.tetoKbps }
   if (estado.degrau === null) return comTeto
   if (pedido.ceder === 'quadros') return { ...comTeto, fps: estado.degrau }
   const resolucao = resolucaoDaAltura(estado.degrau)
