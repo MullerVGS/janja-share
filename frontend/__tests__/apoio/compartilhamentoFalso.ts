@@ -16,6 +16,8 @@ export function compartilhamentoFalso(parcial: Partial<Compartilhamento> = {}): 
     perfilEfetivo: perfil,
     automatico: true,
     definirAutomatico: vi.fn(),
+    codecPreferido: 'auto',
+    definirCodecPreferido: vi.fn(),
     governador: GOVERNADOR_PARADO,
     relatorio: null,
     codecPendente: null,

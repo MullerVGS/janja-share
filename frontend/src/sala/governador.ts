@@ -1,6 +1,6 @@
 import type { AmostraDoEmissor, AmostraDoEspectador } from '../telemetria/amostra'
 import { sumiu, type Espectador } from '../telemetria/relato'
-import { inferirLimitacao } from '../telemetria/limitacao'
+import { encoderIncapaz, inferirLimitacao } from '../telemetria/limitacao'
 import { alturaDaResolucao, CODECS, resolucaoDaAltura, RESOLUCOES, TETO, type Codec, type PerfilDeQualidade } from './qualidade'
 
 /**
@@ -319,8 +319,13 @@ export function decidir(
     // Sob CPU o codec vem antes de tudo, e é a extensão do argumento que o bitrate já faz logo
     // abaixo: apertar o encoder não devolve ciclo de CPU nenhum — trocar o encoder devolve.
     // Degradar quadros ou pixels antes de tentar outro codec é pagar em imagem por um problema
-    // que a troca resolveria de graça. Sob banda nada disso vale: lá o teto é o eixo barato.
-    if (motivo === 'cpu' && !estado.codecCorrigido && candidatoDeCodec !== null) {
+    // que a troca resolveria de graça. Sob banda nada disso vale: lá o teto é o eixo barato...
+    // ...mas só quando a evidência é de encoder **incapaz**, e não de encoder apenas apertado.
+    // CPU justa numa máquina que já está no codec certo é caso de degrau; trocar o codec ali
+    // custaria um pisca para não ganhar nada. A exigência é a mesma da janela: `MINIMO_LIMITADAS`
+    // amostras patológicas, não uma solta.
+    const incapazes = janela.filter((amostra) => encoderIncapaz(amostra, pedido)).length
+    if (motivo === 'cpu' && incapazes >= MINIMO_LIMITADAS && !estado.codecCorrigido && candidatoDeCodec !== null) {
       return {
         ...estado,
         codec: candidatoDeCodec,

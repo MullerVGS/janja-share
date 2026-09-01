@@ -12,6 +12,7 @@ import type { AmostraDoEmissor } from '../telemetria/amostra'
 import type { Historico } from '../telemetria/historico'
 import type { Espectador } from '../telemetria/relato'
 import { NOME_DO_FLUXO_DA_TELA, OPCOES_DO_AUDIO_DA_TELA } from './audioDaTela'
+import { codecDePartida, escolherCorrecao } from './capacidade'
 import { capturarTela } from './captura'
 import {
   decidir,
@@ -79,6 +80,9 @@ export interface Compartilhamento {
   perfilEfetivo: PerfilDeQualidade
   automatico: boolean
   definirAutomatico(ligado: boolean): void
+  /** A intenção da pessoa sobre o codec; `'auto'` deixa a máquina resolver e corrigir. */
+  codecPreferido: 'auto' | Codec
+  definirCodecPreferido(codec: 'auto' | Codec): void
   governador: EstadoDoGovernador
   /** O que de fato pegou no último ajuste; `null` enquanto não há transmissão. */
   relatorio: RelatorioDeAplicacao | null
@@ -144,6 +148,7 @@ export function useCompartilhamento(
   const [guardadas] = useState(lerPreferencias)
   const [perfil, setPerfil] = useState(guardadas.perfil)
   const [automatico, setAutomatico] = useState(guardadas.automatico)
+  const [codecPreferido, setCodecPreferido] = useState(guardadas.codecPreferido)
   const [governador, setGovernador] = useState(GOVERNADOR_PARADO)
   const [relatorio, setRelatorio] = useState<RelatorioDeAplicacao | null>(null)
   const [codecPendente, setCodecPendente] = useState<Codec | null>(null)
@@ -153,6 +158,9 @@ export function useCompartilhamento(
   const [trocandoTela, setTrocandoTela] = useState(false)
   // O último pedido, para a republicação em curso saber se ficou para trás.
   const pedido = useRef(perfil)
+  // O candidato da correção, sondado enquanto há tela no ar: `decidir` é função pura e não pode
+  // esperar por uma Promise.
+  const candidatoDeCodec = useRef<Codec | null>(null)
 
   // Republicar e trocar de tela deixam a tela sem publicação por um instante; isso não é "parou".
   //
@@ -176,7 +184,9 @@ export function useCompartilhamento(
       return
     }
     if (!automatico) return
-    setGovernador((estado) => decidir(estado, historico, perfil, [...ultimosRelatos.current.values()]))
+    setGovernador((estado) =>
+      decidir(estado, historico, perfil, [...ultimosRelatos.current.values()], candidatoDeCodec.current),
+    )
   }, [historico, automatico, ativo, perfil])
 
   // Só o degrau e o teto mudam o efetivo; o resto do estado muda a cada amostra limitada.
@@ -271,28 +281,111 @@ export function useCompartilhamento(
     [sala, perfil],
   )
 
+  /**
+   * O candidato da correção, refeito a cada codec que entra no ar — o próximo nunca é o que
+   * está tocando agora. Fica num ref porque `decidir` é síncrona e pura: ela não pode esperar
+   * pela sondagem, só consultar o que já foi sondado.
+   */
+  const codecNoAr = publicacao ? perfilEfetivo.codec : null
+  useEffect(() => {
+    if (!codecNoAr) {
+      candidatoDeCodec.current = null
+      return
+    }
+    let vivo = true
+    void escolherCorrecao(codecNoAr, pedido.current).then((candidato) => {
+      if (vivo) candidatoDeCodec.current = candidato
+    })
+    return () => {
+      vivo = false
+    }
+    // Só o codec no ar refaz a sondagem: mexer no teto ou no fps não muda quem é o candidato.
+  }, [codecNoAr])
+
+  /**
+   * O que o governador resolveu vira republicação — e vira aprendizado, para a próxima
+   * transmissão desta máquina já nascer no codec certo.
+   *
+   * `perfil` de propósito **não** muda aqui: ele é o pedido, e o pedido continua sendo o codec
+   * da partida. Quem carrega a correção é `perfilEfetivo`, como já carrega o teto e o degrau —
+   * e é dessa diferença que a UI tira o codec anterior para oferecer o Desfazer.
+   *
+   * `pedido.current` acompanha porque `republicar` o usa para detectar troca concorrente: sem
+   * isso ele veria divergência ao terminar e republicaria de volta para o codec reprovado.
+   */
+  const codecResolvido = governador.codec
+  useEffect(() => {
+    if (!codecResolvido || !sala || republicando) return
+    if (!publicacaoDe(sala, Track.Source.ScreenShare)) return
+    if (pedido.current.codec === codecResolvido) return
+    pedido.current = { ...pedido.current, codec: codecResolvido }
+    gravarPreferencias({ codecAprendido: codecResolvido })
+    void republicar({ ...perfilEfetivo, codec: codecResolvido })
+  }, [codecResolvido, sala, republicando, republicar, perfilEfetivo])
+
+  /**
+   * O pedido da pessoa, menos o codec: quem manda nele é `definirCodecPreferido`.
+   *
+   * Codec tinha duas portas enquanto o preset o carregava, e as duas passaram a discordar: uma
+   * gravava a intenção e a outra não, então reiniciar a transmissão devolvia o automático por
+   * cima de uma escolha explícita. Uma decisão, um dono.
+   */
   const definirPerfil = useCallback(
     (novo: PerfilDeQualidade) => {
-      pedido.current = novo
-      setPerfil(novo)
-      gravarPreferencias({ perfil: novo })
-      setGovernador(zerarGovernador(historico))
-      if (novo.codec !== perfil.codec) {
-        setCodecPendente(null)
-        if (!republicando) void republicar(novo)
-      }
+      const comCodecDeAgora = { ...novo, codec: pedido.current.codec }
+      pedido.current = comCodecDeAgora
+      setPerfil(comCodecDeAgora)
+      gravarPreferencias({ perfil: comCodecDeAgora })
+      setGovernador((estado) => zerarGovernador(historico, estado))
     },
-    [historico, perfil.codec, republicando, republicar],
+    [historico],
   )
 
   const definirAutomatico = useCallback(
     (ligado: boolean) => {
       setAutomatico(ligado)
       gravarPreferencias({ automatico: ligado })
-      setGovernador(zerarGovernador(historico))
+      setGovernador((estado) => zerarGovernador(historico, estado))
     },
     [historico],
   )
+
+  /**
+   * A pessoa assumindo o codec. Forçar apaga a escolha do automático — sem isso `perfilEfetivo`
+   * continuaria sobrepondo o que a máquina decidiu por cima do que a pessoa pediu, e o Desfazer
+   * não desfaria nada.
+   */
+  const definirCodecPreferido = useCallback(
+    (codec: 'auto' | Codec) => {
+      setCodecPreferido(codec)
+      gravarPreferencias({ codecPreferido: codec })
+      setGovernador((estado) => (estado.codec === null ? estado : { ...estado, codec: null }))
+      if (codec === 'auto' || codec === pedido.current.codec) return
+      setCodecPendente(null)
+      const novo = { ...pedido.current, codec }
+      pedido.current = novo
+      setPerfil(novo)
+      if (!republicando) void republicar(novo)
+    },
+    [republicando, republicar],
+  )
+
+  /**
+   * O perfil com que a transmissão nasce: o codec resolvido pela máquina, e não o que veio
+   * guardado do preset. `setPerfil` direto e sem `gravarPreferencias` porque isto não é a
+   * intenção da pessoa — a intenção dela é `codecPreferido`, e ela continua valendo.
+   */
+  const perfilDePartida = useCallback(async (): Promise<PerfilDeQualidade> => {
+    const codec = await codecDePartida({
+      preferido: codecPreferido,
+      aprendido: lerPreferencias().codecAprendido,
+      perfil,
+    })
+    const novo = { ...perfil, codec }
+    pedido.current = novo
+    setPerfil(novo)
+    return novo
+  }, [codecPreferido, perfil])
 
   /**
    * `setScreenShareEnabled(true, captura, opções)` publica TODA faixa que a captura devolve com
@@ -316,7 +409,7 @@ export function useCompartilhamento(
         capturadas = await capturarTela(perfil)
         const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
         if (video) {
-          await participante.publishTrack(video, opcoesDePublicacao(perfil))
+          await participante.publishTrack(video, opcoesDePublicacao(await perfilDePartida()))
           const audio = capturadas.find((faixa) => faixa.kind === Track.Kind.Audio)
           if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
         }
@@ -332,7 +425,7 @@ export function useCompartilhamento(
         setMudando(false)
       }
     },
-    [sala, perfil],
+    [sala, perfil, perfilDePartida],
   )
 
   const alternar = useCallback(async () => {
@@ -374,7 +467,7 @@ export function useCompartilhamento(
         setTrocandoTela(true)
         await participante.setScreenShareEnabled(false)
         setCodecPendente(null)
-        await participante.publishTrack(video, opcoesDePublicacao(perfil))
+        await participante.publishTrack(video, opcoesDePublicacao(await perfilDePartida()))
         const audio = capturadas.find((faixa) => faixa.kind === Track.Kind.Audio)
         if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
       }
@@ -388,7 +481,7 @@ export function useCompartilhamento(
       setMudando(false)
       setTrocandoTela(false)
     }
-  }, [sala, perfil])
+  }, [sala, perfil, perfilDePartida])
 
   /** Publica faixas capturadas fora daqui — a captura que a home abriu antes de navegar. */
   /**
@@ -414,6 +507,8 @@ export function useCompartilhamento(
     perfilEfetivo,
     automatico,
     definirAutomatico,
+    codecPreferido,
+    definirCodecPreferido,
     governador,
     relatorio,
     codecPendente,

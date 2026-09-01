@@ -26,7 +26,9 @@ describe('opções de publicação da tela', () => {
   })
 
   it('o preset de jogo chega inteiro na publicação, sem esperar o setParameters', () => {
-    const opcoes = opcoesDePublicacao(PRESET_DO_CONTEUDO.jogo)
+    // O codec entra por quem resolveu a capacidade da máquina, não pelo preset — e a publicação
+    // leva o que estiver no perfil que recebeu.
+    const opcoes = opcoesDePublicacao({ ...PRESET_DO_CONTEUDO.jogo, codec: 'h264' })
     expect(opcoes.screenShareEncoding).toEqual({ maxBitrate: 8_000_000, maxFramerate: 60 })
     expect(opcoes.degradationPreference).toBe('maintain-framerate')
     expect(opcoes.videoCodec).toBe('h264')

@@ -114,23 +114,32 @@ export const TETO = {
  *
  * Texto a 15 fps porque a tela típica aqui é editor e terminal: conteúdo que muda em blocos,
  * onde quadro gasto é banda tirada da legibilidade. Jogo quadruplica os quadros e dobra a
- * partida, e vai de H.264 porque é o codec que o encoder de hardware do Chrome pega — a CPU
- * de quem joga já está ocupada com o jogo.
+ * partida.
+ *
+ * O `codec` aqui **não é escolha do conteúdo** — é só o valor que vale enquanto a capacidade da
+ * máquina não respondeu, e `capacidade.ts` o substitui antes de publicar. Jogo já fixou H.264
+ * por ser "o codec que o encoder de hardware do Chrome pega", e isso descrevia o Chrome, não o
+ * conteúdo: no Firefox o mesmo H.264 cai num encoder por software e entrega um décimo do
+ * autorizado. Continuidade e nitidez de borda são pedidos do conteúdo; qual encoder dá conta
+ * deles é pergunta para a máquina.
  */
 export const PRESET_DO_CONTEUDO: Record<Conteudo, PerfilDeQualidade> = {
   texto: { conteudo: 'texto', codec: 'vp9', resolucao: '1080p', fps: 15, ceder: 'quadros', tetoKbps: 4_000 },
-  jogo: { conteudo: 'jogo', codec: 'h264', resolucao: '1080p', fps: 60, ceder: 'resolucao', tetoKbps: 8_000 },
+  jogo: { conteudo: 'jogo', codec: 'vp9', resolucao: '1080p', fps: 60, ceder: 'resolucao', tetoKbps: 8_000 },
 }
 
 export const PERFIL_PADRAO: PerfilDeQualidade = PRESET_DO_CONTEUDO.texto
 
 /**
- * Troca de conteúdo aplicando o preset do novo — menos a resolução, que continua sendo a
- * escolha da pessoa sobre a própria tela. Devolver 1080p a quem desceu para 720p justamente
- * porque a rede estava ruim seria o pior momento possível para ser prestativo.
+ * Troca de conteúdo aplicando o preset do novo — menos a resolução e o codec.
+ *
+ * A resolução continua sendo a escolha da pessoa sobre a própria tela: devolver 1080p a quem
+ * desceu para 720p justamente porque a rede estava ruim seria o pior momento possível para ser
+ * prestativo. O codec fica porque não é do conteúdo — trocá-lo aqui republicaria a faixa e
+ * faria a Sala piscar por causa de uma decisão sobre o que está na tela.
  */
 export function trocarConteudo(atual: PerfilDeQualidade, conteudo: Conteudo): PerfilDeQualidade {
-  return { ...PRESET_DO_CONTEUDO[conteudo], resolucao: atual.resolucao }
+  return { ...PRESET_DO_CONTEUDO[conteudo], resolucao: atual.resolucao, codec: atual.codec }
 }
 
 export function alturaDaResolucao(resolucao: Resolucao): number | null {
