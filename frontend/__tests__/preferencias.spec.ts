@@ -120,3 +120,32 @@ describe('preferências', () => {
     expect(lerPreferencias().nome).toBe('')
   })
 })
+
+describe('codec', () => {
+  it('quem já tem preferências gravadas migra para automático sem perder nada', () => {
+    localStorage.setItem(
+      CHAVE_DAS_PREFERENCIAS,
+      JSON.stringify({ versao: 1, nome: 'Tutti', larguraDaLateral: 420 }),
+    )
+    const preferencias = lerPreferencias()
+    expect(preferencias.codecPreferido).toBe('auto')
+    expect(preferencias.codecAprendido).toBeNull()
+    expect(preferencias.nome).toBe('Tutti')
+    expect(preferencias.larguraDaLateral).toBe(420)
+  })
+
+  it('valor estranho em codecPreferido vira automático', () => {
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, codecPreferido: 'h265' }))
+    expect(lerPreferencias().codecPreferido).toBe('auto')
+  })
+
+  it('guarda e devolve o codec aprendido', () => {
+    gravarPreferencias({ codecAprendido: 'vp9' })
+    expect(lerPreferencias().codecAprendido).toBe('vp9')
+  })
+
+  it('codecAprendido estranho vira null', () => {
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, codecAprendido: 'h265' }))
+    expect(lerPreferencias().codecAprendido).toBeNull()
+  })
+})
