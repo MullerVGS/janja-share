@@ -26,11 +26,21 @@ const OPCOES_DE_CONTEUDO: OpcaoSegmentada<Conteudo>[] = (Object.keys(CONTEUDOS) 
   descricao: CONTEUDOS[valor].descricao,
 }))
 
-const OPCOES_DE_CODEC: OpcaoSegmentada<Codec>[] = (Object.keys(CODECS) as Codec[]).map((valor) => ({
+type EscolhaDeCodec = 'auto' | Codec
+
+/**
+ * Automático primeiro, e as quatro escolhas atrás dele. Quem sabe o que quer continua mandando —
+ * inclusive em AV1, que o automático nunca escolhe sozinho para não deixar ninguém sem imagem
+ * por uma decisão que a máquina tomou.
+ */
+const OPCOES_DE_CODEC: OpcaoSegmentada<EscolhaDeCodec>[] = [
+  { valor: 'auto', rotulo: 'Automático', descricao: 'a máquina escolhe, e corrige pelo que medir' },
+  ...(Object.keys(CODECS) as Codec[]).map((valor) => ({
   valor,
-  rotulo: CODECS[valor].rotulo,
-  descricao: CODECS[valor].descricao,
-}))
+    rotulo: CODECS[valor].rotulo,
+    descricao: CODECS[valor].descricao,
+  })),
+]
 
 const OPCOES_DE_RESOLUCAO: OpcaoSegmentada<Resolucao>[] = RESOLUCOES.map((opcao) => ({
   valor: opcao.valor,
@@ -102,6 +112,8 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
     ativo,
     automatico,
     definirAutomatico,
+    codecPreferido,
+    definirCodecPreferido,
     governador,
     codecPendente,
     reiniciar,
@@ -162,8 +174,21 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
         <summary className={estilos.sumario}>Avançado</summary>
         <div className={estilos.controles}>
           <div className={estilos.bloco}>
-            <Segmentado rotulo="Codec" opcoes={OPCOES_DE_CODEC} valor={perfil.codec} aoEscolher={(codec) => ajustar({ codec })} />
-            <p className={estilos.explicacao}>{CODECS[perfil.codec].descricao}</p>
+            <Segmentado
+              rotulo="Codec"
+              opcoes={OPCOES_DE_CODEC}
+              valor={codecPreferido}
+              aoEscolher={definirCodecPreferido}
+            />
+            <p className={estilos.explicacao}>
+              {codecPreferido === 'auto'
+                ? `${CODECS[perfilEfetivo.codec].rotulo} no ar — ${
+                    governador.codec
+                      ? 'escolhido depois que o anterior não deu conta desta máquina'
+                      : 'escolhido pela capacidade desta máquina'
+                  }`
+                : CODECS[codecPreferido].descricao}
+            </p>
           </div>
 
           <Segmentado
@@ -215,6 +240,18 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
           </label>
         </div>
       </details>
+
+      {governador.codec && governador.codec !== perfil.codec && (
+        <Aviso tom="neutro">
+          <span>
+            {CODECS[perfil.codec].rotulo} entregava bem menos do que esta máquina autorizou; a tela
+            voltou em {CODECS[governador.codec].rotulo}.
+          </span>{' '}
+          <Botao aparencia="fantasma" onClick={() => definirCodecPreferido(perfil.codec)}>
+            Desfazer
+          </Botao>
+        </Aviso>
+      )}
 
       {codecPendente && (
         <Aviso tom="neutro">

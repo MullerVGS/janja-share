@@ -31,7 +31,8 @@ describe('aba Qualidade: controles', () => {
     montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' } })
 
     expect(screen.getByRole('radio', { name: 'Jogo' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'VP9' })).toBeChecked()
+    // O codec em vigor é a intenção da pessoa, e ela nasce entregue à máquina.
+    expect(screen.getByRole('radio', { name: 'Automático' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '720p' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '60' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Resolução' })).toBeChecked()
@@ -51,18 +52,16 @@ describe('aba Qualidade: controles', () => {
     expect(escolhido[0]).toEqual({ ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' })
   })
 
-  it('codec, ceder, resolução e fps mudam só o próprio campo', async () => {
+  it('ceder, resolução e fps mudam só o próprio campo', async () => {
     const usuario = userEvent.setup()
     const escolhido: PerfilDeQualidade[] = []
     montarQualidade({ definirPerfil: (perfil) => escolhido.push(perfil) })
 
-    await usuario.click(screen.getByRole('radio', { name: 'AV1' }))
     await usuario.click(screen.getByRole('radio', { name: 'Resolução' }))
     await usuario.click(screen.getByRole('radio', { name: '540p' }))
     await usuario.click(screen.getByRole('radio', { name: '30' }))
 
     expect(escolhido).toEqual([
-      { ...PERFIL_PADRAO, codec: 'av1' },
       { ...PERFIL_PADRAO, ceder: 'resolucao' },
       { ...PERFIL_PADRAO, resolucao: '540p' },
       { ...PERFIL_PADRAO, fps: 30 },
@@ -83,9 +82,59 @@ describe('aba Qualidade: controles', () => {
     expect(slider).toHaveAttribute('max', '50000')
   })
 
-  it('explica o codec escolhido numa linha', () => {
-    montarQualidade({ perfil: { ...PERFIL_PADRAO, codec: 'h264' } })
+  it('explica o codec forçado numa linha', () => {
+    montarQualidade({ codecPreferido: 'h264' })
     expect(screen.getByText(/encoder de hardware/)).toBeInTheDocument()
+  })
+})
+
+describe('aba Qualidade: codec automático', () => {
+  it('forçar um codec é a intenção da pessoa, e não passa pelo pedido', async () => {
+    const usuario = userEvent.setup()
+    const forcados: ('auto' | string)[] = []
+    const escolhido: PerfilDeQualidade[] = []
+    montarQualidade({
+      definirCodecPreferido: (codec) => forcados.push(codec),
+      definirPerfil: (perfil) => escolhido.push(perfil),
+    })
+
+    await usuario.click(screen.getByRole('radio', { name: 'AV1' }))
+
+    expect(forcados).toEqual(['av1'])
+    expect(escolhido).toEqual([])
+  })
+
+  it('no automático, conta qual codec está no ar e por quê', () => {
+    montarQualidade({
+      codecPreferido: 'auto',
+      perfil: { ...PERFIL_PADRAO, codec: 'h264' },
+      perfilEfetivo: { ...PERFIL_PADRAO, codec: 'vp9' },
+      governador: { ...GOVERNADOR_PARADO, codec: 'vp9', codecCorrigido: true },
+    })
+    expect(screen.getByText(/VP9 no ar/)).toBeInTheDocument()
+    expect(screen.getByText(/não deu conta desta máquina/)).toBeInTheDocument()
+  })
+
+  it('a correção se explica e oferece desfazer, que força o codec anterior', async () => {
+    const usuario = userEvent.setup()
+    const forcados: string[] = []
+    montarQualidade({
+      codecPreferido: 'auto',
+      perfil: { ...PERFIL_PADRAO, codec: 'h264' },
+      perfilEfetivo: { ...PERFIL_PADRAO, codec: 'vp9' },
+      governador: { ...GOVERNADOR_PARADO, codec: 'vp9', codecCorrigido: true },
+      definirCodecPreferido: (codec) => forcados.push(codec),
+    })
+
+    expect(screen.getByText(/entregava bem menos do que esta máquina autorizou/)).toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: /desfazer/i }))
+
+    expect(forcados).toEqual(['h264'])
+  })
+
+  it('sem correção não há aviso nenhum: o pisca é que precisa de legenda', () => {
+    montarQualidade({ codecPreferido: 'auto' })
+    expect(screen.queryByText(/entregava bem menos/)).not.toBeInTheDocument()
   })
 
   it('sem transmissão, avisa que vale no próximo compartilhamento', () => {
