@@ -8,7 +8,7 @@ import {
   zerarGovernador,
   type EstadoDoGovernador,
 } from '../src/sala/governador'
-import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type PerfilDeQualidade } from '../src/sala/qualidade'
+import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type Codec, type PerfilDeQualidade } from '../src/sala/qualidade'
 import { amostraVaziaDoEmissor, amostraVaziaDoEspectador, type AmostraDoEmissor, type AmostraDoEspectador } from '../src/telemetria/amostra'
 import { anotar } from '../src/telemetria/historico'
 import type { Espectador } from '../src/telemetria/relato'
@@ -45,6 +45,7 @@ class Sessao {
   estado: EstadoDoGovernador = GOVERNADOR_PARADO
   historico: AmostraDoEmissor[] = []
   espectadores: readonly Espectador[] = []
+  candidato: Codec | null = null
   emMs = 0
 
   constructor(readonly pedido: PerfilDeQualidade) {}
@@ -54,11 +55,16 @@ class Sessao {
     return this
   }
 
+  comCandidato(codec: Codec | null): this {
+    this.candidato = codec
+    return this
+  }
+
   segundos(quantos: number, parcial: Parcial): this {
     for (let i = 0; i < quantos; i += 1) {
       this.emMs += 1000
       this.historico = anotar(this.historico, { ...amostraVaziaDoEmissor(this.emMs), ...NO_AR, ...parcial })
-      this.estado = decidir(this.estado, this.historico, this.pedido, this.espectadores)
+      this.estado = decidir(this.estado, this.historico, this.pedido, this.espectadores, this.candidato)
     }
     return this
   }
@@ -543,5 +549,74 @@ describe('governador: memória e descrição', () => {
     const nativa = { ...RESOLUCAO, resolucao: 'nativa' as const }
     const emNativa = new Sessao(nativa).segundos(10, { ...NO_AR, limitadoPor: 'banda', alturaDaCaptura: 1200, altura: 900 })
     expect(descreverDegrau(nativa, emNativa.estado)?.transicao).toBe('nativa → 720p')
+  })
+})
+
+
+/** Cedendo resolução (540 de 1080) — é o que o governador exige para agir com o preset Jogo. */
+const CEDENDO: Parcial = { ...NO_AR, altura: 540 }
+/** A assinatura de encoder afogado, sem `limitadoPor`: é o que o Firefox entrega. */
+const AFOGADO_SEM_MOTIVO: Parcial = { ...CEDENDO, limitadoPor: null, kbps: 700, fpsCodificado: 12, fpsCaptura: 60 }
+
+describe('governador: eixo de codec', () => {
+  it('sob cpu, troca o codec antes de ceder degrau', () => {
+    const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, { ...CEDENDO, limitadoPor: 'cpu' })
+    expect(sessao.estado.codec).toBe('vp9')
+    expect(sessao.estado.codecCorrigido).toBe(true)
+    expect(sessao.degrau).toBeNull()
+  })
+
+  it('corrige uma vez só: a segunda janela ruim cede degrau', () => {
+    const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, { ...CEDENDO, limitadoPor: 'cpu' })
+    expect(sessao.estado.codec).toBe('vp9')
+
+    sessao.comCandidato('h264').segundos(5, { ...CEDENDO, limitadoPor: 'cpu' })
+    expect(sessao.estado.codec).toBe('vp9')
+    expect(sessao.degrau).not.toBeNull()
+  })
+
+  it('não troca codec sob banda — lá o teto é o eixo barato', () => {
+    const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, { ...CEDENDO, limitadoPor: 'banda' })
+    expect(sessao.estado.codec).toBeNull()
+    expect(sessao.estado.tetoKbps).not.toBeNull()
+  })
+
+  it('sem candidato não troca nada, e o degrau segue seu curso', () => {
+    const sessao = new Sessao(JOGO).comCandidato(null).segundos(5, { ...CEDENDO, limitadoPor: 'cpu' })
+    expect(sessao.estado.codec).toBeNull()
+    expect(sessao.degrau).not.toBeNull()
+  })
+
+  it('a inferência entra quando o navegador não informa o motivo', () => {
+    const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, AFOGADO_SEM_MOTIVO)
+    expect(sessao.estado.codec).toBe('vp9')
+    expect(sessao.estado.motivo).toBe('cpu')
+  })
+
+  it('o motivo nativo vence a inferência', () => {
+    // A amostra tem a assinatura de cpu, mas o navegador diz banda: quem manda é a medida.
+    const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, { ...AFOGADO_SEM_MOTIVO, limitadoPor: 'banda' })
+    expect(sessao.estado.motivo).toBe('banda')
+    expect(sessao.estado.codec).toBeNull()
+  })
+
+  it('o codec corrigido sobrevive a zerar — quem zera é o pedido, não a máquina', () => {
+    const sessao = new Sessao(JOGO).comCandidato('vp9').segundos(5, { ...CEDENDO, limitadoPor: 'cpu' })
+    const zerado = zerarGovernador(sessao.historico, sessao.estado)
+    expect(zerado.codec).toBe('vp9')
+    expect(zerado.codecCorrigido).toBe(true)
+    expect(zerado.degrau).toBeNull()
+    expect(zerado.tetoKbps).toBeNull()
+  })
+
+  it('parar de transmitir esquece o codec: a próxima partida consulta a máquina de novo', () => {
+    expect(GOVERNADOR_PARADO.codec).toBeNull()
+    expect(GOVERNADOR_PARADO.codecCorrigido).toBe(false)
+  })
+
+  it('perfilEfetivo sobrepõe o codec como sobrepõe o teto', () => {
+    const estado: EstadoDoGovernador = { ...GOVERNADOR_PARADO, codec: 'vp9' }
+    expect(perfilEfetivo(JOGO, estado).codec).toBe('vp9')
+    expect(perfilEfetivo(JOGO, GOVERNADOR_PARADO).codec).toBe(JOGO.codec)
   })
 })
