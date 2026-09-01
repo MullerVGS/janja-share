@@ -2,14 +2,15 @@ import { useState, type ReactNode } from 'react'
 import type { Room } from 'livekit-client'
 import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import {
+  IconeAjustesDaTela,
+  IconeAudioDaTela,
+  IconeAudioDaTelaMudo,
   IconeCamera,
   IconeCameraFechada,
   IconeChat,
   IconeMicrofone,
   IconeMicrofoneMudo,
   IconeSair,
-  IconeSom,
-  IconeSomMudo,
   IconeTela,
   IconeTrocarTela,
 } from '../../ui/Icone'
@@ -23,6 +24,8 @@ interface Props {
   naoLidasNoChat: number
   /** Abre a gaveta no chat, ou a fecha se o chat já está à mostra. */
   aoAlternarChat(): void
+  /** Abre a gaveta na aba de qualidade — o mesmo destino do ícone de ajustes do topo. */
+  aoAbrirQualidade(): void
   /** Onde a falha de microfone/câmera vira faixa na tela; `null` limpa a faixa anterior. */
   aoFalhar(mensagem: string | null): void
   aoSair(): void
@@ -55,17 +58,25 @@ function fraseDaFalha(falha: unknown, qual: keyof typeof DISPOSITIVOS): string |
   return falha instanceof Error && falha.message ? falha.message : `Não foi possível abrir ${esse}.`
 }
 
+/**
+ * `fechado` é mic/câmera mudos: fundo escuro e ícone apagado. `aceso` é a sua tela no ar —
+ * contorno de acento e halo, o único botão que brilha. `ativo` é só um painel à mostra, e por
+ * isso pesa menos: tinta de acento, sem contorno. `convite` é o azul-lavanda do que ainda não
+ * foi feito mas é a ação principal dali.
+ */
+type Tom = 'normal' | 'fechado' | 'aceso' | 'ativo' | 'convite' | 'perigo'
+
 function Botao({
   rotulo,
+  tom = 'normal',
   ligado,
-  perigo = false,
   desabilitado = false,
   aoClicar,
   children,
 }: {
   rotulo: string
+  tom?: Tom
   ligado?: boolean
-  perigo?: boolean
   desabilitado?: boolean
   aoClicar(): void
   children: ReactNode
@@ -73,7 +84,8 @@ function Botao({
   return (
     <button
       type="button"
-      className={[estilos.botao, perigo ? estilos.perigo : ''].filter(Boolean).join(' ')}
+      className={estilos.botao}
+      data-tom={tom === 'normal' ? undefined : tom}
       aria-pressed={ligado}
       aria-label={rotulo}
       title={rotulo}
@@ -90,10 +102,10 @@ function Botao({
  * fechados — ninguém entra numa sala já transmitindo — e o estado de cada um está no próprio
  * botão, não escondido num menu.
  *
- * Trocar de tela e o áudio dela só aparecem transmitindo, porque são da SUA tela — e é por
- * isso que moram aqui, e não na pílula de um quadro: enquanto você assiste a de outra pessoa em
- * foco, a sua vive fora do palco (na Tira), sem pílula nenhuma desenhada para ela. A barra é o
- * único lugar que está sempre no ar, foco ou não.
+ * Trocar de tela, os ajustes dela e o áudio dela só aparecem transmitindo, porque são da SUA
+ * tela — e é por isso que moram aqui, e não na pílula de um quadro: enquanto você assiste a de
+ * outra pessoa em destaque, a sua vive nas miniaturas, sem pílula nenhuma desenhada para ela. A
+ * barra é o único lugar que está sempre no ar.
  */
 export function Controles({
   sala,
@@ -101,6 +113,7 @@ export function Controles({
   chatAberto,
   naoLidasNoChat,
   aoAlternarChat,
+  aoAbrirQualidade,
   aoFalhar,
   aoSair,
 }: Props) {
@@ -113,6 +126,7 @@ export function Controles({
   const semSala = sala === null
   // Quem compartilha não se ouve: o medidor é a única resposta a "está saindo som?".
   const faixaDoAudioDaTela = compartilhamento.audioDaTela?.track?.mediaStreamTrack
+  const audioDaTelaNoAr = Boolean(compartilhamento.audioDaTela && !compartilhamento.audioDaTela.isMuted)
 
   async function alternarMicrofone() {
     if (!sala) return
@@ -144,29 +158,34 @@ export function Controles({
     <div className={estilos.barra}>
       <Botao
         rotulo={microfoneLigado ? 'Fechar microfone' : 'Abrir microfone'}
+        tom={microfoneLigado ? 'normal' : 'fechado'}
         ligado={microfoneLigado}
         desabilitado={semSala || mudandoMicrofone}
         aoClicar={() => void alternarMicrofone()}
       >
-        {microfoneLigado ? <IconeMicrofone /> : <IconeMicrofoneMudo />}
+        {microfoneLigado ? <IconeMicrofone tamanho={22} /> : <IconeMicrofoneMudo tamanho={22} />}
       </Botao>
 
       <Botao
         rotulo={cameraLigada ? 'Fechar câmera' : 'Abrir câmera'}
+        tom={cameraLigada ? 'normal' : 'fechado'}
         ligado={cameraLigada}
         desabilitado={semSala || mudandoCamera}
         aoClicar={() => void alternarCamera()}
       >
-        {cameraLigada ? <IconeCamera /> : <IconeCameraFechada />}
+        {cameraLigada ? <IconeCamera tamanho={22} /> : <IconeCameraFechada tamanho={22} />}
       </Botao>
+
+      <span className={estilos.separador} aria-hidden="true" />
 
       <Botao
         rotulo={compartilhamento.ativo ? 'Parar de compartilhar a tela' : 'Compartilhar tela'}
+        tom={compartilhamento.ativo ? 'aceso' : 'convite'}
         ligado={compartilhamento.ativo}
         desabilitado={semSala || compartilhamento.ocupado}
         aoClicar={() => void compartilhamento.alternar()}
       >
-        <IconeTela />
+        <IconeTela tamanho={24} />
       </Botao>
 
       {compartilhamento.ativo && (
@@ -176,30 +195,34 @@ export function Controles({
             desabilitado={compartilhamento.ocupado}
             aoClicar={() => void compartilhamento.trocarDeTela()}
           >
-            <IconeTrocarTela />
+            <IconeTrocarTela tamanho={24} />
           </Botao>
           <Botao
             rotulo={
               !compartilhamento.audioDaTela
                 ? 'Áudio da tela — marque "compartilhar áudio" no seletor'
-                : compartilhamento.audioDaTela.isMuted
-                  ? 'Devolver o áudio da tela'
-                  : 'Calar o áudio da tela'
+                : audioDaTelaNoAr
+                  ? 'Calar o áudio da tela'
+                  : 'Devolver o áudio da tela'
             }
-            ligado={Boolean(compartilhamento.audioDaTela && !compartilhamento.audioDaTela.isMuted)}
+            tom={audioDaTelaNoAr ? 'normal' : 'fechado'}
+            ligado={audioDaTelaNoAr}
             desabilitado={!compartilhamento.audioDaTela}
             aoClicar={() => void compartilhamento.alternarAudioDaTela()}
           >
-            {compartilhamento.audioDaTela && !compartilhamento.audioDaTela.isMuted ? <IconeSom /> : <IconeSomMudo />}
+            {audioDaTelaNoAr ? <IconeAudioDaTela tamanho={24} /> : <IconeAudioDaTelaMudo tamanho={24} />}
+          </Botao>
+          <Botao rotulo="Qualidade da transmissão" aoClicar={aoAbrirQualidade}>
+            <IconeAjustesDaTela tamanho={24} />
           </Botao>
           {faixaDoAudioDaTela && <SomSaindo faixa={faixaDoAudioDaTela} />}
         </>
       )}
 
-      <span className={estilos.separador} />
+      <span className={estilos.separador} aria-hidden="true" />
 
-      <Botao rotulo="Chat" ligado={chatAberto} aoClicar={aoAlternarChat}>
-        <IconeChat />
+      <Botao rotulo="Chat" tom={chatAberto ? 'ativo' : 'normal'} ligado={chatAberto} aoClicar={aoAlternarChat}>
+        <IconeChat tamanho={22} />
         {naoLidasNoChat > 0 && (
           <span className={estilos.contador} aria-label={`${naoLidasNoChat} mensagens não lidas`}>
             {naoLidasNoChat}
@@ -207,8 +230,8 @@ export function Controles({
         )}
       </Botao>
 
-      <Botao rotulo="Sair da sala" perigo aoClicar={aoSair}>
-        <IconeSair />
+      <Botao rotulo="Sair da sala" tom="perigo" aoClicar={aoSair}>
+        <IconeSair tamanho={22} />
       </Botao>
     </div>
   )

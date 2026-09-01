@@ -8,8 +8,7 @@
   flex-direction: column;
   min-height: 0;
   border-left: 1px solid var(--linha);
-  background: var(--barra-lateral);
-  box-shadow: var(--sombra-painel);
+  background: var(--fundo);
   transition: width 0.18s ease, flex-basis 0.18s ease, transform 0.18s ease, visibility 0.18s;
 }
 
@@ -60,48 +59,57 @@
 .resumo {
   flex: none;
   display: flex;
-  align-items: baseline;
-  width: 100%;
-  padding: var(--e2) var(--e4);
-  border: none;
-  border-bottom: 1px solid var(--linha);
-  border-left: 3px solid var(--conectado);
-  background: var(--superficie-alta);
-  color: var(--texto-fraco);
-  font-family: var(--fonte-mono);
-  font-size: var(--texto-sm);
+  align-items: center;
+  gap: 7px;
+  margin: 10px 12px 0;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--acao) 30%, transparent);
+  border-radius: var(--raio-md);
+  background: color-mix(in srgb, var(--acao) 7%, transparent);
+  color: var(--acento-200);
+  font-size: var(--texto-xs);
+  font-variant-numeric: tabular-nums;
   text-align: left;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.resumo:hover {
-  background: var(--superficie-alta);
 }
 
 .resumo[data-tom='atencao'] {
-  border-left-color: var(--atencao);
+  border-color: color-mix(in srgb, var(--atencao) 40%, transparent);
+  background: var(--atencao-fraca);
+  color: var(--atencao-texto);
 }
 
 .resumo[data-tom='problema'] {
-  border-left-color: var(--perigo);
+  border-color: color-mix(in srgb, var(--perigo) 45%, transparent);
+  background: var(--perigo-fraca);
+  color: var(--perigo-texto);
+}
+
+.iconeDoResumo {
+  flex: none;
+  display: flex;
+  color: var(--acao);
+}
+
+.resumo[data-tom='atencao'] .iconeDoResumo {
+  color: var(--atencao);
+}
+
+.resumo[data-tom='problema'] .iconeDoResumo {
+  color: var(--perigo);
 }
 
 .partesDoResumo {
-  color: var(--texto);
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.separadorDoResumo {
-  color: var(--texto-fraquissimo);
-  white-space: pre;
+  white-space: nowrap;
 }
 
 .estadoDoResumo {
   flex: none;
-  color: var(--conectado-texto);
+  color: var(--acao);
 }
 
 .resumo[data-tom='atencao'] .estadoDoResumo {
@@ -115,47 +123,78 @@
 .abas {
   flex: none;
   display: flex;
-  min-height: var(--altura-do-topo);
+  align-items: center;
+  gap: var(--e2);
+  padding: var(--e2) 10px;
   border-bottom: 1px solid var(--linha);
-  background: var(--barra-lateral);
+}
+
+.trilhaDasAbas {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .aba {
-  flex: 1;
+  flex: none;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: var(--e3) var(--e2) 10px;
+  gap: 5px;
+  padding: 5px 10px;
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border-radius: var(--raio-sm);
   background: transparent;
-  color: var(--texto-fraco);
+  color: var(--texto-fraquissimo);
   font-size: var(--texto-sm);
-  font-weight: 600;
   cursor: pointer;
-  transition: color 0.12s ease, border-color 0.12s ease;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .aba:hover {
-  color: var(--texto);
+  color: var(--acento-200);
 }
 
 .aba[aria-selected='true'] {
-  color: var(--texto);
-  border-bottom-color: var(--acao);
+  background: color-mix(in srgb, var(--acao) 12%, transparent);
+  color: var(--acento-200);
 }
 
 .contador {
-  min-width: 18px;
-  padding: 0 5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--raio-pilula);
   background: var(--acao);
   color: var(--texto-sobre-acento);
-  font-size: var(--texto-xs);
-  font-weight: 700;
-  line-height: 18px;
+  font-size: 9px;
+  font-weight: var(--peso-forte);
+}
+
+.fechar {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--texto-fraquissimo);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.fechar:hover {
+  background: color-mix(in srgb, var(--texto) 8%, transparent);
+  color: var(--neutro-300);
 }
 
 .painel {
@@ -165,24 +204,25 @@
   flex-direction: column;
   overflow-y: auto;
   scrollbar-width: thin;
-  background: var(--barra-lateral);
 }
 
 .painel[hidden] {
   display: none;
 }
 
-@media (max-width: 820px) {
+/* No estreito a gaveta vira camada sobre o palco, com o véu fechando ao clique de fora. */
+@media (max-width: 980px) {
   .gaveta {
-    position: absolute;
+    position: fixed;
     inset: 0 0 0 auto;
-    width: min(380px, 100%);
+    width: min(330px, 90vw);
     flex-basis: auto;
-    box-shadow: var(--sombra-lg);
+    z-index: 50;
+    box-shadow: var(--sombra-md);
   }
 
   .gaveta:not([data-aberta]) {
-    width: min(380px, 100%);
+    width: min(330px, 90vw);
     transform: translateX(100%);
   }
 

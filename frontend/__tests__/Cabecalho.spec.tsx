@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConnectionState } from 'livekit-client'
 import { describe, expect, it, vi } from 'vitest'
@@ -11,64 +11,85 @@ function montarCabecalho(parcial: Partial<Props> = {}) {
     nomeDaSala: 'Jogatina',
     conexao: ConnectionState.Connected,
     pessoas: 3,
-    gavetaAberta: false,
-    aoAlternarGaveta: vi.fn(),
+    aoAlternarLateral: vi.fn(),
+    lateralAberta: false,
+    abaAMostra: null,
+    aoAlternarAba: vi.fn(),
+    transmitindo: false,
+    naoLidasNoChat: 0,
+    conviteCopiado: false,
+    aoCopiarConvite: vi.fn(),
     ...parcial,
   }
   return { ...props, ...render(<Cabecalho {...props} />) }
 }
 
-describe('cabeçalho flutuante', () => {
-  it('conectado: nome da sala, contagem e o pulso aceso', () => {
+describe('cabeçalho da sala', () => {
+  it('conectado: nome da sala, a tag de efêmera, a contagem e o pulso aceso', () => {
     const { container } = montarCabecalho()
 
     expect(screen.getByText('Jogatina')).toBeInTheDocument()
-    expect(screen.getByText('3 pessoas')).toBeInTheDocument()
+    expect(screen.getByText('efêmera')).toBeInTheDocument()
+    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.getByText('conectado')).toBeInTheDocument()
     expect(container.querySelector('[data-conectado]')).toBeInTheDocument()
   })
 
-  it('uma pessoa só não vira "1 pessoas"', () => {
-    montarCabecalho({ pessoas: 1 })
-    expect(screen.getByText('1 pessoa')).toBeInTheDocument()
-  })
-
-  it('enquanto não conecta, a frase da conexão ocupa o lugar da contagem e o pulso fica apagado', () => {
+  it('enquanto não conecta, a frase da conexão troca e o pulso fica apagado', () => {
     const { container } = montarCabecalho({ conexao: ConnectionState.Reconnecting })
 
-    expect(screen.getByText('Reconectando…')).toBeInTheDocument()
-    expect(screen.queryByText('3 pessoas')).not.toBeInTheDocument()
+    expect(screen.getByText('reconectando…')).toBeInTheDocument()
+    expect(screen.queryByText('conectado')).not.toBeInTheDocument()
     expect(container.querySelector('[data-conectado]')).not.toBeInTheDocument()
   })
 
-  it('o botão da gaveta se anuncia pelo estado dela e pede a troca', async () => {
+  it('o botão de pessoas se anuncia pelo estado da barra lateral e pede a troca', async () => {
     const usuario = userEvent.setup()
-    const { aoAlternarGaveta } = montarCabecalho()
+    const { aoAlternarLateral } = montarCabecalho()
 
-    const botao = screen.getByRole('button', { name: 'Abrir o painel' })
+    const botao = screen.getByRole('button', { name: 'Pessoas e telas' })
     expect(botao).toHaveAttribute('aria-pressed', 'false')
     await usuario.click(botao)
-    expect(aoAlternarGaveta).toHaveBeenCalledOnce()
+    expect(aoAlternarLateral).toHaveBeenCalledOnce()
 
-    montarCabecalho({ gavetaAberta: true })
-    expect(screen.getByRole('button', { name: 'Fechar o painel' })).toHaveAttribute('aria-pressed', 'true')
+    montarCabecalho({ lateralAberta: true })
+    expect(screen.getAllByRole('button', { name: 'Pessoas e telas' })[1]).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('copiar link chama writeText com a URL da página e avisa "copiado" por 2 s', async () => {
-    vi.useFakeTimers()
-    const writeText = vi.fn(async (_texto: string) => {})
-    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+  it('copiar convite delega para a sala, que é quem sabe quando o aviso já passou', async () => {
+    const usuario = userEvent.setup()
+    const { aoCopiarConvite } = montarCabecalho()
+
+    await usuario.click(screen.getByRole('button', { name: 'Copiar convite' }))
+    expect(aoCopiarConvite).toHaveBeenCalledOnce()
+
+    montarCabecalho({ conviteCopiado: true })
+    expect(screen.getByRole('button', { name: 'Convite copiado!' })).toBeInTheDocument()
+  })
+
+  it('os ajustes da tela só existem transmitindo; métricas e conversa, sempre', () => {
     montarCabecalho()
-    // `fireEvent` e não `userEvent`: com timers falsos o userEvent espera um relógio que não anda.
-    const clicarEmCopiar = () =>
-      act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copiar link' })))
+    expect(screen.queryByRole('button', { name: 'Qualidade da transmissão' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Métricas da transmissão' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Conversa' })).toBeInTheDocument()
 
-    await clicarEmCopiar()
+    montarCabecalho({ transmitindo: true })
+    expect(screen.getByRole('button', { name: 'Qualidade da transmissão' })).toBeInTheDocument()
+  })
 
-    expect(writeText).toHaveBeenCalledWith(window.location.href)
-    expect(screen.getByRole('button', { name: 'Link copiado!' })).toBeInTheDocument()
+  it('o botão da aba à mostra fica marcado, e clicar nele pede a troca', async () => {
+    const usuario = userEvent.setup()
+    const { aoAlternarAba } = montarCabecalho({ abaAMostra: 'metricas' })
 
-    await act(() => vi.advanceTimersByTimeAsync(2000))
-    expect(screen.getByRole('button', { name: 'Copiar link' })).toBeInTheDocument()
-    vi.useRealTimers()
+    expect(screen.getByRole('button', { name: 'Métricas da transmissão' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Conversa' })).toHaveAttribute('aria-pressed', 'false')
+
+    await usuario.click(screen.getByRole('button', { name: 'Conversa' }))
+    expect(aoAlternarAba).toHaveBeenCalledExactlyOnceWith('chat')
+  })
+
+  it('mensagem não lida vira contador no botão da conversa', () => {
+    montarCabecalho({ naoLidasNoChat: 2 })
+    expect(screen.getByLabelText('2 mensagens não lidas')).toHaveTextContent('2')
   })
 })

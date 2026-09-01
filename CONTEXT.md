@@ -11,3 +11,7 @@ O janja-share permite compartilhar tela em salas efêmeras, sem contas.
 **Compartilhamento** — atividade iniciada por uma Pessoa para publicar uma Tela. Pode incluir o som da tela como acompanhante opcional. Não use `Transmissão` como termo de domínio.
 
 **Tela** — conteúdo visual publicado por uma Pessoa durante um Compartilhamento.
+
+**Palco** — a área principal de uma Sala, onde a imagem no ar é mostrada.
+
+**Quadro** — o espaço do Palco ocupado por uma Tela ou por uma câmera aberta. Presença sem imagem não vira Quadro.

@@ -1,89 +1,98 @@
 /*
- * Tokens do janja-share. O tema é escuro por padrão: a interface funciona como moldura e deixa
- * câmeras e telas compartilhadas serem a principal fonte de luz. Cores, espaços e elevação
+ * Tokens do janja-share — tema Nocturne. Escuro por padrão: a interface funciona como moldura e
+ * deixa câmeras e telas compartilhadas serem a principal fonte de luz. Cores, espaços e elevação
  * nascem aqui para o saguão e a sala falarem a mesma língua. Valores de cor crus ficam somente
  * neste arquivo; os módulos consomem seus papéis sem conhecer a paleta.
+ *
+ * Duas regras do tema que valem para qualquer módulo novo:
+ *   1. Preenchimento de acento é sempre *tinta* — `color-mix(in srgb, var(--acao) N%, transparent)`
+ *      com N entre 7 e 14. Acento chapado é reservado a pontos, traços e anéis de 1–2px.
+ *   2. Peso 600 é o teto da tipografia; título nenhum passa de 500.
  */
 :root {
   color-scheme: dark;
 
+  /* — rampas cruas —
+     Uma única escala de luminosidade em OKLCH, para o mesmo degrau de qualquer papel casar em
+     valor visual com os outros. */
+  --neutro-100: #f3f5fe;
+  --neutro-200: #e4e7f5;
+  --neutro-300: #cfd3e5;
+  --neutro-400: #b2b6ca;
+  --neutro-500: #9397ab;
+  --neutro-600: #75798c;
+  --neutro-700: #595d6c;
+  --neutro-800: #3f424d;
+  --neutro-900: #292b31;
+
+  --acento-100: #f5f4ff;
+  --acento-200: #e7e5fe;
+  --acento-300: #d2cefd;
+  --acento-400: #b5abfc;
+  --acento-500: #968ae0;
+  --acento-600: #796cbf;
+  --acento-700: #5d5294;
+  --acento-800: #423a6a;
+  --acento-900: #2b2741;
+
   /* — planos — */
-  --fundo: #191a1e;
-  --fundo-2: #202126;
-  --superficie: #292b31;
-  --superficie-alta: #303239;
-  --superficie-hover: #383a42;
-  --superficie-selecionada: #41434d;
-  --conteudo: #32343b;
-  --palco: #101114;
-  --trilho: #17181c;
-  --barra-lateral: #282a30;
-  --barra-topo: #303239;
-  --controle: #3b3e46;
-  --veu: rgba(12, 13, 16, 0.78);
-  --veu-suave: rgba(12, 13, 16, 0.5);
-  --fundo-identidade: rgba(20, 21, 24, 0.34);
-  --fundo-vazio: rgba(27, 28, 33, 0.26);
+  --fundo: #161826;
+  --superficie: #232532;
+  --barra-lateral: color-mix(in srgb, var(--superficie) 40%, var(--fundo));
+  --barra-topo: var(--fundo);
+  /* O escuro por trás de um diálogo modal. */
+  --veu: color-mix(in srgb, var(--neutro-900) 55%, transparent);
+  /* O gradiente que representa uma tela ainda sem imagem — no palco, na miniatura e na prévia
+     do saguão. É a mesma receita nos três lugares, e só aqui. */
+  --vidro-do-quadro: radial-gradient(120% 100% at 75% 0%, color-mix(in srgb, var(--acao) 7%, transparent) 0%, transparent 55%),
+    linear-gradient(165deg, color-mix(in srgb, var(--superficie) 65%, var(--fundo)) 0%, color-mix(in srgb, var(--fundo) 82%, black) 100%);
 
   /* — texto — */
-  --texto: #f0f1f5;
-  --texto-fraco: #b0b3bd;
-  --texto-fraquissimo: #7f838f;
-  --texto-sobre-acento: #ffffff;
+  --texto: #e9e9ed;
+  --texto-fraco: var(--neutro-300);
+  --texto-fraquissimo: var(--neutro-500);
+  --texto-sobre-acento: var(--fundo);
 
-  /* — traços — */
-  --linha: #3b3d45;
-  --linha-forte: #4b4e58;
-  --linha-sutil: rgba(0, 0, 0, 0.12);
-  --linha-painel: rgba(0, 0, 0, 0.18);
-  --linha-topo: rgba(0, 0, 0, 0.22);
-  --linha-profunda: rgba(0, 0, 0, 0.24);
-  --borda-luz: rgba(255, 255, 255, 0.1);
-  --borda-luz-suave: rgba(255, 255, 255, 0.06);
-  --realce-minimo: rgba(255, 255, 255, 0.025);
-  --realce: rgba(255, 255, 255, 0.06);
-  --pressionado: rgba(255, 255, 255, 0.12);
+  /* — traços —
+     O divisor é um só: tinta do texto a 16%. Molduras de caixa e separadores dentro de controles
+     ficam sólidos; regra solta não existe neste produto. */
+  --linha: color-mix(in srgb, var(--texto) 16%, transparent);
+  --linha-forte: color-mix(in srgb, var(--texto) 26%, transparent);
 
-  /* — acentos — */
-  --acao: #7667f5;
-  --acao-forte: #6556dc;
-  --acao-fraca: rgba(118, 103, 245, 0.15);
-  --acao-media: rgba(118, 103, 245, 0.34);
-  --acao-texto: #a99fff;
-  --acao-brilho: rgba(118, 103, 245, 0.24);
-  --acao-nevoa: rgba(118, 103, 245, 0.11);
-  --acao-nevoa-suave: rgba(118, 103, 245, 0.08);
-  --acao-aura: rgba(118, 103, 245, 0.06);
-  --acao-arco: rgba(118, 103, 245, 0.07);
-  --conectado: #35b76f;
-  --conectado-texto: #6ede9a;
-  --conectado-fundo: rgba(53, 183, 111, 0.11);
-  --conectado-aura: rgba(53, 183, 111, 0.1);
-  --atencao: #d08011;
-  --atencao-fraca: rgba(208, 128, 17, 0.14);
-  --atencao-texto: #f0c26b;
-  --perigo: #da373c;
-  --perigo-forte: #b92f34;
-  --perigo-fraca: rgba(218, 55, 60, 0.14);
-  --perigo-media: rgba(218, 55, 60, 0.32);
-  --perigo-texto: #ffd6d8;
-  --turquesa: #2aa9a1;
-  --gradiente-marca: linear-gradient(145deg, #8b79ff 0%, #6556dc 58%, #4a87e8 100%);
-  --gradiente-hero: radial-gradient(circle at 80% 10%, var(--acao-brilho), transparent 34%),
-    linear-gradient(135deg, #292b33 0%, #25262d 100%);
+  /* — acentos —
+     Tinta de acento não vira token: cada módulo escreve o `color-mix` na porcentagem que o seu
+     estado pede (7% de fundo de resumo, 12% de hover, 14% de aba escolhida). Congelar três
+     apelidos para isso só empurrava a decisão de intensidade para longe de quem a toma. */
+  --acao: #9184d9;
+  --acao-texto: var(--acento-200);
+  /* "No ar" é acento, não verde: o produto tem um sinal só, e é o mesmo do foco e da marca. */
+  --conectado: var(--acao);
+  --atencao: #d9a441;
+  --atencao-fraca: color-mix(in srgb, #d9a441 14%, transparent);
+  --atencao-texto: #eccb87;
+  --perigo: oklch(0.62 0.14 25);
+  --perigo-forte: oklch(0.55 0.16 25);
+  --perigo-fraca: color-mix(in srgb, oklch(0.55 0.16 25) 14%, transparent);
+  --perigo-texto: oklch(0.72 0.12 25);
+  /* A segunda série dos gráficos (captura, banda disponível): presente sem competir com
+     o acento, que é sempre o que a pessoa está tentando ler. */
+  --serie-de-apoio: var(--neutro-600);
 
   /* — tipografia — */
-  --fonte: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fonte: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fonte-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+  /* Títulos param em 500. O 600 é para rótulos curtos — iniciais de avatar, badges, tags. */
+  --peso-titulo: 500;
+  --peso-forte: 600;
 
   --texto-xs: 11px;
   --texto-sm: 12.5px;
   --texto-md: 13.5px;
   --texto-base: 15px;
   --texto-lg: 18px;
-  --titulo-sm: 21px;
-  --titulo-md: 27px;
-  --titulo-lg: 34px;
+  --titulo-sm: 19px;
+  --titulo-md: 25px;
+  --titulo-lg: clamp(30px, 4.5vw, 44px);
 
   /* — espaço — */
   --e1: 4px;
@@ -96,25 +105,23 @@
   --e10: 56px;
 
   /* — raio — */
-  --raio-sm: 4px;
+  --raio-sm: 6px;
   --raio-md: 8px;
-  --raio-lg: 12px;
-  --raio-xl: 18px;
+  --raio-lg: 14px;
+  /* Os botões da barra flutuante: quadrados de 44px com o canto próprio do tema. */
+  --raio-botao-da-barra: 10px;
   --raio-pilula: 999px;
 
   /* — elevação — */
-  --sombra-md: 0 4px 12px rgba(0, 0, 0, 0.28);
-  --sombra-lg: 0 18px 50px rgba(0, 0, 0, 0.42);
-  --sombra-flutuante: 0 8px 28px rgba(0, 0, 0, 0.34);
-  --sombra-marca: 0 7px 18px rgba(85, 72, 200, 0.35);
-  --sombra-previa: 0 22px 45px rgba(0, 0, 0, 0.36);
-  --sombra-topo: 0 2px 5px rgba(0, 0, 0, 0.13);
-  --sombra-painel: -8px 0 22px rgba(0, 0, 0, 0.12);
-  --sombra-quadro: 0 8px 26px rgba(0, 0, 0, 0.2);
+  --sombra-md: 0 0 0 1px color-mix(in srgb, var(--texto) 8%, transparent), 0 6px 18px rgba(0, 0, 0, 0.55);
+  --sombra-lg: 0 0 0 1px color-mix(in srgb, var(--texto) 10%, transparent), 0 16px 40px rgba(0, 0, 0, 0.65);
+  --sombra-marca: 0 0 14px color-mix(in srgb, var(--acao) 25%, transparent);
+  /* O halo de "estou compartilhando", no botão da barra e na caixa da marca. */
+  --brilho-do-acento: 0 0 16px color-mix(in srgb, var(--acao) 28%, transparent);
 
   /* — medidas — */
   --largura-da-gaveta-padrao: 320px;
-  --largura-do-trilho: 72px;
-  --largura-da-navegacao: 250px;
+  --largura-da-navegacao: 264px;
+  --largura-das-miniaturas: 190px;
   --altura-do-topo: 52px;
 }

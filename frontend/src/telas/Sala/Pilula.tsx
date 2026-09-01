@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Peca } from '../../sala/palco'
+import type { ControleDeVolumes } from '../../sala/useVolumes'
 import {
   IconeCaber,
   IconeJanelinha,
@@ -8,10 +9,12 @@ import {
   IconeTelaCheia,
 } from '../../ui/Icone'
 import { temPiP, temTelaCheia } from './assistir'
+import { ControleDeSom } from './ControleDeSom'
 import estilos from './Pilula.module.css'
 
 interface Props {
   peca: Peca
+  volumes: ControleDeVolumes
   zoom: { caber(): void; umPorUm(): void }
   telaCheia: { cheia: boolean; alternar(): void }
   pip: { emPiP: boolean; alternar(): void }
@@ -49,30 +52,40 @@ function Acao({
 }
 
 /**
- * Os controles que aparecem sobre um quadro de tela, no passar do mouse e ao receber foco de
- * teclado: como assistir (zoom, janelinha, tela cheia). Quadro de pessoa não tem pílula — o
- * volume da voz, único controle que já morou aqui, vive na etiqueta, sempre à vista.
+ * A pílula inferior direita do quadro em destaque: como assistir aquilo.
  *
- * Quem vê o quê sai do papel da peça, e de mais nada: ninguém vê botão que não pode apertar —
- * sem fixar (fixar é o clique), sem parar o que não é seu.
- *
- * O que é da SUA própria tela (trocar, o áudio dela, parar) não mora aqui: mora na barra —
- * enquanto você assiste a de outra pessoa em foco, a sua vive fora do palco, sem pílula nenhuma
- * desenhada para ela, e um botão que só existe às vezes não pode ser a única porta pra ele.
+ * Volume, zoom, janelinha e tela cheia — tudo que muda o *seu* jeito de ver, e nada que mude o
+ * que os outros veem. O que é da SUA própria tela (trocar, o áudio dela, parar) mora na barra:
+ * enquanto você assiste a de outra pessoa em destaque, a sua vive na coluna de miniaturas, sem
+ * pílula nenhuma desenhada para ela, e um botão que só existe às vezes não pode ser a única
+ * porta pra ele.
  */
-export function Pilula({ peca, zoom, telaCheia, pip }: Props) {
-  if (!peca.ehTela) return null
-
+export function Pilula({ peca, volumes, zoom, telaCheia, pip }: Props) {
   const alheia = !peca.proprio
+  const comSom = alheia && peca.temAudio
+  const comZoom = peca.ehTela
+  const comJanela = alheia && (temPiP() || temTelaCheia())
+
+  if (!comSom && !comZoom && !comJanela) return null
 
   return (
     <div className={estilos.pilula}>
-      <Acao rotulo="Fazer a tela caber no quadro" dica="a tela inteira dentro do quadro" aoClicar={zoom.caber}>
-        <IconeCaber tamanho={15} />
-      </Acao>
-      <Acao rotulo="Ver em 1:1" dica="tamanho original, arraste para andar por ela" aoClicar={zoom.umPorUm}>
-        <IconePixelAPixel tamanho={15} />
-      </Acao>
+      {comSom && <ControleDeSom peca={peca} volumes={volumes} />}
+
+      {comSom && comZoom && <span className={estilos.separador} aria-hidden="true" />}
+
+      {comZoom && (
+        <>
+          <Acao rotulo="Fazer a tela caber no quadro" dica="a tela inteira dentro do quadro" aoClicar={zoom.caber}>
+            <IconeCaber tamanho={16} />
+          </Acao>
+          <Acao rotulo="Ver em 1:1" dica="tamanho original, arraste para andar por ela" aoClicar={zoom.umPorUm}>
+            <IconePixelAPixel tamanho={16} />
+          </Acao>
+        </>
+      )}
+
+      {comJanela && (comSom || comZoom) && <span className={estilos.separador} aria-hidden="true" />}
 
       {alheia && temPiP() && (
         <Acao
@@ -80,7 +93,7 @@ export function Pilula({ peca, zoom, telaCheia, pip }: Props) {
           ligado={pip.emPiP}
           aoClicar={pip.alternar}
         >
-          <IconeJanelinha tamanho={15} />
+          <IconeJanelinha tamanho={16} />
         </Acao>
       )}
 
@@ -91,7 +104,7 @@ export function Pilula({ peca, zoom, telaCheia, pip }: Props) {
           ligado={telaCheia.cheia}
           aoClicar={telaCheia.alternar}
         >
-          {telaCheia.cheia ? <IconeSairDaTelaCheia tamanho={15} /> : <IconeTelaCheia tamanho={15} />}
+          {telaCheia.cheia ? <IconeSairDaTelaCheia tamanho={16} /> : <IconeTelaCheia tamanho={16} />}
         </Acao>
       )}
     </div>

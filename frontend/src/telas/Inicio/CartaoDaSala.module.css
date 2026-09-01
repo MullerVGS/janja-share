@@ -1,0 +1,126 @@
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--e4);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-lg);
+  background: var(--superficie);
+  transition: border-color 0.12s ease;
+}
+
+.cartao:hover {
+  border-color: color-mix(in srgb, var(--acao) 55%, transparent);
+}
+
+/* Sala em carência: existe, mas ninguém chegou (ou todos saíram). Apagada, não escondida. */
+.cartao[data-vazia] {
+  opacity: 0.68;
+}
+
+.cartao[data-cheia] {
+  border-style: dashed;
+}
+
+.info {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--texto-base);
+  font-weight: var(--peso-titulo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cadeado {
+  flex: none;
+  display: flex;
+  color: var(--texto-fraquissimo);
+}
+
+.estado {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--acento-300);
+  font-size: var(--texto-xs);
+}
+
+.cartao[data-vazia] .estado {
+  color: var(--texto-fraquissimo);
+}
+
+.pontoAoVivo {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--acao);
+}
+
+.rodape {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+}
+
+.espacador {
+  flex: 1;
+}
+
+.vazio {
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-sm);
+}
+
+/* Os avatares se sobrepõem: o anel do fundo do cartão é o que separa um do outro. */
+.avatares {
+  display: flex;
+  align-items: center;
+}
+
+.avatar,
+.avatarExtra {
+  border: 2px solid var(--superficie);
+}
+
+.avatar + .avatar,
+.avatar + .avatarExtra {
+  margin-left: -7px;
+}
+
+.avatarExtra {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--neutro-800);
+  color: var(--neutro-300);
+  font-size: 9px;
+  font-weight: var(--peso-forte);
+}
+
+.aviso {
+  font-size: var(--texto-sm);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.acoesDoFormulario {
+  display: flex;
+  gap: var(--e2);
+}

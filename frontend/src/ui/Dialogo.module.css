@@ -14,9 +14,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--e4);
-  background: var(--superficie-alta);
+  background: var(--superficie);
   border: 1px solid var(--linha);
-  border-radius: var(--raio-xl);
+  border-radius: var(--raio-lg);
   padding: var(--e6);
   box-shadow: var(--sombra-lg);
 }
@@ -49,6 +49,6 @@
 }
 
 .fechar:hover {
-  background: var(--realce);
+  background: color-mix(in srgb, var(--texto) 8%, transparent);
   color: var(--texto);
 }

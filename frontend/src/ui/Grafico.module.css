@@ -15,7 +15,7 @@
 }
 
 .titulo {
-  font-weight: 600;
+  font-weight: var(--peso-titulo);
   color: var(--texto-fraco);
 }
 
@@ -35,15 +35,15 @@
 
 .itemDaLeitura b {
   font-family: var(--fonte-mono);
-  font-weight: 600;
+  font-weight: var(--peso-titulo);
   color: var(--texto);
 }
 
 .area {
   position: relative;
   height: 96px;
-  border-radius: var(--raio-sm);
-  background: var(--fundo);
+  border-radius: var(--raio-md);
+  background: color-mix(in srgb, var(--fundo) 55%, var(--superficie));
   border: 1px solid var(--linha);
   overflow: hidden;
 }
@@ -102,8 +102,8 @@
   stroke: var(--acao);
 }
 
-.turquesa {
-  stroke: var(--turquesa);
+.apoio {
+  stroke: var(--serie-de-apoio);
 }
 
 .marca {
@@ -165,8 +165,8 @@
   color: var(--acao);
 }
 
-.chave.turquesa {
-  color: var(--turquesa);
+.chave.apoio {
+  color: var(--serie-de-apoio);
 }
 
 .chaveDeReferencia {

@@ -16,10 +16,10 @@ describe('preferências', () => {
 
   it('gravar funde com o que já existe e devolve o conjunto inteiro', () => {
     gravarPreferencias({ larguraDaLateral: 420 })
-    expect(gravarPreferencias({ abaDaLateral: 'transmissao' })).toEqual({
+    expect(gravarPreferencias({ nome: 'Ana' })).toEqual({
       ...PREFERENCIAS_PADRAO,
       larguraDaLateral: 420,
-      abaDaLateral: 'transmissao',
+      nome: 'Ana',
     })
     expect(lerPreferencias().larguraDaLateral).toBe(420)
   })
@@ -46,11 +46,11 @@ describe('preferências', () => {
   it('campo inválido vira o padrão daquele campo; os demais ficam', () => {
     localStorage.setItem(
       CHAVE_DAS_PREFERENCIAS,
-      JSON.stringify({ versao: 1, larguraDaLateral: 'larga', abaDaLateral: 'chat' }),
+      JSON.stringify({ versao: 1, larguraDaLateral: 'larga', nome: 'Ana' }),
     )
-    expect(lerPreferencias()).toEqual({ ...PREFERENCIAS_PADRAO, abaDaLateral: 'chat' })
+    expect(lerPreferencias()).toEqual({ ...PREFERENCIAS_PADRAO, nome: 'Ana' })
 
-    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, larguraDaLateral: 380, abaDaLateral: 'sótão' }))
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, larguraDaLateral: 380, nome: 42 }))
     expect(lerPreferencias()).toEqual({ ...PREFERENCIAS_PADRAO, larguraDaLateral: 380 })
   })
 
@@ -100,14 +100,14 @@ describe('preferências', () => {
     expect(lerPreferencias().volumes).toEqual({})
   })
 
-  it('o painel de canais nasce aberto; recolhido fica guardado, e valor estranho volta a aberto', () => {
-    expect(PREFERENCIAS_PADRAO.painelDeCanaisAberto).toBe(true)
+  it('a barra lateral nasce aberta; recolhida fica guardada, e valor estranho volta a aberta', () => {
+    expect(PREFERENCIAS_PADRAO.barraLateralAberta).toBe(true)
 
-    gravarPreferencias({ painelDeCanaisAberto: false })
-    expect(lerPreferencias().painelDeCanaisAberto).toBe(false)
+    gravarPreferencias({ barraLateralAberta: false })
+    expect(lerPreferencias().barraLateralAberta).toBe(false)
 
-    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, painelDeCanaisAberto: 'sim' }))
-    expect(lerPreferencias().painelDeCanaisAberto).toBe(true)
+    localStorage.setItem(CHAVE_DAS_PREFERENCIAS, JSON.stringify({ versao: 1, barraLateralAberta: 'sim' }))
+    expect(lerPreferencias().barraLateralAberta).toBe(true)
   })
 
   it('o nome de exibição fica guardado; o padrão é vazio e um valor que não é string volta a ele', () => {

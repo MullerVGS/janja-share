@@ -4,47 +4,34 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--texto-sobre-acento);
-  font-weight: 800;
+  background: var(--acento-900);
+  color: var(--acento-200);
+  font-weight: var(--peso-forte);
   line-height: 1;
 }
 
+.avatar[data-proprio] {
+  background: var(--acento-700);
+}
+
 .mini {
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
   font-size: 9px;
 }
 
 .pequeno {
-  width: 28px;
-  height: 28px;
-  font-size: 9px;
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
 }
 
 .medio {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   font-size: var(--texto-xs);
 }
 
-.avatar[data-status='falando'] {
-  box-shadow: 0 0 0 2px var(--conectado);
-}
-
-.avatar[data-status='online']::after {
-  content: '';
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--barra-lateral);
-  border-radius: 50%;
-  background: var(--conectado);
-}
-
-.medio[data-status='online']::after {
-  width: 10px;
-  height: 10px;
-  border-width: 3px;
+.avatar[data-falando] {
+  box-shadow: 0 0 0 2px var(--acao);
 }

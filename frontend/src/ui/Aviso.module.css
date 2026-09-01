@@ -7,7 +7,7 @@
 
 .erro {
   background: var(--perigo-fraca);
-  border-color: var(--perigo-media);
+  border-color: color-mix(in srgb, var(--perigo) 45%, transparent);
   color: var(--perigo-texto);
 }
 

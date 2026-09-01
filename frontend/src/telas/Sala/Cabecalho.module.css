@@ -6,19 +6,47 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 0 var(--e3) 0 var(--e4);
-  border-bottom: 1px solid var(--linha-topo);
+  gap: var(--e2);
+  padding: 0 var(--e3);
+  border-bottom: 1px solid var(--linha);
   background: var(--barra-topo);
-  box-shadow: var(--sombra-topo);
 }
 
-.canal {
+/* O interruptor do painel e a contagem numa peça só: o número é o que faz a pessoa querer
+   abrir, e separá-los daria dois alvos para a mesma intenção. */
+.pessoas {
+  height: 34px;
   flex: none;
-  color: var(--texto-fraquissimo);
-  font-size: 24px;
-  font-weight: 450;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--raio-md);
+  background: transparent;
+  color: var(--neutro-300);
+  font-size: var(--texto-md);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.pessoas:hover {
+  background: color-mix(in srgb, var(--texto) 8%, transparent);
+}
+
+.pessoas[aria-pressed='true'] {
+  color: var(--acao);
+}
+
+.contagem {
+  font-variant-numeric: tabular-nums;
+}
+
+.separador {
+  width: 1px;
+  height: 20px;
+  flex: none;
+  background: var(--linha);
 }
 
 .nomeDaSala {
@@ -26,45 +54,19 @@
   max-width: min(42vw, 460px);
   overflow: hidden;
   color: var(--texto);
-  font-size: var(--texto-base);
-  font-weight: 680;
-  letter-spacing: -0.01em;
+  font-size: 14.5px;
+  font-weight: var(--peso-titulo);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.separador {
-  width: 1px;
-  height: 22px;
-  margin: 0 var(--e1);
-  background: var(--linha);
-}
-
-/* Preenchido = conectado; oco = não. A forma também carrega o estado. */
-.pulso {
-  width: 7px;
-  height: 7px;
+.efemera {
   flex: none;
-  border: 1.5px solid var(--texto-fraquissimo);
-  border-radius: 50%;
-  background: transparent;
-}
-
-.pulso[data-conectado] {
-  border-color: var(--conectado);
-  background: var(--conectado);
-}
-
-.estado {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  overflow: hidden;
-  color: var(--texto-fraco);
-  font-size: var(--texto-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 2px 9px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-pilula);
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-xs);
 }
 
 .espacador {
@@ -72,43 +74,86 @@
   flex: 1;
 }
 
+.estado {
+  min-width: 0;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--neutro-400);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Preenchido e pulsando = conectado; oco e parado = não. A forma carrega o estado junto da cor. */
+.pulso {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border: 1px solid var(--neutro-600);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.estado[data-conectado] .pulso {
+  border-color: var(--acao);
+  background: var(--acao);
+  animation: shPulsar 2.4s ease-in-out infinite;
+}
+
 .botao {
+  position: relative;
   width: 34px;
   height: 34px;
   flex: none;
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid transparent;
+  border: none;
   border-radius: var(--raio-md);
   background: transparent;
-  color: var(--texto-fraco);
+  color: var(--neutro-300);
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .botao:hover {
-  background: var(--superficie-hover);
-  color: var(--texto);
+  background: color-mix(in srgb, var(--texto) 8%, transparent);
 }
 
 .botao[aria-pressed='true'] {
-  background: var(--acao-fraca);
-  color: var(--acao-texto);
+  background: color-mix(in srgb, var(--acao) 14%, transparent);
+  color: var(--acao);
 }
 
-@media (max-width: 620px) {
-  .cabecalho {
-    padding-left: var(--e3);
-  }
+.contador {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--raio-pilula);
+  background: var(--acao);
+  color: var(--texto-sobre-acento);
+  font-size: 9px;
+  font-weight: var(--peso-forte);
+}
 
-  .nomeDaSala {
-    max-width: 42vw;
-  }
-
-  .separador,
-  .pulso,
-  .estado {
+/* No estreito o topo guarda só o essencial: onde você está e as portas dos painéis. */
+@media (max-width: 680px) {
+  .efemera,
+  .estado,
+  .contagem {
     display: none;
+  }
+
+  .pessoas {
+    padding: 0 8px;
   }
 }

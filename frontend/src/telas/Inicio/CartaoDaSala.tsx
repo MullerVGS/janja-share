@@ -7,7 +7,7 @@ import { Avatar } from '../../ui/Avatar'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { IconeCadeado } from '../../ui/Icone'
-import estilos from './SalaLinha.module.css'
+import estilos from './CartaoDaSala.module.css'
 
 /** Avatares de sobra viram um "+N" — uma fila crescendo sem teto por sala fica ilegível. */
 const MAX_AVATARES_VISIVEIS = 6
@@ -22,10 +22,10 @@ interface Props {
 }
 
 /**
- * Uma linha da lista. "Entrar" só abre um formulário na própria linha quando falta alguma coisa
- * — senha da sala, ou o nome de quem está entrando; do contrário vai direto.
+ * Um cartão da grade de salas. "Entrar" só abre um formulário no próprio cartão quando falta
+ * alguma coisa — senha da sala, ou o nome de quem está entrando; do contrário vai direto.
  */
-export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
+export function CartaoDaSala({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
   const [expandido, setExpandido] = useState(false)
   const entrada = useEntradaNaSala({
     slug: sala.slug,
@@ -49,7 +49,11 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
   }
 
   return (
-    <li className={estilos.linha} data-vazia={sala.pessoas.length === 0 || undefined} data-cheia={sala.cheia || undefined}>
+    <li
+      className={estilos.cartao}
+      data-vazia={sala.pessoas.length === 0 || undefined}
+      data-cheia={sala.cheia || undefined}
+    >
       <div className={estilos.info}>
         <span className={estilos.nome}>{sala.nome}</span>
         {sala.temSenha && (
@@ -57,14 +61,13 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
             <IconeCadeado tamanho={14} />
           </span>
         )}
-        {sala.telasNoAr > 0 && (
-          <span className={estilos.telas}>
-            {sala.telasNoAr} {sala.telasNoAr === 1 ? 'tela' : 'telas'} no ar
-          </span>
-        )}
+        <span className={estilos.estado}>
+          {sala.telasNoAr > 0 && <span className={estilos.pontoAoVivo} aria-hidden="true" />}
+          {sala.telasNoAr > 0 ? `${sala.telasNoAr} ${sala.telasNoAr === 1 ? 'tela' : 'telas'} no ar` : 'sala aberta'}
+        </span>
       </div>
 
-      <div className={estilos.pessoas}>
+      <div className={estilos.rodape}>
         {sala.pessoas.length === 0 ? (
           <span className={estilos.vazio}>ninguém agora</span>
         ) : (
@@ -74,7 +77,7 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
                 key={`${pessoa}-${indice}`}
                 className={estilos.avatar}
                 nome={pessoa}
-                tamanho="mini"
+                tamanho="pequeno"
                 title={pessoa}
                 aria-label={pessoa}
               />
@@ -89,6 +92,19 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
             )}
           </div>
         )}
+
+        <span className={estilos.espacador} />
+
+        {!expandido && (
+          <Botao
+            aparencia={sala.cheia ? 'secundario' : 'primario'}
+            disabled={sala.cheia}
+            ocupado={entrada.enviando}
+            onClick={clicarEntrar}
+          >
+            {sala.cheia ? 'cheia' : 'Entrar'}
+          </Botao>
+        )}
       </div>
 
       {entrada.erro !== null && (
@@ -97,7 +113,7 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
         </div>
       )}
 
-      {expandido ? (
+      {expandido && (
         <form className={estilos.formulario} onSubmit={entrada.enviar}>
           {entrada.precisaDoNome && (
             <Campo
@@ -118,27 +134,20 @@ export function SalaLinha({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
               onChange={(e) => entrada.setSenha(e.target.value)}
             />
           )}
-          <Botao
-            type="submit"
-            aparencia="primario"
-            ocupado={entrada.enviando}
-            disabled={!entrada.podeEntrar}
-          >
-            Entrar
-          </Botao>
-          <Botao type="button" aparencia="fantasma" disabled={entrada.enviando} onClick={cancelar}>
-            Cancelar
-          </Botao>
+          <div className={estilos.acoesDoFormulario}>
+            <Botao
+              type="submit"
+              aparencia="primario"
+              ocupado={entrada.enviando}
+              disabled={!entrada.podeEntrar}
+            >
+              Entrar
+            </Botao>
+            <Botao type="button" aparencia="fantasma" disabled={entrada.enviando} onClick={cancelar}>
+              Cancelar
+            </Botao>
+          </div>
         </form>
-      ) : (
-        <Botao
-          aparencia={sala.cheia ? 'secundario' : 'primario'}
-          disabled={sala.cheia}
-          ocupado={entrada.enviando}
-          onClick={clicarEntrar}
-        >
-          {sala.cheia ? 'cheia' : 'Entrar'}
-        </Botao>
       )}
     </li>
   )

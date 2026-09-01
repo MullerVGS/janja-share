@@ -1,54 +1,35 @@
 .marca {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--e3);
   min-width: 0;
 }
 
+/* A caixa vazada com o halo é a única peça da interface que brilha em repouso — é a assinatura
+   do produto, e por isso ela não se repete em botão nenhum. */
 .simbolo {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  color: var(--texto-sobre-acento);
-  background: var(--gradiente-marca);
+  border: 1px solid var(--acao);
+  border-radius: 9px;
+  color: var(--acao);
   box-shadow: var(--sombra-marca);
-}
-
-.simbolo svg {
-  width: 25px;
-  height: 25px;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .nome {
   overflow: hidden;
   color: var(--texto);
-  font-size: 16px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
+  font-size: var(--texto-base);
+  font-weight: var(--peso-titulo);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .compacta .simbolo {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  transition: border-radius 0.16s ease, transform 0.16s ease;
-}
-
-.compacta .simbolo svg {
-  width: 29px;
-  height: 29px;
-}
-
-.compacta:hover .simbolo {
-  border-radius: 13px;
-  transform: translateY(-1px);
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
 }

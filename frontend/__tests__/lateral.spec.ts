@@ -3,7 +3,7 @@ import { ABAS, alternarAba, LARGURA_MINIMA_DA_LATERAL, limitarLargura } from '..
 
 describe('lateral', () => {
   it('tem as três abas, nesta ordem', () => {
-    expect(ABAS.map((aba) => aba.valor)).toEqual(['chat', 'qualidade', 'transmissao'])
+    expect(ABAS.map((aba) => aba.valor)).toEqual(['chat', 'qualidade', 'metricas'])
   })
 
   it('a largura fica entre o mínimo e metade da janela', () => {

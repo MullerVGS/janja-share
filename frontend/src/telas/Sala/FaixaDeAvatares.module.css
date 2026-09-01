@@ -1,0 +1,46 @@
+.faixa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: var(--raio-pilula);
+  border: 1px solid var(--linha);
+  background: color-mix(in srgb, var(--superficie) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.circulo {
+  position: relative;
+  flex: none;
+  display: flex;
+}
+
+/* O selo de mudo encosta na borda do círculo e ganha um anel do fundo, para o glifo continuar
+   legível sobre qualquer avatar. */
+.selo {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 13px;
+  height: 13px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--fundo);
+  background: var(--neutro-800);
+  color: var(--neutro-400);
+}
+
+.excedente {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--neutro-800);
+  color: var(--neutro-300);
+  font-size: 10px;
+  font-weight: var(--peso-forte);
+}

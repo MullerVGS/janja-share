@@ -8,7 +8,7 @@ function montarGrafico() {
       titulo="FPS"
       series={[
         { nome: 'codificado', valores: [28, 29, null, 30], cor: 'acao', destaque: true },
-        { nome: 'captura', valores: [30, 30, 30, 30], cor: 'turquesa' },
+        { nome: 'captura', valores: [30, 30, 30, 30], cor: 'apoio' },
       ]}
       referencias={[{ nome: 'alvo', valor: 30 }]}
       faixas={[{ inicio: 1, fim: 2, motivo: 'cpu' }]}
@@ -72,7 +72,7 @@ describe('referência fora do eixo', () => {
         titulo="Bitrate"
         series={[
           { nome: 'saindo', valores: [1000, 1200], cor: 'acao', destaque: true },
-          { nome: 'disponível', valores: [1500, 1600], cor: 'turquesa' },
+          { nome: 'disponível', valores: [1500, 1600], cor: 'apoio' },
         ]}
         referencias={[{ nome: 'teto', valor: teto, foraDoEixo: true }]}
         formatar={(valor) => `${valor}`}
@@ -104,7 +104,7 @@ describe('referência fora do eixo', () => {
         titulo="Bitrate"
         series={[
           { nome: 'saindo', valores: [1000, 1200], cor: 'acao', destaque: true },
-          { nome: 'disponível', valores: [1500, 1600], cor: 'turquesa' },
+          { nome: 'disponível', valores: [1500, 1600], cor: 'apoio' },
         ]}
         referencias={[{ nome: 'teto', valor: 12_000, foraDoEixo: true }]}
         formatar={(valor) => `${valor}`}

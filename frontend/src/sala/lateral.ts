@@ -1,15 +1,11 @@
-/** As abas da gaveta da sala, na ordem em que aparecem — o chat primeiro, que é o uso comum. */
-export type Aba = 'qualidade' | 'transmissao' | 'chat'
+/** As abas da gaveta da sala, na ordem em que aparecem — a conversa primeiro, que é o uso comum. */
+export type Aba = 'qualidade' | 'metricas' | 'chat'
 
 export const ABAS: readonly { valor: Aba; rotulo: string }[] = [
-  { valor: 'chat', rotulo: 'Chat' },
+  { valor: 'chat', rotulo: 'Conversa' },
   { valor: 'qualidade', rotulo: 'Qualidade' },
-  { valor: 'transmissao', rotulo: 'Transmissão' },
+  { valor: 'metricas', rotulo: 'Métricas' },
 ]
-
-export function ehAba(valor: unknown): valor is Aba {
-  return ABAS.some((aba) => aba.valor === valor)
-}
 
 export const LARGURA_MINIMA_DA_LATERAL = 300
 

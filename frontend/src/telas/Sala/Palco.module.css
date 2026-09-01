@@ -1,116 +1,63 @@
-/* O palco ocupa todo o centro da sala; a moldura externa só separa vídeo de navegação. */
+/* O palco ocupa todo o centro da sala: o destaque à esquerda, as miniaturas à direita. O
+   respiro de cima e de baixo é o que a faixa de avatares e a barra de controles ocupam
+   flutuando — nenhum dos dois pode cobrir a imagem. */
 .palco {
   position: absolute;
   inset: 0;
-  /* O rodapé que a barra flutuante de controles ocupa sobre o palco: a grade reserva essa
-     altura para nenhum quadro (e nenhum volume) ficar atrás dela. */
-  --reserva-da-barra: 84px;
-  display: grid;
-  gap: var(--e4);
-  padding: clamp(12px, 2vw, 24px);
-  align-content: center;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-  background:
-    radial-gradient(circle at 50% -20%, var(--acao-nevoa-suave), transparent 35%),
-    var(--conteudo);
-  transition: padding 0.16s ease;
+  display: flex;
+  flex-direction: row;
+  gap: var(--e3);
+  padding: 56px var(--e4) 90px;
+  min-width: 0;
+  min-height: 0;
 }
 
-/* Passado ~20 quadros a grade não cabe mais na altura da sala — sem rolagem própria, as linhas
-   de cima e de baixo ficam cortadas pelo `overflow: hidden` de `.sala`, sem jeito de alcançá-las
-   (a Tira só existe em foco). 30 pessoas sozinhas já estouram isso, ninguém precisa compartilhar
-   tela para o teto de lotação deixar de caber na tela. */
-.palco[data-modo='grade'] {
-  overflow-y: auto;
-  padding-bottom: var(--reserva-da-barra);
+@media (max-width: 1080px) {
+  .palco {
+    flex-direction: column;
+  }
 }
 
-/* Uma tela na grade muda a hierarquia: ela é o que a captura do dono mostra, e quatro avatares
-   do mesmo tamanho brigando por espaço com ela não faz sentido. A tela reivindica a linha
-   inteira; as pessoas encolhem para uma fileira fixa, como a Tira. `:has()` decide isso sem o
-   React carregar mais um booleano derivado do palco — sem tela nenhuma, nada aqui se aplica e a
-   grade de sempre volta. */
-.palco[data-modo='grade']:has(.quadro[data-tela]) {
-  grid-template-columns: repeat(auto-fill, 160px);
-  grid-template-rows: minmax(0, 1fr) 160px;
-  grid-auto-rows: 160px;
-  grid-auto-flow: column;
-  align-content: stretch;
-  justify-content: center;
-}
-
-.palco[data-modo='grade']:has(.quadro[data-tela]) .quadro[data-tela] {
-  grid-column: 1 / -1;
-  aspect-ratio: auto;
-}
-
-.palco[data-modo='grade']:has(.quadro[data-tela]) .quadro:not([data-tela]) {
-  aspect-ratio: auto;
-}
-
-/* Em foco a peça toma o palco, mas preserva uma pequena margem da interface. A linha única
-   estica até o rodapé: sem ela o quadro seguiria a proporção intrínseca do vídeo e deixaria
-   faixas vazias de palco em cima e embaixo — espaço que é da tela. */
-.palco[data-modo='foco'] {
-  grid-template-columns: 1fr;
-  grid-template-rows: minmax(0, 1fr);
-  align-content: stretch;
-  padding: clamp(8px, 1.4vw, 18px);
-  gap: 0;
+@media (max-width: 680px) {
+  .palco {
+    padding: 52px 10px 78px;
+  }
 }
 
 .quadro {
   position: relative;
-  overflow: hidden;
+  flex: 1;
+  min-width: 0;
   min-height: 0;
-  aspect-ratio: 16 / 9;
+  overflow: hidden;
   border-radius: var(--raio-lg);
-  border: 1px solid var(--veu-suave);
-  background: var(--palco);
-  box-shadow: var(--sombra-quadro);
+  border: 1px solid var(--linha);
+  background: var(--vidro-do-quadro);
   animation: shCrescer 0.16s ease;
-  transition: border-radius 0.16s ease;
-}
-
-.palco[data-modo='foco'] .quadro {
-  height: 100%;
-  aspect-ratio: auto;
-  border-color: var(--linha);
-  border-radius: var(--raio-lg);
-}
-
-.quadro[data-tela] {
-  border-color: var(--acao-fraca);
 }
 
 .quadro[data-falando] {
-  border-color: var(--conectado);
-  box-shadow: 0 0 0 1px var(--conectado);
+  border-color: var(--acao);
 }
 
-/* Em tela cheia o quadro é a janela inteira: a proporção fixa daria tarja preta dos dois lados. */
+/* Em tela cheia o quadro é a janela inteira: a moldura arredondada daria borda no meio do nada. */
 .quadro[data-cheia] {
-  aspect-ratio: auto;
   border: none;
   border-radius: 0;
 }
 
 @keyframes shCrescer {
   from {
-    transform: scale(0.97);
     opacity: 0.4;
   }
   to {
-    transform: none;
     opacity: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .palco,
   .quadro {
     animation: none;
-    transition: none;
   }
 }
 
@@ -119,18 +66,11 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-}
-
-/* Só onde o arraste do zoom vale: na grade o gesto é inerte, e suprimir o toque ali tiraria da
-   miniatura os gestos do próprio navegador sem nada em troca. */
-.palco[data-modo='foco'] .moldura,
-.quadro[data-cheia] .moldura {
-  cursor: grab;
+  cursor: pointer;
   touch-action: none;
 }
 
-.palco[data-modo='foco'] .moldura:active,
-.quadro[data-cheia] .moldura:active {
+.moldura:active {
   cursor: grabbing;
 }
 
@@ -140,7 +80,6 @@
   /* `contain` e não `cover`: cortar a borda de uma tela compartilhada esconde justamente a
      barra de abas, o terminal e o menu que a pessoa queria mostrar. */
   object-fit: contain;
-  background: var(--palco);
 }
 
 .semVideo {
@@ -148,9 +87,6 @@
   height: 100%;
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(circle at 50% 40%, var(--acao-nevoa), transparent 32%),
-    linear-gradient(160deg, var(--superficie) 0%, var(--fundo-2) 100%);
 }
 
 .iniciais {
@@ -159,15 +95,15 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--superficie-selecionada);
-  font-size: clamp(var(--titulo-sm), 3vw, var(--titulo-lg));
-  font-weight: 700;
-  color: var(--texto-fraco);
+  background: var(--acento-900);
+  font-size: clamp(var(--titulo-sm), 3vw, var(--titulo-md));
+  font-weight: var(--peso-forte);
+  color: var(--acento-200);
   letter-spacing: 0.02em;
 }
 
-/* A faixa do cão de guarda: por cima do quadro, não dentro da etiqueta — ela já hospeda o
-   controle de som e o selo de mudo, e o aviso de recepção tem que caber sem disputar espaço. */
+/* A faixa do cão de guarda: por cima do quadro, não dentro de uma pílula — o aviso de recepção
+   tem que caber sem disputar espaço com nome ou volume. */
 .avisoDaRecepcao {
   position: absolute;
   left: 0;
@@ -183,12 +119,11 @@
   background: var(--atencao-fraca);
   color: var(--atencao-texto);
   font-size: var(--texto-sm);
-  font-weight: 600;
   text-align: center;
 }
 
-/* O aviso NÃO some em tela cheia — ao contrário da etiqueta e da pílula, que são moldura. Ele é
-   status: tela cheia é exatamente onde a pessoa está encarando o retângulo preto sem explicação. */
+/* O aviso NÃO some em tela cheia — ao contrário das pílulas, que são moldura. Ele é status:
+   tela cheia é exatamente onde a pessoa está encarando o retângulo preto sem explicação. */
 
 .textoDaRecepcao {
   min-width: 0;
@@ -202,41 +137,64 @@
   color: var(--atencao-texto);
 }
 
-.etiqueta {
+/* As duas pílulas do rodapé do destaque: identidade à esquerda, como assistir à direita. Elas
+   dividem uma faixa que cobre a largura do quadro, e por isso podem crescer sem se empurrar. */
+.comAInterface,
+.emTelaCheia {
   position: absolute;
-  left: var(--e2);
-  top: var(--e2);
+  left: var(--e3);
+  right: var(--e3);
+  bottom: var(--e3);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--e2);
+  pointer-events: none;
+}
+
+.comAInterface > *,
+.emTelaCheia > * {
+  pointer-events: auto;
+}
+
+.emTelaCheia {
+  bottom: var(--e4);
+}
+
+.pilulaDaIdentidade {
   display: flex;
   align-items: center;
-  /* No quadro pequeno da grade, nome e controle de som não cabem lado a lado; a quebra deixa
-     o nome inteiro em cima e o controle embaixo, em vez de esmagar o nome a uma letra. */
-  flex-wrap: wrap;
-  gap: 2px 5px;
-  max-width: calc(100% - var(--e8));
-  padding: 3px 9px;
+  gap: var(--e2);
+  min-width: 0;
+  padding: 5px 12px 5px 10px;
   border-radius: var(--raio-pilula);
-  background: var(--veu-suave);
-  backdrop-filter: blur(6px);
-}
-
-/* Tela cheia é tela cheia: lá dentro só a pílula pode aparecer, e só quando pedida. */
-.quadro[data-cheia] .etiqueta,
-.quadro[data-cheia] .emPiP {
-  display: none;
-}
-
-.nome {
-  font-size: var(--texto-sm);
-  font-weight: 600;
+  background: color-mix(in srgb, var(--fundo) 80%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--linha);
   color: var(--texto);
-  white-space: nowrap;
+  font-size: var(--texto-sm);
+}
+
+.iconeDaIdentidade {
+  flex: none;
+  display: flex;
+  color: var(--acao);
+}
+
+.nomeDoQuadro {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.microfoneFechado {
-  color: var(--perigo);
-  display: flex;
+.pontoAoVivo {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--acao);
+  animation: shPulsar 2s ease-in-out infinite;
 }
 
 /* O vídeo está tocando noutra janela: sem este aviso, o quadro parece só ter congelado. */
@@ -246,66 +204,32 @@
   right: var(--e2);
   padding: 3px 9px;
   border-radius: var(--raio-pilula);
-  background: var(--acao-fraca);
+  background: color-mix(in srgb, var(--acao) 14%, transparent);
   color: var(--acao-texto);
   font-size: var(--texto-xs);
-  font-weight: 600;
 }
 
-/* A pílula: some enquanto o ponteiro está longe e volta ao passar por cima ou quando o teclado
-   chega nela. `pointer-events` acompanha a opacidade — botão invisível não pode comer o clique
-   que era para a imagem. */
-.aoPassarOMouse {
-  position: absolute;
-  left: 50%;
-  bottom: var(--e2);
-  transform: translateX(-50%);
-  max-width: calc(100% - var(--e4));
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease;
-}
-
-.quadro:hover .aoPassarOMouse,
-.aoPassarOMouse:focus-within {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.naTelaCheia {
-  position: absolute;
-  left: 50%;
-  bottom: var(--e4);
-  transform: translateX(-50%);
-  max-width: calc(100% - var(--e4));
-}
-
-/* A pílula do quadro em foco: sempre à vista quando renderizada — a visibilidade já é decidida
-   em React por `interfaceVisivel` (o mesmo relógio do Cabecalho e da barra), então nada de
-   opacidade condicionada a hover aqui. Com o quadro esticado até o rodapé, ela sobe para não
-   ficar atrás da barra flutuante: as duas aparecem e somem juntas. */
-.comAInterface {
-  position: absolute;
-  left: 50%;
-  bottom: calc(var(--reserva-da-barra) - var(--e2));
-  transform: translateX(-50%);
-  max-width: calc(100% - var(--e4));
+.quadro[data-cheia] .emPiP {
+  display: none;
 }
 
 .vazio {
-  grid-column: 1 / -1;
+  flex: 1;
   display: grid;
   place-items: center;
   align-content: center;
   gap: 7px;
   text-align: center;
   color: var(--texto-fraquissimo);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-lg);
+  background: var(--vidro-do-quadro);
 }
 
 .vazio strong {
   color: var(--texto);
   font-size: var(--texto-lg);
-  font-weight: 680;
+  font-weight: var(--peso-titulo);
 }
 
 .vazio > span:last-child {
@@ -313,36 +237,12 @@
 }
 
 .iconeVazio {
-  width: 58px;
-  height: 58px;
+  width: 52px;
+  height: 52px;
   display: grid;
   place-items: center;
   margin-bottom: var(--e1);
   border-radius: 50%;
-  background: var(--superficie);
-  color: var(--acao-texto);
-  box-shadow: 0 0 0 8px var(--acao-aura);
-}
-
-@media (max-width: 620px) {
-  .palco {
-    gap: var(--e2);
-    padding: var(--e2);
-  }
-
-  .palco[data-modo='grade'] {
-    grid-template-columns: 1fr;
-  }
-
-  .palco[data-modo='grade']:has(.quadro[data-tela]) {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr);
-    grid-auto-flow: row;
-    grid-auto-rows: 110px;
-    justify-content: stretch;
-  }
-
-  .palco[data-modo='foco'] {
-    padding: var(--e2);
-  }
+  border: 1px solid var(--linha);
+  color: var(--acao);
 }

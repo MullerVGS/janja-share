@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ConnectionState } from 'livekit-client'
 import { useNavigate, useParams } from 'react-router-dom'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
-import { retirarCaptura } from '../../sala/capturaPendente'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
 import { chavesDasTelasPublicadas, montarPalco } from '../../sala/palco'
@@ -10,6 +8,7 @@ import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useFocoDeTeclado } from '../../sala/useFocoDeTeclado'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
+import { useMedia } from '../../sala/useMedia'
 import { useSala } from '../../sala/useSala'
 import { useVolumes } from '../../sala/useVolumes'
 import { useZoom } from '../../sala/useZoom'
@@ -22,15 +21,28 @@ import { Cabecalho } from './Cabecalho'
 import { Chat } from './Chat'
 import { Controles } from './Controles'
 import { EntradaDaSala } from './EntradaDaSala'
+import { FaixaDeAvatares } from './FaixaDeAvatares'
 import { Gaveta } from './Gaveta'
 import { AudioDaSala } from './Midia'
 import { NavegacaoDaSala } from './NavegacaoDaSala'
 import { Palco } from './Palco'
 import { Qualidade } from './Qualidade'
 import { resumirTransmissao } from './resumo'
-import { Tira } from './Tira'
 import { Transmissao } from './Transmissao'
 import estilos from './Sala.module.css'
+
+/** Abaixo disto a barra lateral vira camada por cima do palco, e não mais uma coluna. */
+const LATERAL_EM_CAMADA = '(max-width: 1080px)'
+/** Abaixo disto a gaveta faz o mesmo. */
+const GAVETA_EM_CAMADA = '(max-width: 980px)'
+/** Abaixo disto a faixa de avatares corta cedo — o palco é estreito demais para oito círculos. */
+const PALCO_ESTREITO = '(max-width: 680px)'
+
+const AVATARES_NA_FAIXA = 8
+const AVATARES_NA_FAIXA_ESTREITA = 4
+
+/** "Convite copiado" dura 1,6 s — o mesmo prazo do "Copiado" das Métricas. */
+const AVISO_DE_COPIA_MS = 1600
 
 /** A sala reúne navegação, palco e painéis sem misturar nenhum deles com o fluxo da mídia. */
 export function Sala() {
@@ -48,22 +60,6 @@ export function Sala() {
   const telemetria = useTelemetria(sala)
   const compartilhamento = useCompartilhamento(sala, telemetria.emissor, telemetria.espectadores)
 
-  // A captura que a home abriu viaja por `capturaPendente`; adotá-la é o que faz o clique único
-  // da home terminar em transmissão. Uma vez só — `retirarCaptura` é destrutivo.
-  useEffect(() => {
-    if (conexao !== ConnectionState.Connected) return
-    const faixas = retirarCaptura()
-    if (faixas) void compartilhamento.adotar(faixas)
-  }, [conexao, compartilhamento])
-
-  // Se a conexão falhou (SFU fora, credencial ruim), a sala nunca chega a `Connected` e o efeito
-  // acima nunca roda — sem isto a captura só morreria pelo TTL de `capturaPendente`, 30s depois.
-  // Ler `erro` não é cleanup: o StrictMode não atrapalha aqui, a invocação dupla do dev roda o
-  // mesmo no-op duas vezes.
-  useEffect(() => {
-    if (erro) retirarCaptura()?.forEach((faixa) => faixa.stop())
-  }, [erro])
-
   // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
   // mostrava "Nada dito ainda." enquanto os outros continuavam falando.
@@ -72,25 +68,45 @@ export function Sala() {
   const volumes = useVolumes()
 
   const [preferencias] = useState(lerPreferencias)
-  // A gaveta nasce fechada: nada de interface antes de alguém pedir.
-  const [gaveta, setGaveta] = useState<EstadoDaLateral>({ aberta: false, aba: preferencias.abaDaLateral })
+  // A gaveta nasce fechada, na Conversa: nada de interface antes de alguém pedir, e cada porta
+  // que a abre nomeia a sua aba — não há mais um botão genérico de painel a quem obedecer.
+  const [gaveta, setGaveta] = useState<EstadoDaLateral>({ aberta: false, aba: 'chat' })
   const [larguraDaGaveta, setLarguraDaGaveta] = useState(preferencias.larguraDaLateral)
   const [lidasNoChat, setLidasNoChat] = useState(0)
   const [erroDeDispositivo, setErroDeDispositivo] = useState<string | null>(null)
   const [foco, setFoco] = useState<EstadoDoFoco>(FOCO_INICIAL)
-  const interfaceFlutuante = useRef<HTMLDivElement>(null)
+  const [imersao, setImersao] = useState(false)
+  const [conviteCopiado, setConviteCopiado] = useState(false)
+  const areaDoPalco = useRef<HTMLElement>(null)
+
+  const lateralEmCamada = useMedia(LATERAL_EM_CAMADA)
+  const gavetaEmCamada = useMedia(GAVETA_EM_CAMADA)
+  const palcoEstreito = useMedia(PALCO_ESTREITO)
+
+  // Duas memórias para a mesma barra: a coluna do desktop é escolha que fica, e a camada do
+  // estreito nasce sempre fechada — abri-la por preferência guardada seria cobrir o palco de
+  // alguém que só girou o celular.
+  const [lateralFixa, setLateralFixa] = useState(preferencias.barraLateralAberta)
+  const [lateralEmCima, setLateralEmCima] = useState(false)
+  const lateralAberta = (lateralEmCamada ? lateralEmCima : lateralFixa) && !imersao
 
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou. `telemetria.recepcao`
   // entra à parte: o cão de guarda anda no relógio da telemetria, não no dos eventos do `Room`.
   const palco = useMemo(() => montarPalco(sala, telemetria.recepcao), [sala, versao, telemetria.recepcao])
   const telasPublicadas = useMemo(() => chavesDasTelasPublicadas(sala), [sala, versao])
-  const pecas = useMemo(() => [...palco.telas, ...palco.pessoas], [palco])
-  const zoom = useZoom(pecas)
+  // Só o que tem imagem vira quadro. Presença sem câmera é a faixa de avatares e a barra
+  // lateral: um retângulo do tamanho de uma tela para mostrar duas iniciais tirava o espaço de
+  // quem tem, de fato, o que mostrar.
+  const quadros = useMemo(
+    () => [...palco.telas, ...palco.pessoas.filter((pessoa) => pessoa.publicacao)],
+    [palco],
+  )
+  const zoom = useZoom(quadros)
   const amostraDoEmissor = ultima(telemetria.emissor)
 
-  // Nunca some com a gaveta aberta ou com o teclado dentro da interface: sumir é para quem
-  // largou o mouse parado, não para quem está no meio de alguma coisa.
-  const focoDeTeclado = useFocoDeTeclado(interfaceFlutuante)
+  // Nunca some com a gaveta aberta ou com o teclado dentro do palco: sumir é para quem largou o
+  // mouse parado, não para quem está no meio de alguma coisa.
+  const focoDeTeclado = useFocoDeTeclado(areaDoPalco)
   const interfaceVisivel = useAutoOcultar(gaveta.aberta || focoDeTeclado)
 
   const telasAntes = useRef<string[]>([])
@@ -105,31 +121,58 @@ export function Sala() {
     setFoco((atual) => decidirFoco(atual, palco, { tipo: 'palcoMudou', telasAntes: antes }))
   }, [palco, telasPublicadas, compartilhamento.trocandoTela])
 
-  // Mostrar é automático (o app decide, não persiste); escolher é a pessoa clicando, e fica.
+  useEffect(() => {
+    if (!conviteCopiado) return
+    const volta = setTimeout(() => setConviteCopiado(false), AVISO_DE_COPIA_MS)
+    return () => clearTimeout(volta)
+  }, [conviteCopiado])
+
   function mostrarAba(aba: Aba) {
     setGaveta({ aberta: true, aba })
   }
 
-  function escolherAba(aba: Aba) {
-    mostrarAba(aba)
-    gravarPreferencias({ abaDaLateral: aba })
-  }
-
-  function alternarChat() {
+  /** O interruptor de uma aba: abre nela, e fecha se ela já está à mostra. */
+  function alternarPainel(aba: Aba) {
     // A aba que vale é a que a gaveta desenha, não a que está guardada: parar de transmitir
     // muda uma sem mexer na outra, e o botão precisa fechar o que ele diz estar aberto.
-    const proximo = alternarAba({ aberta: gaveta.aberta, aba: abaDaGaveta }, 'chat')
-    setGaveta(proximo)
-    gravarPreferencias({ abaDaLateral: proximo.aba })
-  }
-
-  function alternarGaveta() {
-    setGaveta((atual) => ({ ...atual, aberta: !atual.aberta }))
+    setGaveta(alternarAba({ aberta: gaveta.aberta, aba: abaDaGaveta }, aba))
   }
 
   function redimensionarGaveta(largura: number) {
     setLarguraDaGaveta(largura)
     gravarPreferencias({ larguraDaLateral: largura })
+  }
+
+  /**
+   * Abrir a barra lateral é pedir a moldura de volta: sai da imersão junto.
+   *
+   * O alvo sai do que está *à vista*, não do que está guardado. Na imersão a barra continua
+   * "pedida" e escondida; alternar o valor guardado ali deixaria o primeiro clique sem efeito
+   * visível — sairia da imersão e fecharia a barra na mesma passada.
+   */
+  function alternarLateral() {
+    const mostrar = !lateralAberta
+    setImersao(false)
+    if (lateralEmCamada) {
+      setLateralEmCima(mostrar)
+      return
+    }
+    setLateralFixa(mostrar)
+    gravarPreferencias({ barraLateralAberta: mostrar })
+  }
+
+  function fecharCamadas() {
+    setLateralEmCima(false)
+    if (gavetaEmCamada) setGaveta((atual) => ({ ...atual, aberta: false }))
+  }
+
+  async function copiarConvite() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setConviteCopiado(true)
+    } catch {
+      // Sem permissão ou sem a API: a URL já está na barra de endereço, ninguém fica sem saída.
+    }
   }
 
   // Começar a compartilhar abre a aba de qualidade: é exatamente o momento em que ela tem o
@@ -140,7 +183,7 @@ export function Sala() {
 
   // A aba que a gaveta de fato mostra. A Qualidade só existe transmitindo, e parar leva quem
   // estava nela para o Chat — derivado aqui, e não dentro da gaveta, porque o contador de não
-  // lidas e o botão do chat na barra precisam enxergar a mesma aba que ela desenha.
+  // lidas e os botões do topo e da barra precisam enxergar a mesma aba que ela desenha.
   const abaDaGaveta: Aba = gaveta.aba === 'qualidade' && !compartilhamento.ativo ? 'chat' : gaveta.aba
 
   // Não lidas = o que chegou enquanto o chat não estava à mostra. Com ele à mostra, tudo é lido.
@@ -165,21 +208,18 @@ export function Sala() {
     )
   }
 
-  // A peça em foco pode ter acabado de sair do ar; até o efeito acima decidir de novo, o palco
-  // é a grade — nunca um quadro apontando para o vazio.
-  const emFoco = foco.chave === null ? null : (pecas.find((peca) => peca.chave === foco.chave) ?? null)
-  const noPalco = emFoco ? [emFoco] : pecas
-  const foraDoPalco = emFoco ? pecas.filter((peca) => peca.chave !== emFoco.chave) : []
+  // O destaque é a escolha da pessoa; sem escolha (ou com ela fora do ar), é o primeiro quadro
+  // que existir — o palco não tem estado "nada em destaque com imagem no ar".
+  const emDestaque = quadros.find((quadro) => quadro.chave === foco.chave) ?? quadros[0] ?? null
+  const miniaturas = imersao ? [] : quadros.filter((quadro) => quadro.chave !== emDestaque?.chave)
+  const camadaAberta = (lateralEmCamada && lateralAberta) || (gavetaEmCamada && gaveta.aberta)
 
   const nomeDe = (identidade: string) =>
     palco.pessoas.find((pessoa) => pessoa.identidade === identidade)?.nome ?? identidade
 
-  function soltarOFoco() {
-    setFoco((atual) => decidirFoco(atual, palco, { tipo: 'clicouNoPalco' }))
-  }
-
   function focar(chave: string) {
     setFoco((atual) => decidirFoco(atual, palco, { tipo: 'clicouNaPeca', chave }))
+    if (lateralEmCamada) setLateralEmCima(false)
   }
 
   function sair() {
@@ -195,38 +235,55 @@ export function Sala() {
         conexao={conexao}
         pessoas={palco.pessoas}
         telas={palco.telas}
-        aoVoltar={sair}
+        emDestaque={emDestaque?.chave ?? null}
+        aoFocar={focar}
+        aberta={lateralAberta}
+        aoRecolher={alternarLateral}
+        conviteCopiado={conviteCopiado}
+        aoCopiarConvite={() => void copiarConvite()}
+        aoSair={sair}
       />
+
+      {/* O véu só existe quando alguma camada está aberta: é o alvo grande que fecha o que
+          cobriu o palco, sem obrigar a mirar num X de 26px. */}
+      {camadaAberta && <div className={estilos.veu} onClick={fecharCamadas} aria-hidden="true" />}
 
       <section className={estilos.conteudoDaSala} aria-label={`Sala ${credenciais.nomeDaSala}`}>
         <Cabecalho
           nomeDaSala={credenciais.nomeDaSala}
           conexao={conexao}
           pessoas={palco.pessoas.length}
-          gavetaAberta={gaveta.aberta}
-          aoAlternarGaveta={alternarGaveta}
+          aoAlternarLateral={alternarLateral}
+          lateralAberta={lateralAberta}
+          abaAMostra={gaveta.aberta ? abaDaGaveta : null}
+          aoAlternarAba={alternarPainel}
+          transmitindo={compartilhamento.ativo}
+          naoLidasNoChat={naoLidasNoChat}
+          conviteCopiado={conviteCopiado}
+          aoCopiarConvite={() => void copiarConvite()}
         />
 
         <div className={estilos.corpoDaSala}>
-          <main className={estilos.areaDoPalco} aria-label="Palco da sala">
+          <main ref={areaDoPalco} className={estilos.areaDoPalco} aria-label="Palco da sala">
             <Palco
-              pecas={noPalco}
-              emFoco={emFoco !== null}
-              aoSoltarOFoco={soltarOFoco}
+              emDestaque={emDestaque}
+              miniaturas={miniaturas}
               aoFocar={focar}
+              aoAlternarImersao={() => setImersao((atual) => !atual)}
               volumes={volumes}
               interfaceVisivel={interfaceVisivel}
               zoom={zoom}
               aoTentarDeNovo={telemetria.rearmarRecepcao}
             />
 
-            <div
-              ref={interfaceFlutuante}
-              className={estilos.interface}
-              data-interface={interfaceVisivel ? 'visivel' : 'oculta'}
-            >
+            <div className={estilos.interface} data-interface={interfaceVisivel ? 'visivel' : 'oculta'}>
               <div className={estilos.alto}>
-                <Tira pecas={foraDoPalco} aoEscolher={focar} volumes={volumes} />
+                {!imersao && (
+                  <FaixaDeAvatares
+                    pessoas={palco.pessoas}
+                    limite={palcoEstreito ? AVATARES_NA_FAIXA_ESTREITA : AVATARES_NA_FAIXA}
+                  />
+                )}
               </div>
 
               <div className={estilos.baixo}>
@@ -235,7 +292,8 @@ export function Sala() {
                   compartilhamento={compartilhamento}
                   chatAberto={chatVisivel}
                   naoLidasNoChat={naoLidasNoChat}
-                  aoAlternarChat={alternarChat}
+                  aoAlternarChat={() => alternarPainel('chat')}
+                  aoAbrirQualidade={() => mostrarAba('qualidade')}
                   aoFalhar={setErroDeDispositivo}
                   aoSair={sair}
                 />
@@ -246,7 +304,8 @@ export function Sala() {
           <Gaveta
             aberta={gaveta.aberta}
             aba={abaDaGaveta}
-            aoTrocarAba={escolherAba}
+            aoTrocarAba={mostrarAba}
+            aoFechar={() => setGaveta((atual) => ({ ...atual, aberta: false }))}
             transmitindo={compartilhamento.ativo}
             largura={larguraDaGaveta}
             aoRedimensionar={redimensionarGaveta}
@@ -260,7 +319,7 @@ export function Sala() {
                 : null
             }
             qualidade={<Qualidade compartilhamento={compartilhamento} />}
-            transmissao={
+            metricas={
               <Transmissao
                 telemetria={telemetria}
                 perfilEfetivo={compartilhamento.perfilEfetivo}

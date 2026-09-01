@@ -1,104 +1,32 @@
 .navegacao {
   position: relative;
   z-index: 5;
-  width: calc(var(--largura-do-trilho) + var(--largura-da-navegacao));
+  width: var(--largura-da-navegacao);
   height: 100%;
-  min-width: 0;
   min-height: 0;
   flex: none;
-  display: grid;
-  grid-template-columns: var(--largura-do-trilho) minmax(0, var(--largura-da-navegacao));
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--linha);
   background: var(--barra-lateral);
 }
 
-.trilho {
-  min-height: 0;
-  --trilho-padding-x: var(--e2);
-}
-
-.salaAtual {
-  font-size: var(--texto-sm);
-  font-weight: 800;
-}
-
-.estadoDoTrilho {
-  width: 9px;
-  height: 9px;
-  margin-top: -18px;
-  margin-left: 34px;
-  z-index: 1;
-  border: 3px solid var(--trilho);
-  border-radius: 50%;
-  background: var(--texto-fraquissimo);
-  box-sizing: content-box;
-}
-
-.estadoDoTrilho[data-conectado] {
-  background: var(--conectado);
-}
-
-.abrirCanais,
-.fecharCanais {
+/* Recolhida ela sai do fluxo por inteiro: o palco fica com os 264px, e o botão de pessoas no
+   topo é o único caminho de volta. */
+.navegacao:not([data-aberta]) {
   display: none;
 }
 
-/* O interruptor do painel na composição larga: recolher devolve ~250px ao palco sem tirar
-   nada do produto — um clique traz canais e pessoas de volta. */
-.alternarPainel {
-  width: 48px;
-  height: 48px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  margin-top: var(--e1);
-  padding: 0;
-  border: none;
-  border-radius: 16px;
-  background: var(--superficie);
-  color: var(--texto-fraco);
-  cursor: pointer;
-  transition: border-radius 0.12s ease, background-color 0.12s ease, color 0.12s ease;
-}
-
-.alternarPainel:hover {
-  border-radius: 13px;
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
-}
-
-@media (min-width: 881px) {
-  .navegacao[data-recolhida] {
-    width: var(--largura-do-trilho);
-    grid-template-columns: var(--largura-do-trilho);
-  }
-
-  .navegacao[data-recolhida] .canais {
-    display: none;
-  }
-}
-
-.canais {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--linha-painel);
-  background: var(--barra-lateral);
-}
-
 .cabecalho {
-  height: var(--altura-do-topo);
   flex: none;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: var(--e2);
-  padding: 0 var(--e4);
-  border-bottom: 1px solid var(--linha-profunda);
-  box-shadow: 0 1px 0 var(--realce-minimo);
+  padding: 14px 14px 10px;
 }
 
-.nomeDaSalaAgrupado {
+.identificacao {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -107,139 +35,162 @@
 .nomeDaSala {
   min-width: 0;
   overflow: hidden;
-  font-size: var(--texto-md);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: var(--texto-base);
+  font-weight: var(--peso-titulo);
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.efemera {
+.subtitulo {
+  margin-top: 2px;
   color: var(--texto-fraquissimo);
-  font-size: 10px;
-  line-height: 1.15;
+  font-size: var(--texto-xs);
+}
+
+.telasNoAr {
+  color: var(--acento-300);
+}
+
+.recolher {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--raio-md);
+  background: transparent;
+  color: var(--texto-fraquissimo);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.recolher:hover {
+  background: color-mix(in srgb, var(--texto) 8%, transparent);
+  color: var(--neutro-300);
+}
+
+.convite {
+  flex: none;
+  padding: 0 14px 12px;
 }
 
 .rolagem {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: var(--e3) var(--e2);
+  padding: 0 var(--e2);
   scrollbar-width: thin;
-}
-
-.grupo + .grupo {
-  margin-top: var(--e5);
 }
 
 .tituloDoGrupo {
   margin: 0;
-  padding: 0 var(--e2) var(--e1);
+  padding: var(--e2) var(--e2) 6px;
   color: var(--texto-fraquissimo);
-  font-size: var(--texto-xs);
-  font-weight: 750;
-  letter-spacing: 0.045em;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
-.canalAtivo {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 9px;
-  border-radius: var(--raio-md);
-  background: var(--superficie-hover);
-  color: var(--texto);
-  font-size: var(--texto-md);
-  font-weight: 600;
+.tituloDoGrupo:not(:first-child) {
+  padding-top: var(--e4);
 }
 
-.canalAtivo > span:nth-child(2) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.contagem {
-  margin-left: auto;
-  color: var(--texto-fraquissimo);
-  font-size: var(--texto-xs);
-}
-
-.listaDePessoas,
-.listaDeTelas {
+.lista {
   list-style: none;
-  margin: 3px 0 0;
-  padding: 0 0 0 16px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .pessoa {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 7px;
+  gap: 10px;
+  padding: 5px var(--e2);
   border-radius: var(--raio-md);
-  color: var(--texto-fraco);
+  color: var(--neutro-200);
 }
 
 .pessoa:hover {
-  background: var(--realce);
-  color: var(--texto);
+  background: color-mix(in srgb, var(--texto) 5%, transparent);
 }
 
 .nomeDaPessoa {
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  font-size: var(--texto-sm);
-  font-weight: 550;
+  font-size: var(--texto-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .voce {
-  margin-left: 5px;
-  color: var(--texto-fraquissimo);
-  font-size: 9px;
-}
-
-.microfone,
-.microfoneFechado {
   flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-pilula);
   color: var(--texto-fraquissimo);
+  font-size: 10px;
 }
 
-.microfoneFechado {
-  color: var(--perigo-texto);
-  opacity: 0.72;
+.microfone {
+  flex: none;
+  display: flex;
+  color: var(--neutro-600);
 }
 
-.telaNoAr {
+.microfone[data-aberto] {
+  color: var(--acao);
+}
+
+.tela {
+  width: 100%;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 7px;
-  color: var(--texto-fraco);
-  font-size: var(--texto-sm);
+  gap: 10px;
+  padding: 7px 9px;
+  border: none;
+  border-radius: var(--raio-md);
+  background: transparent;
+  color: var(--neutro-300);
+  font-size: var(--texto-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.telaNoAr > span:nth-child(2) {
+.tela:hover {
+  background: color-mix(in srgb, var(--acao) 10%, transparent);
+}
+
+.tela[data-ativa] {
+  background: color-mix(in srgb, var(--acao) 14%, transparent);
+  color: var(--acento-200);
+}
+
+.rotuloDaTela {
   min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.aoVivo {
-  margin-left: auto;
-  color: var(--conectado-texto);
-  font-size: 9px;
-  font-weight: 750;
-  text-transform: uppercase;
+.pontoAoVivo {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--acao);
+  animation: shPulsar 2s ease-in-out infinite;
 }
 
 .identidade {
@@ -247,143 +198,78 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 10px;
-  background: var(--fundo-identidade);
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--linha);
 }
 
 .identidadeTexto {
   min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-.identidadeTexto strong,
-.identidadeTexto span {
+.identidadeTexto strong {
   min-width: 0;
   overflow: hidden;
+  font-size: var(--texto-md);
+  font-weight: var(--peso-titulo);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.identidadeTexto strong {
-  font-size: var(--texto-sm);
-  font-weight: 680;
-}
-
-.identidadeTexto span {
+.estadoDaConexao {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
   color: var(--texto-fraquissimo);
-  font-size: 10px;
+  font-size: var(--texto-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-@media (max-width: 1120px) {
-  .navegacao {
-    width: calc(var(--largura-do-trilho) + 220px);
-    grid-template-columns: var(--largura-do-trilho) minmax(0, 220px);
-  }
+.pontoDaConexao {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--neutro-600);
 }
 
-@media (max-width: 880px) {
-  .navegacao {
-    width: 64px;
-    grid-template-columns: 64px;
-  }
-
-  .trilho {
-    --trilho-padding-x: var(--e2);
-  }
-
-  .alternarPainel {
-    display: none;
-  }
-
-  .abrirCanais {
-    width: 48px;
-    height: 48px;
-    flex: none;
-    display: grid;
-    place-items: center;
-    margin-top: var(--e1);
-    padding: 0;
-    border: none;
-    border-radius: 16px;
-    background: var(--superficie);
-    color: var(--texto-fraco);
-    cursor: pointer;
-  }
-
-  .abrirCanais:hover,
-  .abrirCanais[aria-expanded='true'] {
-    border-radius: 13px;
-    background: var(--acao);
-    color: var(--texto-sobre-acento);
-  }
-
-  .canais {
-    position: absolute;
-    inset: 0 auto 0 64px;
-    z-index: 2;
-    width: 250px;
-    box-shadow: var(--sombra-lg);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateX(-12px);
-    pointer-events: none;
-    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
-  }
-
-  .navegacao[data-canais-abertos] .canais {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(0);
-    pointer-events: auto;
-  }
-
-  .fecharCanais {
-    width: 30px;
-    height: 30px;
-    flex: none;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: none;
-    border-radius: var(--raio-md);
-    background: transparent;
-    color: var(--texto-fraco);
-    font-size: 22px;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .fecharCanais:hover {
-    background: var(--realce);
-    color: var(--texto);
-  }
+.estadoDaConexao[data-conectado] .pontoDaConexao {
+  background: var(--acao);
 }
 
-@media (max-width: 620px) {
-  .navegacao {
-    width: 56px;
-    grid-template-columns: 56px;
-  }
+.sair {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--raio-md);
+  background: transparent;
+  color: var(--perigo);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
 
-  .trilho {
-    --indicador-trilho-esquerda: -8px;
-    --tamanho-item-trilho: 44px;
-    --trilho-padding-x: var(--e1);
-  }
+.sair:hover {
+  background: color-mix(in srgb, var(--perigo-forte) 14%, transparent);
+}
 
-  .abrirCanais {
-    width: 44px;
-    height: 44px;
-  }
-
-  .estadoDoTrilho {
-    margin-left: 31px;
-  }
-
-  .canais {
-    left: 56px;
-    width: min(280px, calc(100vw - 56px));
+/* No estreito ela vira camada por cima do palco: 288px, sombra e o véu que fecha ao clique. */
+@media (max-width: 1080px) {
+  .navegacao[data-aberta] {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 288px;
+    z-index: 50;
+    background: var(--fundo);
+    box-shadow: var(--sombra-md);
   }
 }
