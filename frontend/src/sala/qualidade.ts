@@ -57,11 +57,21 @@ export const CONTEUDOS: Record<Conteudo, { rotulo: string; contentHint: 'text' |
   jogo: { rotulo: 'Jogo', contentHint: 'motion', descricao: 'jogo, vídeo, filme — continuidade vale mais que borda' },
 }
 
-export const CODECS: Record<Codec, { rotulo: string; descricao: string; svc: boolean }> = {
-  vp9: { rotulo: 'VP9', descricao: 'padrão: bom em texto e em movimento, camadas temporais para quem assiste devagar', svc: true },
-  av1: { rotulo: 'AV1', descricao: 'o melhor em texto; pede mais CPU de quem compartilha', svc: true },
-  h264: { rotulo: 'H.264', descricao: 'o caminho do encoder de hardware — alivia a CPU em 60 fps', svc: false },
-  vp8: { rotulo: 'VP8', descricao: 'legado: só se os outros derem problema', svc: false },
+/**
+ * O `mime` é o que as APIs de capacidade do navegador entendem — `getCapabilities` devolve
+ * `mimeType` e `encodingInfo` pede `contentType`. Fica aqui, junto do resto do vocabulário de
+ * codec, para não haver uma segunda tabela em `capacidade.ts` que possa divergir desta.
+ */
+export const CODECS: Record<Codec, { rotulo: string; descricao: string; svc: boolean; mime: string }> = {
+  vp9: { rotulo: 'VP9', descricao: 'padrão: bom em texto e em movimento, camadas temporais para quem assiste devagar', svc: true, mime: 'video/VP9' },
+  av1: { rotulo: 'AV1', descricao: 'o melhor em texto; pede mais CPU de quem compartilha', svc: true, mime: 'video/AV1' },
+  h264: { rotulo: 'H.264', descricao: 'o caminho do encoder de hardware — alivia a CPU em 60 fps', svc: false, mime: 'video/H264' },
+  vp8: { rotulo: 'VP8', descricao: 'legado: só se os outros derem problema', svc: false, mime: 'video/VP8' },
+}
+
+/** O que vem do `localStorage` ou de uma API do navegador só vira codec se for um dos nossos. */
+export function ehCodec(valor: unknown): valor is Codec {
+  return typeof valor === 'string' && Object.hasOwn(CODECS, valor)
 }
 
 export const CEDER: Record<Ceder, { rotulo: string; degradacao: RTCDegradationPreference; explicacao: string }> = {
