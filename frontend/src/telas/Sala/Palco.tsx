@@ -26,6 +26,9 @@ interface Props {
   /** Se a interface flutuante está à mostra — `Sala.tsx` calcula com `useAutoOcultar`; pílulas
    * e miniaturas seguem o mesmo relógio, não o hover. */
   interfaceVisivel: boolean
+  /** Na imersão o quadro fica com a janela toda: sem o respiro que a faixa de avatares e a barra
+   * ocupam no modo normal, e sem moldura — o CSS lê a marca que isto vira. */
+  imersao: boolean
   zoom: ControleDeZoom
   /** Rearma o cão de guarda daquela tela — o botão do quadro que desistiu de receber. */
   aoTentarDeNovo(identidade: string): void
@@ -86,7 +89,7 @@ function Destaque({
   interfaceVisivel,
   zoom,
   aoTentarDeNovo,
-}: Omit<Props, 'emDestaque' | 'miniaturas' | 'aoFocar'> & { peca: Peca }) {
+}: Omit<Props, 'emDestaque' | 'miniaturas' | 'aoFocar' | 'imersao'> & { peca: Peca }) {
   const quadro = useRef<HTMLDivElement>(null)
   const moldura = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -212,11 +215,12 @@ export function Palco({
   aoAlternarImersao,
   volumes,
   interfaceVisivel,
+  imersao,
   zoom,
   aoTentarDeNovo,
 }: Props) {
   return (
-    <div className={estilos.palco} data-modo={emDestaque ? 'destaque' : 'vazio'}>
+    <div className={estilos.palco} data-modo={emDestaque ? 'destaque' : 'vazio'} data-imersao={imersao || undefined}>
       {emDestaque ? (
         <Destaque
           key={emDestaque.chave}

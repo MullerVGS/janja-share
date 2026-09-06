@@ -301,6 +301,7 @@ export function Sala() {
               aoAlternarImersao={alternarImersao}
               volumes={volumes}
               interfaceVisivel={interfaceVisivel}
+              imersao={imersao}
               zoom={zoom}
               aoTentarDeNovo={telemetria.rearmarRecepcao}
             />

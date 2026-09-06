@@ -20,6 +20,8 @@ interface Cenario {
   volumes?: ControleDeVolumes
   /** A sala inteira começa com a interface visível; testar o oposto é escolha explícita do teste. */
   interfaceVisivel?: boolean
+  /** A sala começa fora da imersão; entrar nela é escolha explícita do teste. */
+  imersao?: boolean
   aoTentarDeNovo?: (identidade: string) => void
 }
 
@@ -30,6 +32,7 @@ function Palquinho({
   aoAlternarImersao = vi.fn(),
   volumes = volumesFalsos(),
   interfaceVisivel = true,
+  imersao = false,
   aoTentarDeNovo = vi.fn(),
 }: Cenario) {
   const zoom = useZoom(emDestaque ? [emDestaque, ...miniaturas] : miniaturas)
@@ -41,6 +44,7 @@ function Palquinho({
       aoAlternarImersao={aoAlternarImersao}
       volumes={volumes}
       interfaceVisivel={interfaceVisivel}
+      imersao={imersao}
       zoom={zoom}
       aoTentarDeNovo={aoTentarDeNovo}
     />
@@ -262,6 +266,16 @@ describe('palco: clique e duplo clique na imagem', () => {
     expect(screen.getByRole('button', umPorUm)).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(1))
     expect(screen.queryByRole('button', umPorUm)).toBeNull()
+  })
+})
+
+describe('palco: a imersão', () => {
+  it('na imersão o palco se marca — é a marca que, no CSS, tira o respiro e a moldura do quadro', () => {
+    const normal = montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
+    expect(normal.container.querySelector('[data-modo]')).not.toHaveAttribute('data-imersao')
+
+    const imerso = montarPalco({ emDestaque: peca('Bia', { ehTela: true }), imersao: true })
+    expect(imerso.container.querySelector('[data-modo]')).toHaveAttribute('data-imersao')
   })
 })
 

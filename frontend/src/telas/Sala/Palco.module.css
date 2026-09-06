@@ -10,6 +10,13 @@
   padding: 56px var(--e4) 90px;
   min-width: 0;
   min-height: 0;
+  transition: padding 0.2s ease;
+}
+
+/* Na imersão o respiro some: topo e barra passam a flutuar sobre a imagem e somem com o mouse
+   parado, e o quadro fica com a janela toda — que é o que o clique pediu. */
+.palco[data-imersao] {
+  padding: 0;
 }
 
 @media (max-width: 1080px) {
@@ -21,6 +28,12 @@
 @media (max-width: 680px) {
   .palco {
     padding: 52px 10px 78px;
+  }
+
+  /* Sem respiro, as pílulas do rodapé cairiam em cima da barra de controles, que no estreito
+     ocupa quase a largura toda: sobem para a linha logo acima dela. */
+  .palco[data-imersao] .comAInterface {
+    bottom: 78px;
   }
 }
 
@@ -40,8 +53,11 @@
   border-color: var(--acao);
 }
 
-/* Em tela cheia o quadro é a janela inteira: a moldura arredondada daria borda no meio do nada. */
-.quadro[data-cheia] {
+/* Em tela cheia e na imersão o quadro é a janela inteira: a moldura arredondada daria borda no
+   meio do nada. */
+.quadro[data-cheia],
+.palco[data-imersao] .quadro,
+.palco[data-imersao] .vazio {
   border: none;
   border-radius: 0;
 }
@@ -56,6 +72,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .palco {
+    transition: none;
+  }
+
   .quadro {
     animation: none;
   }

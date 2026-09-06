@@ -272,6 +272,19 @@ describe('sala: o palco', () => {
     expect(container.querySelector('[data-imagem]')).toBeInTheDocument()
   })
 
+  it('na imersão o palco vai de borda a borda: a marca entra no clique e sai no clique seguinte', async () => {
+    const usuario = userEvent.setup()
+    comDuasTelas()
+    const { container } = montarSala()
+    expect(palcoDe(container)).not.toHaveAttribute('data-imersao')
+
+    await usuario.click(container.querySelector('[data-imagem]') as HTMLElement)
+    await waitFor(() => expect(palcoDe(container)).toHaveAttribute('data-imersao'))
+
+    await usuario.click(container.querySelector('[data-imagem]') as HTMLElement)
+    await waitFor(() => expect(palcoDe(container)).not.toHaveAttribute('data-imersao'))
+  })
+
   it('na imersão o topo entra na camada que some: apaga no clique e volta ao mover o ponteiro', async () => {
     const usuario = userEvent.setup()
     comDuasTelas()
