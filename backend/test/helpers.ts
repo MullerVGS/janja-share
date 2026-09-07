@@ -1,6 +1,5 @@
 import { INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
-import { DataSource } from 'typeorm'
 import { AppModule } from '../src/app.module'
 import { configurarApp } from '../src/bootstrap'
 import { LivekitRoomProvider } from '../src/shared/livekit/livekit-room.provider'
@@ -24,8 +23,5 @@ export async function criarApp(opcoes: OpcoesApp = {}): Promise<INestApplication
   const app = mod.createNestApplication()
   configurarApp(app, opcoes.dirPublico)
   await app.init()
-  await app.get(DataSource).runMigrations()
   return app
 }
-
-export const dataSource = (app: INestApplication) => app.get(DataSource)

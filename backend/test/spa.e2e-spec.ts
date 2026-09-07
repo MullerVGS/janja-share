@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { INestApplication } from '@nestjs/common'
 import request from 'supertest'
-import { criarApp, dataSource } from './helpers'
+import { criarApp } from './helpers'
 
 /**
  * Reproduz o cenário exato do bug original: o fallback do SPA só vaza rota de API quando um
@@ -21,7 +21,6 @@ describe('fronteira SPA × API (com bundle presente)', () => {
   })
 
   afterAll(async () => {
-    await dataSource(app).destroy()
     await app.close()
   })
 

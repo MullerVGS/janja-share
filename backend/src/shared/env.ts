@@ -1,5 +1,4 @@
 export interface Env {
-  databaseUrl: string
   livekitUrl: string
   livekitApiKey: string
   livekitApiSecret: string
@@ -16,8 +15,8 @@ function obrigatoria(nome: string): string {
 let memo: Env | undefined
 
 /**
- * Lê e valida as 5 envs do contrato uma única vez (memoizado), não a cada chamada. Duas
- * razões: performance (eram 5 leituras+validações em toda rota que chamasse env()) e
+ * Lê e valida as 4 envs do contrato uma única vez (memoizado), não a cada chamada. Duas
+ * razões: performance (eram 4 leituras+validações em toda rota que chamasse env()) e
  * segurança — validar por request cria um oráculo: se uma env qualquer faltasse, só as rotas
  * que chamam env() dariam 500 enquanto o resto do app seguia respondendo normalmente, e esse
  * 500 denunciaria por exclusão algo sobre a rota. Com a validação resolvida uma vez — chamada
@@ -26,7 +25,6 @@ let memo: Env | undefined
  */
 export function env(): Env {
   memo ??= {
-    databaseUrl: obrigatoria('DATABASE_URL'),
     livekitUrl: obrigatoria('LIVEKIT_URL'),
     livekitApiKey: obrigatoria('LIVEKIT_API_KEY'),
     livekitApiSecret: obrigatoria('LIVEKIT_API_SECRET'),

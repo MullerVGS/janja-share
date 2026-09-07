@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common'
 import request from 'supertest'
-import { criarApp, dataSource } from './helpers'
+import { criarApp } from './helpers'
 
 describe('GET /api/config', () => {
   let app: INestApplication
@@ -10,7 +10,6 @@ describe('GET /api/config', () => {
   })
 
   afterAll(async () => {
-    await dataSource(app).destroy()
     await app.close()
   })
 

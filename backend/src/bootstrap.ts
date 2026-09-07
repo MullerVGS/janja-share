@@ -13,7 +13,7 @@ import { montarSpa } from './shared/http/spa'
  * produção e no dia a dia dos outros testes, omitir usa o padrão (`dirPublicoPadrao()`).
  */
 export function configurarApp(app: INestApplication, dirPublico?: string): void {
-  env() // valida as 5 envs do contrato uma vez, aqui — falha rápido no boot (ver env.ts)
+  env() // valida as 4 envs do contrato uma vez, aqui — falha rápido no boot (ver env.ts)
   app.setGlobalPrefix('api')
   // Contrato de implantação: exatamente um reverse proxy confiável antes da aplicação.
   // Esse salto também determina o IP usado pelos freios de abuso.

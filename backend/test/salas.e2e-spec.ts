@@ -3,7 +3,7 @@ import { TokenVerifier } from 'livekit-server-sdk'
 import request from 'supertest'
 import { slugDaSala } from '../src/shared/slug'
 import { LivekitRoomProviderFalso } from './salas-fake'
-import { criarApp, dataSource } from './helpers'
+import { criarApp } from './helpers'
 
 /**
  * Cada teste usa um X-Forwarded-For próprio (trust proxy: 1 respeita o header — ver
@@ -32,7 +32,6 @@ describe('salas/', () => {
   })
 
   afterAll(async () => {
-    await dataSource(app).destroy()
     await app.close()
   })
 
