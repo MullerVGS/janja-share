@@ -216,6 +216,27 @@ describe('salas/', () => {
       expect(entrada.body).toMatchObject({ slug, nomeDaSala: 'Escondida', nome: 'Bea' })
     })
 
+    it('sala privada nasce com sufixo aleatório no slug, e o nome fica limpo', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/salas')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ nome: 'Escondida', privada: true, seuNome: 'Ana' })
+        .expect(201)
+
+      expect(res.body.slug).toMatch(/^escondida-[0-9a-f]{6}$/)
+      expect(res.body.nomeDaSala).toBe('Escondida')
+    })
+
+    it('sala pública não ganha sufixo', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/salas')
+        .set('X-Forwarded-For', ipDeTeste())
+        .send({ nome: 'Jogatina', seuNome: 'Ana' })
+        .expect(201)
+
+      expect(res.body.slug).toBe('jogatina')
+    })
+
     it('slug repetido (já existe no SFU) devolve 409 sala_existe', async () => {
       const ip = ipDeTeste()
       await request(app.getHttpServer()).post('/api/salas').set('X-Forwarded-For', ip).send({ nome: 'Jogatina', seuNome: 'Ana' }).expect(201)

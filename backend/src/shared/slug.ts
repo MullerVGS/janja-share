@@ -1,12 +1,16 @@
+import { randomBytes } from 'node:crypto'
 import { NomeDaSalaInvalido } from './erros'
 
 const TAMANHO_MAXIMO_SLUG = 32
 const TAMANHO_MAXIMO_NOME = 40
+// 3 bytes = 6 hex. Com o hífen, o sufixo ocupa 7 dos 32 caracteres do slug.
+const TAMANHO_SUFIXO_PRIVADO = 3
+const TAMANHO_MAXIMO_BASE_PRIVADA = TAMANHO_MAXIMO_SLUG - TAMANHO_SUFIXO_PRIVADO * 2 - 1
 
 /**
  * Slug da sala: minúsculo, sem acento, espaços e `_` viram `-`, só `[a-z0-9-]`, hífens
- * colapsados, aparado nas pontas, 1..32 — é ele que vira o `name` da sala no SFU e a chave
- * primária em `salas` (varchar(32)).
+ * colapsados, aparado nas pontas, 1..32 — é ele que identifica a sala na URL e no metadata
+ * do SFU.
  *
  * Pode devolver string vazia (nome só de emoji ou pontuação) — quem decide se isso é erro é
  * `validarNomeDaSala`, não esta função.
@@ -25,6 +29,18 @@ export function slugDaSala(nome: string): string {
   // O corte em 32 pode expor um hífen pendurado bem na fronteira — segundo trim, só do fim
   // (o início já não tem hífen desde o trim de cima, e o corte nunca mexe no início).
   return bruto.replace(/-+$/, '')
+}
+
+/**
+ * Slug de uma Sala privada: o slug comum, encurtado para o sufixo caber, mais bytes aleatórios.
+ * É o sufixo que impede chegar na sala adivinhando o nome — ela não aparece no saguão e o link
+ * é o único caminho até ela.
+ */
+export function slugDaSalaPrivada(nome: string): string {
+  // Segundo trim depois do corte, pela mesma razão do corte em 32 dentro de slugDaSala: a
+  // fronteira pode cair em cima de um hífen e deixá-lo pendurado antes do sufixo.
+  const base = slugDaSala(nome).slice(0, TAMANHO_MAXIMO_BASE_PRIVADA).replace(/-+$/, '')
+  return `${base}-${randomBytes(TAMANHO_SUFIXO_PRIVADO).toString('hex')}`
 }
 
 /**

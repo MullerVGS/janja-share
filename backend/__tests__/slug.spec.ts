@@ -1,5 +1,5 @@
 import { NomeDaSalaInvalido } from '../src/shared/erros'
-import { slugDaSala, validarNomeDaSala } from '../src/shared/slug'
+import { slugDaSala, slugDaSalaPrivada, validarNomeDaSala } from '../src/shared/slug'
 
 describe('slugDaSala', () => {
   it('coloca em minúsculas', () => {
@@ -86,5 +86,28 @@ describe('validarNomeDaSala', () => {
 
   it('nome só de pontuação: mesmo caso — slug vazio → NomeDaSalaInvalido', () => {
     expect(() => validarNomeDaSala('!!!')).toThrow(NomeDaSalaInvalido)
+  })
+})
+
+describe('slugDaSalaPrivada', () => {
+  it('acrescenta um sufixo de 6 hex ao slug comum', () => {
+    expect(slugDaSalaPrivada('Jogatina')).toMatch(/^jogatina-[0-9a-f]{6}$/)
+  })
+
+  it('dois sorteios do mesmo nome dão slugs diferentes — é o sufixo que esconde a sala', () => {
+    expect(slugDaSalaPrivada('Jogatina')).not.toBe(slugDaSalaPrivada('Jogatina'))
+  })
+
+  it('respeita o teto de 32 caracteres cortando a base, nunca o sufixo', () => {
+    const slug = slugDaSalaPrivada('a'.repeat(40))
+
+    expect(slug).toHaveLength(32)
+    expect(slug).toMatch(/^a{25}-[0-9a-f]{6}$/)
+  })
+
+  it('não deixa hífen dobrado quando o corte da base cai em cima de um', () => {
+    const slug = slugDaSalaPrivada(`${'a'.repeat(24)} bbb`)
+
+    expect(slug).toMatch(/^a{24}-[0-9a-f]{6}$/)
   })
 })

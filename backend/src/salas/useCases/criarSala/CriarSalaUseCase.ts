@@ -4,7 +4,7 @@ import { Espere, MuitasSalas, SalaExiste } from '../../../shared/erros'
 import { Freio } from '../../../shared/freio'
 import { LivekitRoomProvider } from '../../../shared/livekit/livekit-room.provider'
 import { LivekitTokenProvider } from '../../../shared/livekit/livekit-token.provider'
-import { slugDaSala, validarNomeDaSala } from '../../../shared/slug'
+import { slugDaSala, slugDaSalaPrivada, validarNomeDaSala } from '../../../shared/slug'
 import { Credenciais } from '../../credenciais'
 import { gerarIdentidade } from '../../identidade'
 import { validarNome } from '../../nome'
@@ -52,7 +52,7 @@ export class CriarSalaUseCase {
     const salasAtuais = await this.room.listarSalasSemCache()
     if (salasAtuais.length >= TETO_SALAS) throw new MuitasSalas()
     const nomeDaSala = nomeDigitado ?? gerarNomeDeSalaDisponivel(salasAtuais)
-    const slug = slugDaSala(nomeDaSala)
+    const slug = privada ? slugDaSalaPrivada(nomeDaSala) : slugDaSala(nomeDaSala)
     if (salasAtuais.some((s) => s.slug === slug)) throw new SalaExiste()
 
     // nomeNoSfu carrega o nonce — é ele, não o slug, que vai no grant do token.
