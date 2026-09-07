@@ -1,7 +1,6 @@
 import { INestApplication } from '@nestjs/common'
 import { TokenVerifier } from 'livekit-server-sdk'
 import request from 'supertest'
-import { cifrar, confere } from '../src/shared/senha'
 import { slugDaSala } from '../src/shared/slug'
 import { LivekitRoomProviderFalso } from './salas-fake'
 import { criarApp, dataSource } from './helpers'
@@ -40,7 +39,6 @@ describe('salas/', () => {
   beforeEach(async () => {
     sfu.salasAtuais = []
     sfu.deveFalhar = false
-    await dataSource(app).query(`TRUNCATE TABLE salas`)
   })
 
   describe('GET /api/salas', () => {
@@ -49,7 +47,7 @@ describe('salas/', () => {
 
       const res = await request(app.getHttpServer()).get('/api/salas').expect(200)
 
-      expect(res.body).toEqual([{ slug: 'jogatina', nome: 'Jogatina', pessoas: ['Ana', 'Bea'], telasNoAr: 1, temSenha: false, cheia: false }])
+      expect(res.body).toEqual([{ slug: 'jogatina', nome: 'Jogatina', pessoas: ['Ana', 'Bea'], telasNoAr: 1, cheia: false }])
     })
 
     it('sala vazia (em carência) aparece na lista', async () => {
@@ -57,7 +55,7 @@ describe('salas/', () => {
 
       const res = await request(app.getHttpServer()).get('/api/salas').expect(200)
 
-      expect(res.body).toEqual([{ slug: 'vazia', nome: 'Vazia', pessoas: [], telasNoAr: 0, temSenha: false, cheia: false }])
+      expect(res.body).toEqual([{ slug: 'vazia', nome: 'Vazia', pessoas: [], telasNoAr: 0, cheia: false }])
     })
 
     it('não expõe sala privada no saguão', async () => {
@@ -77,19 +75,6 @@ describe('salas/', () => {
       const res = await request(app.getHttpServer()).get('/api/salas').expect(200)
 
       expect(res.body).toEqual([expect.objectContaining({ slug: 'publica' })])
-    })
-
-    it('temSenha vem do banco, não do SFU', async () => {
-      const ip = ipDeTeste()
-      await request(app.getHttpServer())
-        .post('/api/salas')
-        .set('X-Forwarded-For', ip)
-        .send({ nome: 'Protegida', senha: 'segredo', seuNome: 'Ana' })
-        .expect(201)
-
-      const res = await request(app.getHttpServer()).get('/api/salas').expect(200)
-
-      expect(res.body).toEqual([expect.objectContaining({ slug: 'protegida', temSenha: true })])
     })
 
     it('SFU caído devolve 503 sfu_indisponivel — lista vazia mentiria "não há salas"', async () => {
@@ -202,16 +187,6 @@ describe('salas/', () => {
       expect(res.body).toEqual({ erro: 'nome_invalido' })
     })
 
-    it('senha não-string (ex.: PIN numérico) devolve 400, não sala aberta em silêncio', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/salas')
-        .set('X-Forwarded-For', ipDeTeste())
-        .send({ nome: 'Com PIN', senha: 1234, seuNome: 'Ana' })
-
-      expect(res.status).toBe(400)
-      expect(sfu.salasAtuais).toHaveLength(0)
-    })
-
     it('privada não-booleana devolve 400, sem criar sala', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/salas')
@@ -222,25 +197,24 @@ describe('salas/', () => {
       expect(sfu.salasAtuais).toHaveLength(0)
     })
 
-    it('sala privada fica fora da lista, mas quem conhece o link entra com a senha', async () => {
+    it('sala privada fica fora da lista, mas quem conhece o link entra', async () => {
       await request(app.getHttpServer())
         .post('/api/salas')
         .set('X-Forwarded-For', ipDeTeste())
-        .send({ nome: 'Escondida', privada: true, senha: 'segredo', seuNome: 'Ana' })
+        .send({ nome: 'Escondida', privada: true, seuNome: 'Ana' })
         .expect(201)
 
-      expect(sfu.salasAtuais).toEqual([
-        expect.objectContaining({ slug: 'escondida', privada: true }),
-      ])
+      expect(sfu.salasAtuais).toEqual([expect.objectContaining({ privada: true })])
       await request(app.getHttpServer()).get('/api/salas').expect(200, [])
 
+      const slug = sfu.salasAtuais[0].slug
       const entrada = await request(app.getHttpServer())
-        .post('/api/salas/escondida/entrar')
+        .post(`/api/salas/${slug}/entrar`)
         .set('X-Forwarded-For', ipDeTeste())
-        .send({ senha: 'segredo', seuNome: 'Bea' })
+        .send({ seuNome: 'Bea' })
         .expect(200)
 
-      expect(entrada.body).toMatchObject({ slug: 'escondida', nomeDaSala: 'Escondida', nome: 'Bea' })
+      expect(entrada.body).toMatchObject({ slug, nomeDaSala: 'Escondida', nome: 'Bea' })
     })
 
     it('slug repetido (já existe no SFU) devolve 409 sala_existe', async () => {
@@ -297,56 +271,6 @@ describe('salas/', () => {
       expect(res.body).toEqual({ erro: 'nome_da_sala_invalido' })
     })
 
-    it('linha órfã do mesmo slug é sobrescrita — nome reusado não herda senha de sala morta', async () => {
-      const ds = dataSource(app)
-      await ds.query(`INSERT INTO salas (slug, senha_hash) VALUES ($1, $2)`, ['jogatina', await cifrar('senha-antiga')])
-
-      const res = await request(app.getHttpServer())
-        .post('/api/salas')
-        .set('X-Forwarded-For', ipDeTeste())
-        .send({ nome: 'Jogatina', seuNome: 'Ana' }) // sem senha nova
-        .expect(201)
-      expect(res.body.slug).toBe('jogatina')
-
-      const linha = await ds.query(`SELECT * FROM salas WHERE slug = $1`, ['jogatina'])
-      expect(linha).toHaveLength(0) // sem senha nova: a linha órfã some e não volta
-    })
-
-    it('linha órfã com senha nova: o hash antigo é substituído, não mantido', async () => {
-      const ds = dataSource(app)
-      await ds.query(`INSERT INTO salas (slug, senha_hash) VALUES ($1, $2)`, ['jogatina', await cifrar('senha-antiga')])
-
-      await request(app.getHttpServer())
-        .post('/api/salas')
-        .set('X-Forwarded-For', ipDeTeste())
-        .send({ nome: 'Jogatina', senha: 'senha-nova', seuNome: 'Ana' })
-        .expect(201)
-
-      const [linha] = await ds.query(`SELECT senha_hash FROM salas WHERE slug = $1`, ['jogatina'])
-      expect(linha).toBeDefined()
-      await expect(confere('senha-antiga', linha.senha_hash)).resolves.toBe(false)
-      await expect(confere('senha-nova', linha.senha_hash)).resolves.toBe(true)
-    })
-
-    it('sala sem senha não grava linha no banco', async () => {
-      await request(app.getHttpServer()).post('/api/salas').set('X-Forwarded-For', ipDeTeste()).send({ nome: 'Sem Segredo', seuNome: 'Ana' }).expect(201)
-
-      const linha = await dataSource(app).query(`SELECT * FROM salas WHERE slug = $1`, ['sem-segredo'])
-      expect(linha).toHaveLength(0)
-    })
-
-    it('sala com senha grava o hash, não a senha em texto', async () => {
-      await request(app.getHttpServer())
-        .post('/api/salas')
-        .set('X-Forwarded-For', ipDeTeste())
-        .send({ nome: 'Com Segredo', senha: 'abacate', seuNome: 'Ana' })
-        .expect(201)
-
-      const [linha] = await dataSource(app).query(`SELECT senha_hash FROM salas WHERE slug = $1`, ['com-segredo'])
-      expect(linha.senha_hash).not.toBe('abacate')
-      expect(linha.senha_hash).toContain(':')
-    })
-
     it('décima primeira criação no mesmo minuto devolve 429 espere', async () => {
       const ip = ipDeTeste()
       for (let i = 0; i < 10; i++) {
@@ -387,7 +311,7 @@ describe('salas/', () => {
       expect(res.body.slug).toBe('jogatina')
     })
 
-    it('sala sem senha: entra só com o nome, e o token aponta pro nome com nonce, não pro slug', async () => {
+    it('entra só com o nome, e o token aponta pro nome com nonce, não pro slug', async () => {
       sfu.salasAtuais = [{ slug: 'aberta', nomeNoSfu: 'aberta-x1', nome: 'Aberta', pessoas: [], telasNoAr: 0, cheia: false }]
 
       const res = await request(app.getHttpServer())
@@ -400,78 +324,6 @@ describe('salas/', () => {
 
       const claims = await claimsDoToken(res.body.token)
       expect(claims.video?.room).toBe('aberta-x1')
-    })
-
-    it('senha certa: entra', async () => {
-      sfu.salasAtuais = [{ slug: 'protegida', nomeNoSfu: 'protegida-x1', nome: 'Protegida', pessoas: [], telasNoAr: 0, cheia: false }]
-      await dataSource(app).query(`INSERT INTO salas (slug, senha_hash) VALUES ($1, $2)`, ['protegida', await cifrar('correcthorse')])
-
-      const res = await request(app.getHttpServer())
-        .post('/api/salas/protegida/entrar')
-        .set('X-Forwarded-For', ipDeTeste())
-        .send({ senha: 'correcthorse', seuNome: 'Ana' })
-
-      expect(res.status).toBe(200)
-    })
-
-    it('senha errada devolve 401 senha_incorreta', async () => {
-      sfu.salasAtuais = [{ slug: 'protegida', nomeNoSfu: 'protegida-x1', nome: 'Protegida', pessoas: [], telasNoAr: 0, cheia: false }]
-      await dataSource(app).query(`INSERT INTO salas (slug, senha_hash) VALUES ($1, $2)`, ['protegida', await cifrar('correcthorse')])
-
-      const res = await request(app.getHttpServer())
-        .post('/api/salas/protegida/entrar')
-        .set('X-Forwarded-For', ipDeTeste())
-        .send({ senha: 'senha-errada', seuNome: 'Ana' })
-
-      expect(res.status).toBe(401)
-      expect(res.body).toEqual({ erro: 'senha_incorreta' })
-    })
-
-    it('sexta tentativa de senha errada no mesmo (ip, slug) devolve 429 espere', async () => {
-      sfu.salasAtuais = [{ slug: 'protegida', nomeNoSfu: 'protegida-x1', nome: 'Protegida', pessoas: [], telasNoAr: 0, cheia: false }]
-      await dataSource(app).query(`INSERT INTO salas (slug, senha_hash) VALUES ($1, $2)`, ['protegida', await cifrar('correcthorse')])
-      const ip = ipDeTeste()
-
-      for (let i = 0; i < 5; i++) {
-        const res = await request(app.getHttpServer()).post('/api/salas/protegida/entrar').set('X-Forwarded-For', ip).send({ senha: 'errada', seuNome: 'Ana' })
-        expect(res.status).toBe(401)
-      }
-
-      const sexta = await request(app.getHttpServer()).post('/api/salas/protegida/entrar').set('X-Forwarded-For', ip).send({ senha: 'errada', seuNome: 'Ana' })
-      expect(sexta.status).toBe(429)
-      expect(sexta.body).toEqual({ erro: 'espere' })
-    })
-
-    it('acertar a senha não consome o freio de senha errada', async () => {
-      sfu.salasAtuais = [{ slug: 'protegida', nomeNoSfu: 'protegida-x1', nome: 'Protegida', pessoas: [], telasNoAr: 0, cheia: false }]
-      await dataSource(app).query(`INSERT INTO salas (slug, senha_hash) VALUES ($1, $2)`, ['protegida', await cifrar('correcthorse')])
-      const ip = ipDeTeste()
-
-      // 3 erradas (sobra orçamento: limite é 5)
-      for (let i = 0; i < 3; i++) {
-        const res = await request(app.getHttpServer()).post('/api/salas/protegida/entrar').set('X-Forwarded-For', ip).send({ senha: 'errada', seuNome: 'Ana' })
-        expect(res.status).toBe(401)
-      }
-
-      // acerta — se isto consumisse o freio, as 2 erradas seguintes já estourariam o limite
-      await request(app.getHttpServer())
-        .post('/api/salas/protegida/entrar')
-        .set('X-Forwarded-For', ip)
-        .send({ senha: 'correcthorse', seuNome: 'Ana' })
-        .expect(200)
-
-      // mais 2 erradas: 3 + 2 = 5 erradas no total, ainda dentro do limite — as duas devem ser 401
-      for (let i = 0; i < 2; i++) {
-        const res = await request(app.getHttpServer()).post('/api/salas/protegida/entrar').set('X-Forwarded-For', ip).send({ senha: 'errada', seuNome: 'Ana' })
-        expect(res.status).toBe(401)
-      }
-
-      // a 6ª errada (a acertada não contou) é que estoura
-      const aviso = jest.spyOn(console, 'warn').mockImplementation(() => {})
-      const sexta = await request(app.getHttpServer()).post('/api/salas/protegida/entrar').set('X-Forwarded-For', ip).send({ senha: 'errada', seuNome: 'Ana' })
-      expect(sexta.status).toBe(429)
-      expect(sexta.body).toEqual({ erro: 'espere' })
-      aviso.mockRestore()
     })
 
     it('sala cheia (30 pessoas) devolve 409 sala_cheia', async () => {

@@ -38,12 +38,6 @@ export class SalaNaoExiste extends ErroApi {
   }
 }
 
-export class SenhaIncorreta extends ErroApi {
-  constructor() {
-    super(HttpStatus.UNAUTHORIZED, 'senha_incorreta')
-  }
-}
-
 export class SalaCheia extends ErroApi {
   constructor() {
     super(HttpStatus.CONFLICT, 'sala_cheia')
@@ -56,7 +50,7 @@ export class MuitasSalas extends ErroApi {
   }
 }
 
-/** Freio (shared/freio.ts) estourado: criar, entrar ou tentativa de senha demais num intervalo curto. */
+/** Freio (shared/freio.ts) estourado: criar ou entrar demais num intervalo curto. */
 export class Espere extends ErroApi {
   constructor() {
     super(HttpStatus.TOO_MANY_REQUESTS, 'espere')

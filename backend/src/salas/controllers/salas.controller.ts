@@ -33,7 +33,6 @@ export class SalasController {
   criarSala(@Body() dto: CriarSalaDto, @Req() req: Request) {
     return this.criar.execute({
       nome: dto.nome,
-      senha: dto.senha,
       privada: dto.privada,
       seuNome: dto.seuNome,
       ip: ipDoPedido(req),
@@ -49,6 +48,6 @@ export class SalasController {
   @Post(':slug/entrar')
   @HttpCode(HttpStatus.OK)
   entrarNaSala(@Param('slug') slugBruto: string, @Body() dto: EntrarSalaDto, @Req() req: Request) {
-    return this.entrar.execute(slugDaSala(slugBruto), dto.senha, dto.seuNome, ipDoPedido(req))
+    return this.entrar.execute(slugDaSala(slugBruto), dto.seuNome, ipDoPedido(req))
   }
 }

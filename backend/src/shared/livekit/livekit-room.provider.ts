@@ -11,13 +11,13 @@ export interface ParticipanteSala {
 }
 
 /**
- * Uma sala tal como o SFU a vê — sem `temSenha` (isso é do banco, ver ListarSalasUseCase).
- * A visibilidade, por ser efêmera como a sala, vem do metadata do próprio SFU.
+ * Uma sala tal como o SFU a vê. A visibilidade, por ser efêmera como a sala, vem do metadata
+ * do próprio SFU.
  *
  * `slug` e `nome` vêm do `metadata` da sala, não do `name` interno. Esse nome usa
- * `<slug>-<nonce>`, para um JWT pré-emitido para o
- * nome óbvio de uma sala ("jogatina") não servir pra entrar numa sala futura com aquele nome e
- * senha. `nomeNoSfu` é esse nome real — é o que vai no grant do token (`room`), nunca `slug`.
+ * `<slug>-<nonce>`, para um JWT pré-emitido para o nome óbvio de uma sala ("jogatina") não
+ * servir pra entrar numa sala futura com aquele nome. `nomeNoSfu` é esse nome real — é o que
+ * vai no grant do token (`room`), nunca `slug`.
  */
 export interface SalaNoSfu {
   slug: string

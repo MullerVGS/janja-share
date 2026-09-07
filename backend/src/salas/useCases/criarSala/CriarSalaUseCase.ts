@@ -4,13 +4,11 @@ import { Espere, MuitasSalas, SalaExiste } from '../../../shared/erros'
 import { Freio } from '../../../shared/freio'
 import { LivekitRoomProvider } from '../../../shared/livekit/livekit-room.provider'
 import { LivekitTokenProvider } from '../../../shared/livekit/livekit-token.provider'
-import { cifrar } from '../../../shared/senha'
 import { slugDaSala, validarNomeDaSala } from '../../../shared/slug'
 import { Credenciais } from '../../credenciais'
 import { gerarIdentidade } from '../../identidade'
 import { validarNome } from '../../nome'
 import { gerarNomeDeSalaDisponivel } from '../../nomeAutomatico'
-import { SalasRepository } from '../../repositories/salas.repository'
 
 const TETO_SALAS = 20
 const LIMITE_POR_MINUTO = 10
@@ -18,7 +16,6 @@ const JANELA_MINUTO_MS = 60_000
 
 export interface CriarSalaComando {
   nome: unknown
-  senha: unknown
   privada: unknown
   seuNome: unknown
   ip: string
@@ -27,14 +24,13 @@ export interface CriarSalaComando {
 @Injectable()
 export class CriarSalaUseCase {
   constructor(
-    private readonly salas: SalasRepository,
     private readonly room: LivekitRoomProvider,
     private readonly tokens: LivekitTokenProvider,
     private readonly freio: Freio,
   ) {}
 
   async execute(comando: CriarSalaComando): Promise<Credenciais> {
-    const { nome: nomeBruto, senha: senhaBruta, privada: privadaBruta, seuNome: seuNomeBruto, ip } = comando
+    const { nome: nomeBruto, privada: privadaBruta, seuNome: seuNomeBruto, ip } = comando
     if (!this.freio.permite(`criar-sala:${ip}`, LIMITE_POR_MINUTO, JANELA_MINUTO_MS)) {
       throw new Espere()
     }
@@ -47,25 +43,17 @@ export class CriarSalaUseCase {
     // vencendo `muitas_salas` quando os dois valem ao mesmo tempo.
     const nomeDigitado = pediuNome ? validarNomeDaSala(nomeBruto) : null
     const seuNome = validarNome(seuNomeBruto)
-    // senha não é um dos "nomes" (que precisam de código de erro dedicado): tipo errado é
-    // recusado pelo DTO (@IsString + @IsOptional); aqui só decide "tem senha ou não".
-    const senha = typeof senhaBruta === 'string' && senhaBruta.length > 0 ? senhaBruta : undefined
     // O DTO garante o tipo quando o campo vem pela API; a comparação estrita mantém o caso
     // ausente público e evita que valores truthy virem sala privada em chamadas internas.
     const privada = privadaBruta === true
 
-    // Leitura sem cache: um segundo POST precisa enxergar a sala recém-criada; caso contrário,
-    // poderia apagar o hash de uma sala viva antes de descobrir a colisão no SFU.
+    // Leitura sem cache: um segundo POST precisa enxergar a sala recém-criada, senão dois
+    // pedidos no mesmo instante passariam os dois pela checagem de unicidade e pelo teto.
     const salasAtuais = await this.room.listarSalasSemCache()
     if (salasAtuais.length >= TETO_SALAS) throw new MuitasSalas()
     const nomeDaSala = nomeDigitado ?? gerarNomeDeSalaDisponivel(salasAtuais)
     const slug = slugDaSala(nomeDaSala)
     if (salasAtuais.some((s) => s.slug === slug)) throw new SalaExiste()
-
-    // Linha órfã do mesmo slug: sala morta que deixou hash para trás. Sem apagar antes, um nome
-    // reusado herdaria a senha de uma sala que ninguém lembra.
-    await this.salas.apagar(slug)
-    if (senha) await this.salas.gravarHash(slug, await cifrar(senha))
 
     // nomeNoSfu carrega o nonce — é ele, não o slug, que vai no grant do token.
     const nomeNoSfu = await this.room.criarSala({ slug, nomeDaSala, privada })
