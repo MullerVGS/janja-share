@@ -10,7 +10,7 @@ Instruções para agentes que desenvolvem o janja-share.
 
 ## Mapa
 
-- `backend/`: API NestJS, regras das salas e integração com LiveKit/Postgres.
+- `backend/`: API NestJS, regras das salas e integração com LiveKit.
 - `frontend/`: SPA React, captura, recepção e controle da mídia.
 - `infra/`: configuração do LiveKit.
 - `docs/adr/`: decisões arquiteturais.
@@ -23,7 +23,7 @@ cd frontend && npm test && npm run typecheck && npm run build
 docker compose config
 ```
 
-Use Node.js 22 ou superior. Para e2e, suba Postgres e LiveKit e rode `npm run test:e2e` no backend.
+Use Node.js 22 ou superior. O e2e não depende de serviço externo: `npm run test:e2e` no backend.
 
 ## Regras de trabalho
 

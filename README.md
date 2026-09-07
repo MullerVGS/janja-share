@@ -7,7 +7,7 @@ Compartilhamento de tela self-hosted, sem conta, com salas e identidades efêmer
 - Compartilhamento simultâneo de telas, com áudio opcional.
 - Voz e chat efêmero.
 - Nome de sala sugerido, com troca em um clique.
-- Salas públicas ou privadas (não listadas), com senha opcional.
+- Salas públicas ou privadas — a privada não aparece no saguão e tem link próprio, impossível de adivinhar.
 - Qualidade adaptada no navegador de quem compartilha.
 
 ## Requisitos
@@ -20,17 +20,18 @@ Compartilhamento de tela self-hosted, sem conta, com salas e identidades efêmer
 
 ```bash
 cp .env.example .env
-# Preencha os três segredos.
+# Preencha os dois segredos.
 
 docker compose build app
-docker compose up -d --wait db
-docker compose up -d livekit
-docker compose run --rm --no-deps app npm run migration:run:prod
-docker compose up -d app
+docker compose up -d livekit app
 ```
 
 Abra <http://localhost:3000>. Com o SFU na sua própria máquina, descomente `SFU_IP_EXTERNO=false`
 e `SFU_IP=127.0.0.1` no `.env` — sem isso o SFU anuncia o IP externo e ninguém recebe mídia.
+
+Vindo de uma versão com senha de sala: o serviço `db` e o volume `db-data` ficaram órfãos.
+`docker compose up -d` já para de subir o banco; o volume sai com
+`docker volume rm <projeto>_db-data`.
 
 ## Em produção
 

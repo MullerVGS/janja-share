@@ -1,6 +1,6 @@
 # 0001 — LiveKit como autoridade das salas
 
-Status: aceito
+Status: aceito, superado em parte pelo [0011](0011-sala-privada-sem-senha.md)
 Registro: 2026-08-25, retrospectivo
 
 ## Contexto

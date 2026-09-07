@@ -1,4 +1,4 @@
-# A pilha inteira num arquivo só: o app (API + SPA na mesma origem), o Postgres e o SFU.
+# A pilha inteira num arquivo só: o app (API + SPA na mesma origem) e o SFU.
 # O que muda de casa para casa vive no .env — sem arquivo de override por ambiente.
 
 name: ${PROJETO:-janja-share}
@@ -9,7 +9,6 @@ services:
     container_name: ${NOME:-janja-share}
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://janja_share:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/janja_share"
       LIVEKIT_URL: "${LIVEKIT_URL:?defina LIVEKIT_URL no .env}"
       LIVEKIT_HOST_INTERNO: http://livekit:7880
       LIVEKIT_API_KEY: "${LIVEKIT_API_KEY:?defina LIVEKIT_API_KEY no .env}"
@@ -18,24 +17,6 @@ services:
     ports:
       - "${BIND_APP:-127.0.0.1}:${PORTA_APP:-3000}:3000"
     networks: [default, borda]
-
-  db:
-    image: postgres:17-alpine
-    container_name: ${NOME:-janja-share}-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: janja_share
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}"
-      POSTGRES_DB: janja_share
-    ports:
-      - "${BIND_DB:-127.0.0.1}:${PORTA_DB:-5443}:5432"
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U janja_share -d janja_share"]
-      interval: 2s
-      timeout: 3s
-      retries: 15
 
   livekit:
     image: livekit/livekit-server:v1.13.5
@@ -54,9 +35,6 @@ services:
     volumes:
       - ./infra/livekit.yaml:/etc/livekit.yaml:ro
     networks: [default, borda]
-
-volumes:
-  db-data:
 
 networks:
   default:
