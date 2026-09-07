@@ -21,7 +21,6 @@ interface Props {
 export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoCriar }: Props) {
   const precisaDoNome = meuNome.trim() === ''
   const [nomeDaSala, setNomeDaSala] = useState('')
-  const [senha, setSenha] = useState('')
   const [privada, setPrivada] = useState(false)
   const [nomeLocal, setNomeLocal] = useState('')
   const [sorteandoNome, setSorteandoNome] = useState(false)
@@ -50,7 +49,6 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
       return
     }
     setNomeDaSala('')
-    setSenha('')
     setPrivada(false)
     setNomeLocal('')
     setErro(null)
@@ -68,7 +66,6 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
     try {
       const credenciais = await criarSala({
         nome,
-        senha: senha || undefined,
         privada: privada || undefined,
         seuNome,
       })
@@ -129,16 +126,9 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
               />
               <span>
                 <strong>Sala privada</strong>
-                <small>Não aparece no saguão. Quem tiver o link ainda pode entrar.</small>
+                <small>Não aparece no saguão. Só quem tiver o link entra.</small>
               </span>
             </label>
-            <Campo
-              rotulo="Senha (opcional)"
-              type="password"
-              placeholder="deixe em branco para entrar sem senha"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-            />
           </div>
         </details>
         <Botao

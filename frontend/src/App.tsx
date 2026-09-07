@@ -11,7 +11,7 @@ const Sala = lazy(() => import('./telas/Sala/Sala').then((modulo) => ({ default:
 const cache = new QueryClient({
   defaultOptions: {
     queries: {
-      // Uma sala que sumiu ou uma senha errada não melhoram com insistência — repetir só
+      // Uma sala que sumiu ou um nome recusado não melhoram com insistência — repetir só
       // atrasaria a explicação. A lista de salas religa `refetchOnWindowFocus` na própria
       // query, onde uma aba viva de fato se beneficia disso.
       retry: false,

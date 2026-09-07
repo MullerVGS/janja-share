@@ -202,7 +202,7 @@ export function Sala() {
   const naoLidasNoChat = chatVisivel ? 0 : Math.max(0, chat.mensagens.length - lidasNoChat)
 
   // O link precisa ser uma porta de verdade, especialmente para Sala privada, que não aparece
-  // no saguão. A API decide se ela existe e se a senha está certa; aqui só se coleta o necessário.
+  // no saguão. A API decide se ela existe; aqui só se coleta o nome de quem está chegando.
   if (!credenciais) {
     return (
       <EntradaDaSala

@@ -91,7 +91,7 @@ function escreverMapa(mapa: MapaDeSessoes): void {
   try {
     sessionStorage.setItem(CHAVE_DA_SESSAO, JSON.stringify(mapa))
   } catch {
-    // Navegador com armazenamento bloqueado ainda funciona — só volta a pedir a senha por F5.
+    // Navegador com armazenamento bloqueado ainda funciona — só volta a pedir o nome por F5.
   }
 }
 

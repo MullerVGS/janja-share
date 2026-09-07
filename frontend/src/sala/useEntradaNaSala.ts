@@ -21,7 +21,6 @@ export function useEntradaNaSala({
 }: Opcoes) {
   const precisaDoNome = meuNome.trim() === ''
   const [nomeLocal, setNomeLocal] = useState(nomeSempreEditavel ? meuNome : '')
-  const [senha, setSenha] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<unknown>(null)
   const montado = useRef(true)
@@ -42,10 +41,7 @@ export function useEntradaNaSala({
     setEnviando(true)
     setErro(null)
     try {
-      const credenciais = await entrarNaSala(slug, {
-        seuNome: nomeParaEnviar,
-        senha: senha || undefined,
-      })
+      const credenciais = await entrarNaSala(slug, { seuNome: nomeParaEnviar })
       if (!montado.current) return
       aoDefinirNome(nomeParaEnviar)
       aoEntrar(credenciais)
@@ -59,7 +55,6 @@ export function useEntradaNaSala({
   }
 
   function limpar() {
-    setSenha('')
     if (!nomeSempreEditavel) setNomeLocal('')
     setErro(null)
   }
@@ -68,8 +63,6 @@ export function useEntradaNaSala({
     precisaDoNome,
     nomeLocal,
     setNomeLocal,
-    senha,
-    setSenha,
     enviando,
     erro,
     podeEntrar: nomeParaEnviar !== '',

@@ -6,7 +6,6 @@ import { Aviso } from '../../ui/Aviso'
 import { Avatar } from '../../ui/Avatar'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
-import { IconeCadeado } from '../../ui/Icone'
 import estilos from './CartaoDaSala.module.css'
 
 /** Avatares de sobra viram um "+N" — uma fila crescendo sem teto por sala fica ilegível. */
@@ -23,7 +22,7 @@ interface Props {
 
 /**
  * Um cartão da grade de salas. "Entrar" só abre um formulário no próprio cartão quando falta
- * alguma coisa — senha da sala, ou o nome de quem está entrando; do contrário vai direto.
+ * o nome de quem está entrando; do contrário vai direto.
  */
 export function CartaoDaSala({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) {
   const [expandido, setExpandido] = useState(false)
@@ -36,7 +35,7 @@ export function CartaoDaSala({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) 
   })
 
   function clicarEntrar() {
-    if (!sala.temSenha && !entrada.precisaDoNome) {
+    if (!entrada.precisaDoNome) {
       void entrada.enviar()
       return
     }
@@ -56,11 +55,6 @@ export function CartaoDaSala({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) 
     >
       <div className={estilos.info}>
         <span className={estilos.nome}>{sala.nome}</span>
-        {sala.temSenha && (
-          <span className={estilos.cadeado} title="Sala com senha">
-            <IconeCadeado tamanho={14} />
-          </span>
-        )}
         <span className={estilos.estado}>
           {sala.telasNoAr > 0 && <span className={estilos.pontoAoVivo} aria-hidden="true" />}
           {sala.telasNoAr > 0 ? `${sala.telasNoAr} ${sala.telasNoAr === 1 ? 'tela' : 'telas'} no ar` : 'sala aberta'}
@@ -123,15 +117,6 @@ export function CartaoDaSala({ sala, meuNome, aoDefinirNome, aoEntrar }: Props) 
               placeholder="como os outros vão te ver"
               value={entrada.nomeLocal}
               onChange={(e) => entrada.setNomeLocal(e.target.value)}
-            />
-          )}
-          {sala.temSenha && (
-            <Campo
-              rotulo="Senha"
-              type="password"
-              autoFocus={!entrada.precisaDoNome}
-              value={entrada.senha}
-              onChange={(e) => entrada.setSenha(e.target.value)}
             />
           )}
           <div className={estilos.acoesDoFormulario}>

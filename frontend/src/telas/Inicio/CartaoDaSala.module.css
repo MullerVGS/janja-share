@@ -39,12 +39,6 @@
   white-space: nowrap;
 }
 
-.cadeado {
-  flex: none;
-  display: flex;
-  color: var(--texto-fraquissimo);
-}
-
 .estado {
   flex: none;
   display: inline-flex;

@@ -19,7 +19,6 @@ export interface SalaNaLista {
   nome: string
   pessoas: string[]
   telasNoAr: number
-  temSenha: boolean
   cheia: boolean
 }
 
@@ -37,21 +36,16 @@ export async function sugerirNomeDeSala(nomeAtual?: string): Promise<string> {
 // backend gerar um. O diálogo, por sua vez, mostra uma sugestão e a envia explicitamente.
 export function criarSala({
   nome,
-  senha,
   privada,
   seuNome,
 }: {
   nome?: string
-  senha?: string
   privada?: boolean
   seuNome: string
 }): Promise<Credenciais> {
-  return enviarJson<Credenciais>('/api/salas', 'POST', { nome, senha, privada, seuNome })
+  return enviarJson<Credenciais>('/api/salas', 'POST', { nome, privada, seuNome })
 }
 
-export function entrarNaSala(
-  slug: string,
-  { senha, seuNome }: { senha?: string; seuNome: string },
-): Promise<Credenciais> {
-  return enviarJson<Credenciais>(`/api/salas/${encodeURIComponent(slug)}/entrar`, 'POST', { senha, seuNome })
+export function entrarNaSala(slug: string, { seuNome }: { seuNome: string }): Promise<Credenciais> {
+  return enviarJson<Credenciais>(`/api/salas/${encodeURIComponent(slug)}/entrar`, 'POST', { seuNome })
 }

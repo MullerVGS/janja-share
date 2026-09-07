@@ -30,25 +30,16 @@ export function EntradaDaSala({ slug, aoEntrar, aoVoltar }: Props) {
     <Dialogo aberto titulo="Entrar na sala" aoFechar={aoVoltar}>
       <form className={estilos.formulario} onSubmit={entrada.enviar} noValidate>
         <p className={estilos.contexto}>
-          Você recebeu um link para <strong>#{slug}</strong>. Escolha como vão te ver e, se a sala pedir,
-          informe a senha.
+          Você recebeu um link para <strong>#{slug}</strong>. Escolha como os outros vão te ver.
         </p>
         {entrada.erro !== null && <Aviso tom="erro">{mensagemDoErro(entrada.erro)}</Aviso>}
         <Campo
           rotulo="Seu nome"
-          autoFocus={entrada.nomeLocal.trim() === ''}
+          autoFocus
           maxLength={LIMITE_DO_NOME}
           placeholder="como os outros vão te ver"
           value={entrada.nomeLocal}
           onChange={(evento) => entrada.setNomeLocal(evento.target.value)}
-        />
-        <Campo
-          rotulo="Senha (opcional)"
-          type="password"
-          autoFocus={entrada.nomeLocal.trim() !== ''}
-          placeholder="deixe em branco se a sala não tiver senha"
-          value={entrada.senha}
-          onChange={(evento) => entrada.setSenha(evento.target.value)}
         />
         <div className={estilos.acoes}>
           <Botao type="button" aparencia="fantasma" disabled={entrada.enviando} onClick={aoVoltar}>

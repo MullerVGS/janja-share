@@ -468,7 +468,7 @@ describe('sala: a interface que se esconde', () => {
 })
 
 describe('sala: sem credenciais para o slug', () => {
-  it('quem abre um link privado informa nome e senha, guarda a sessão e entra', async () => {
+  it('quem abre um link informa o nome, guarda a sessão e entra', async () => {
     const daquiAUmaHora = Date.now() + 60 * 60 * 1000
     const credenciais = credenciaisFalsas(daquiAUmaHora, 'Ana', 'privada')
     credenciais.nomeDaSala = 'Privada'
@@ -487,33 +487,12 @@ describe('sala: sem credenciais para o slug', () => {
 
     const dialogo = screen.getByRole('dialog', { name: 'Entrar na sala' })
     await usuario.type(within(dialogo).getByLabelText('Seu nome'), 'Ana')
-    await usuario.type(within(dialogo).getByLabelText('Senha (opcional)'), 'segredo')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByRole('region', { name: 'Sala Privada' })).toBeInTheDocument()
     const entrada = chamadas.find((chamada) => chamada.caminho === '/api/salas/privada/entrar')
-    expect(entrada?.corpo).toEqual({ seuNome: 'Ana', senha: 'segredo' })
+    expect(entrada?.corpo).toEqual({ seuNome: 'Ana' })
     expect(lerPreferencias().nome).toBe('Ana')
-  })
-
-  it('senha errada mantém a porta aberta para corrigir', async () => {
-    gravarPreferencias({ nome: 'Ana' })
-    servir({
-      'POST /api/salas/privada/entrar': { status: 401, corpo: { erro: 'senha_incorreta' } },
-    })
-    const usuario = userEvent.setup()
-    montar(
-      <Routes>
-        <Route path="/sala/:slug" element={<Sala />} />
-      </Routes>,
-      '/sala/privada',
-    )
-
-    await usuario.type(screen.getByLabelText('Senha (opcional)'), 'errada')
-    await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Senha incorreta.')
-    expect(screen.getByRole('dialog', { name: 'Entrar na sala' })).toBeInTheDocument()
   })
 
   it('fechar durante a requisição ignora a resposta tardia e não guarda a sessão', async () => {

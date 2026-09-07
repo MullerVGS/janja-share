@@ -11,7 +11,6 @@ import {
   FrameCorners,
   Gear,
   Link as LinkPhosphor,
-  Lock,
   Microphone,
   MicrophoneSlash,
   Monitor,
@@ -72,7 +71,6 @@ export const IconeQualidade = envolver(SlidersHorizontal, 18)
 export const IconeConvite = envolver(LinkPhosphor)
 export const IconeCopiar = envolver(LinkPhosphor)
 export const IconeCerto = envolver(Check)
-export const IconeCadeado = envolver(Lock)
 export const IconeMais = envolver(Plus)
 export const IconeDado = envolver(DiceFive)
 export const IconePessoas = envolver(Users)

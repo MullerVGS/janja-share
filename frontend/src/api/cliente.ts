@@ -35,7 +35,6 @@ const FRASES: Record<string, string> = {
   nome_da_sala_invalido: 'Esse nome de sala não é válido — use letras ou números, até 40 caracteres.',
   sala_existe: 'Já existe uma sala com esse nome — entre nela ou escolha outro.',
   sala_nao_existe: 'Essa sala não existe mais.',
-  senha_incorreta: 'Senha incorreta.',
   sala_cheia: 'A sala está cheia.',
   muitas_salas: 'Tem sala demais no ar agora. Tente daqui a pouco.',
   espere: 'Muitas tentativas. Espere alguns segundos.',

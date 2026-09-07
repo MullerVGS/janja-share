@@ -11,7 +11,6 @@ describe('frases dos códigos de domínio das salas', () => {
     ['nome_invalido', 'Escolha um nome com 1 a 40 caracteres.'],
     ['sala_existe', 'Já existe uma sala com esse nome — entre nela ou escolha outro.'],
     ['sala_nao_existe', 'Essa sala não existe mais.'],
-    ['senha_incorreta', 'Senha incorreta.'],
     ['sala_cheia', 'A sala está cheia.'],
     ['muitas_salas', 'Tem sala demais no ar agora. Tente daqui a pouco.'],
     ['espere', 'Muitas tentativas. Espere alguns segundos.'],
