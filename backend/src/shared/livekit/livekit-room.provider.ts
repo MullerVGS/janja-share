@@ -76,10 +76,9 @@ export class LivekitRoomProvider {
 
   /**
    * Mesma leitura, sem servir do cache — usada por `CriarSalaUseCase` para decidir unicidade de
-   * slug e teto global. Com o cache normal, um segundo POST dentro da janela de 2s
-   * via `listarSalas()` não veria a sala que acabou de nascer: passaria pela checagem de
-   * "slug já existe", chegaria em `salas.apagar(slug)` e destruiria o hash de uma sala que está
-   * viva no SFU — a senha morre ali, antes mesmo de `criarSala` rodar.
+   * slug e teto global. Com o cache normal, um segundo POST dentro da janela de 2s via
+   * `listarSalas()` não veria a sala que acabou de nascer: passaria pela checagem de "slug já
+   * existe" e criaria uma segunda encarnação do mesmo nome.
    */
   async listarSalasSemCache(agora = Date.now()): Promise<SalaNoSfu[]> {
     return this.buscarSalasDoSfu(agora)
@@ -116,7 +115,7 @@ export class LivekitRoomProvider {
   /**
    * `createRoom` com os valores fixos do contrato. O nome real no SFU ganha um nonce
    * (`<slug>-<nonce>`) — devolvido aqui porque é ele, não o slug, que vai no grant do
-   * token. `slug`, nome de exibição e visibilidade vão só no metadata; a senha, nunca.
+   * token. `slug`, nome de exibição e visibilidade vão só no metadata.
    *
    * Invalida o cache ao final: sem isso, uma leitura cacheada por `listarSalas()` nos
    * próximos 2s continuaria sem enxergar a sala recém-criada.

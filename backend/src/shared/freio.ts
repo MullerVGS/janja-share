@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 
-// Bem maior que qualquer janela em uso hoje (60s para criar/entrar, 30s para senha errada) —
+// Bem maior que qualquer janela em uso hoje (60s para criar e para entrar) —
 // só varre chave que está genuinamente morta, nunca uma ainda dentro da própria janela.
 const TEMPO_MAXIMO_OCIOSO_MS = 10 * 60_000
 
@@ -10,9 +10,9 @@ const TEMPO_MAXIMO_OCIOSO_MS = 10 * 60_000
  * injetado no construtor (não em `permite`) para o teste controlar o tempo sem timers reais e
  * sem precisar passá-lo em toda chamada.
  *
- * Usado em três pontos com chave e limites diferentes: criar sala (10/min por IP), entrar
- * (30/min por IP) e senha errada (5 por par IP+slug, janela de 30s) — a chave já carrega o
- * escopo, `permite` não sabe nem precisa saber qual dos três é.
+ * Usado em dois pontos com chave e limites diferentes: criar sala (10/min por IP) e entrar
+ * (30/min por IP) — a chave já carrega o escopo, `permite` não sabe nem precisa saber qual
+ * dos dois é.
  *
  * Sem faxina, o Map só cresce: um IP que aparece uma vez e nunca mais volta deixa o próprio
  * histórico (velho, mas não vazio) parado ali para sempre — nada revisita aquela chave para
