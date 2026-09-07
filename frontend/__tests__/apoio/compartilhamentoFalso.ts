@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import { GOVERNADOR_PARADO } from '../../src/sala/governador'
-import { PERFIL_PADRAO } from '../../src/sala/qualidade'
+import { PRESET_DO_CONTEUDO } from '../../src/sala/qualidade'
 import type { Compartilhamento } from '../../src/sala/useCompartilhamento'
 
 /**
@@ -8,7 +8,7 @@ import type { Compartilhamento } from '../../src/sala/useCompartilhamento'
  * que a sua pergunta exige — e um campo novo no contrato aparece aqui uma vez, não em cada spec.
  */
 export function compartilhamentoFalso(parcial: Partial<Compartilhamento> = {}): Compartilhamento {
-  const perfil = parcial.perfil ?? PERFIL_PADRAO
+  const perfil = parcial.perfil ?? PRESET_DO_CONTEUDO.texto
   return {
     ativo: false,
     perfil,

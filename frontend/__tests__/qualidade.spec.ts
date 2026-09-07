@@ -15,7 +15,7 @@ import {
 } from '../src/sala/qualidade'
 
 function perfil(parcial: Partial<PerfilDeQualidade> = {}): PerfilDeQualidade {
-  return { ...PERFIL_PADRAO, ...parcial }
+  return { ...PRESET_DO_CONTEUDO.texto, ...parcial }
 }
 
 function faixaFalsa() {
@@ -208,8 +208,8 @@ describe('presets por conteúdo', () => {
     })
   })
 
-  it('o perfil de partida é o preset de texto', () => {
-    expect(PERFIL_PADRAO).toBe(PRESET_DO_CONTEUDO.texto)
+  it('o perfil de partida é o preset de jogo — o conteúdo que se compartilha aqui', () => {
+    expect(PERFIL_PADRAO).toBe(PRESET_DO_CONTEUDO.jogo)
   })
 
   it('o teto de busca vai de 200 kb/s a 50 Mb/s — limite superior, não promessa', () => {
@@ -229,7 +229,7 @@ describe('troca de conteúdo', () => {
   })
 
   it('a volta para texto devolve VP9, 15 fps e a partida de 4000 kbps', () => {
-    const depois = trocarConteudo(trocarConteudo(PERFIL_PADRAO, 'jogo'), 'texto')
+    const depois = trocarConteudo(trocarConteudo(PRESET_DO_CONTEUDO.texto, 'jogo'), 'texto')
     expect([depois.codec, depois.fps, depois.tetoKbps]).toEqual(['vp9', 15, 4000])
   })
 })
@@ -249,16 +249,16 @@ describe('perfil vindo de fora (preferências)', () => {
   })
 
   it('recusa campo faltando, valor fora do vocabulário, fps estranho e teto fora do slider', () => {
-    const { codec: _codec, ...semCodec } = PERFIL_PADRAO
+    const { codec: _codec, ...semCodec } = PRESET_DO_CONTEUDO.texto
     expect(ehPerfil(semCodec)).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, conteudo: 'nitidez' })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, codec: 'h265' })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, codec: 'constructor' })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, ceder: 'tudo' })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, resolucao: '4k' })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, fps: 45 })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, tetoKbps: 50_001 })).toBe(false)
-    expect(ehPerfil({ ...PERFIL_PADRAO, tetoKbps: 100 })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, conteudo: 'nitidez' })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, codec: 'h265' })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, codec: 'constructor' })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, ceder: 'tudo' })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, resolucao: '4k' })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, fps: 45 })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, tetoKbps: 50_001 })).toBe(false)
+    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, tetoKbps: 100 })).toBe(false)
     expect(ehPerfil(null)).toBe(false)
     expect(ehPerfil('texto')).toBe(false)
   })

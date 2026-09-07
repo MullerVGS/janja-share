@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { GOVERNADOR_PARADO, type EstadoDoGovernador } from '../src/sala/governador'
-import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type PerfilDeQualidade, type RelatorioDeAplicacao } from '../src/sala/qualidade'
+import { PRESET_DO_CONTEUDO, type PerfilDeQualidade, type RelatorioDeAplicacao } from '../src/sala/qualidade'
 import type { Compartilhamento } from '../src/sala/useCompartilhamento'
 import { Qualidade } from '../src/telas/Sala/Qualidade'
 import { compartilhamentoFalso } from './apoio/compartilhamentoFalso'
@@ -62,9 +62,9 @@ describe('aba Qualidade: controles', () => {
     await usuario.click(screen.getByRole('radio', { name: '30' }))
 
     expect(escolhido).toEqual([
-      { ...PERFIL_PADRAO, ceder: 'resolucao' },
-      { ...PERFIL_PADRAO, resolucao: '540p' },
-      { ...PERFIL_PADRAO, fps: 30 },
+      { ...PRESET_DO_CONTEUDO.texto, ceder: 'resolucao' },
+      { ...PRESET_DO_CONTEUDO.texto, resolucao: '540p' },
+      { ...PRESET_DO_CONTEUDO.texto, fps: 30 },
     ])
   })
 
@@ -107,8 +107,8 @@ describe('aba Qualidade: codec automático', () => {
   it('no automático, conta qual codec está no ar e por quê', () => {
     montarQualidade({
       codecPreferido: 'auto',
-      perfil: { ...PERFIL_PADRAO, codec: 'h264' },
-      perfilEfetivo: { ...PERFIL_PADRAO, codec: 'vp9' },
+      perfil: { ...PRESET_DO_CONTEUDO.texto, codec: 'h264' },
+      perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, codec: 'vp9' },
       governador: { ...GOVERNADOR_PARADO, codec: 'vp9', codecCorrigido: true },
     })
     expect(screen.getByText(/VP9 no ar/)).toBeInTheDocument()
@@ -120,8 +120,8 @@ describe('aba Qualidade: codec automático', () => {
     const forcados: string[] = []
     montarQualidade({
       codecPreferido: 'auto',
-      perfil: { ...PERFIL_PADRAO, codec: 'h264' },
-      perfilEfetivo: { ...PERFIL_PADRAO, codec: 'vp9' },
+      perfil: { ...PRESET_DO_CONTEUDO.texto, codec: 'h264' },
+      perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, codec: 'vp9' },
       governador: { ...GOVERNADOR_PARADO, codec: 'vp9', codecCorrigido: true },
       definirCodecPreferido: (codec) => forcados.push(codec),
     })
@@ -209,8 +209,8 @@ describe('aba Qualidade: automático', () => {
   it('com degrau em vigor conta o que está no ar, para onde cedeu e por quê; "forçar" desliga o automático', async () => {
     const usuario = userEvent.setup()
     const compartilhamento = montarQualidade({
-      perfil: { ...PERFIL_PADRAO, fps: 60 },
-      perfilEfetivo: { ...PERFIL_PADRAO, fps: 30 },
+      perfil: { ...PRESET_DO_CONTEUDO.texto, fps: 60 },
+      perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, fps: 30 },
       governador: SEGURANDO,
     })
 
@@ -230,14 +230,14 @@ describe('aba Qualidade: automático', () => {
 
   it('com o teto acima da partida, a linha mostra o teto conquistado e diz que está subindo', () => {
     const subindo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 12_500 }
-    montarQualidade({ perfilEfetivo: { ...PERFIL_PADRAO, tetoKbps: 12_500 }, governador: subindo })
+    montarQualidade({ perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 12_500 }, governador: subindo })
     expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('12,5 Mb/s · 1080p · 15 fps · subindo')
   })
 
   /** "Subindo" é postura, não promessa: no teto do link não há próxima janela limpa que renda nada. */
   it('com a busca no que a banda deixa, para de dizer "subindo"', () => {
     const noAlvo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 12_500, tetoNoAlvo: true }
-    montarQualidade({ perfilEfetivo: { ...PERFIL_PADRAO, tetoKbps: 12_500 }, governador: noAlvo })
+    montarQualidade({ perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 12_500 }, governador: noAlvo })
     expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('12,5 Mb/s · 1080p · 15 fps · no teto do link')
   })
 
@@ -249,7 +249,7 @@ describe('aba Qualidade: automático', () => {
 
   it('teto cedido sem degrau nenhum aparece como cessão de teto, não como subida', () => {
     const cedeu: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 2_400, motivo: 'banda' }
-    montarQualidade({ perfilEfetivo: { ...PERFIL_PADRAO, tetoKbps: 2_400 }, governador: cedeu })
+    montarQualidade({ perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 2_400 }, governador: cedeu })
     expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('2,4 Mb/s · 1080p · 15 fps · cedeu o teto — banda')
     expect(screen.queryByRole('button', { name: /forçar/i })).not.toBeInTheDocument()
   })
@@ -279,8 +279,8 @@ describe('aba Qualidade: automático', () => {
   it('desligado, a linha conta o pedido que está no ar — não o que o governador tinha decidido', () => {
     montarQualidade({
       automatico: false,
-      perfil: { ...PERFIL_PADRAO, fps: 60 },
-      perfilEfetivo: { ...PERFIL_PADRAO, fps: 60 },
+      perfil: { ...PRESET_DO_CONTEUDO.texto, fps: 60 },
+      perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, fps: 60 },
       governador: SEGURANDO,
     })
     const estado = screen.getByRole('status', { name: /governador/i })
@@ -292,7 +292,7 @@ describe('aba Qualidade: automático', () => {
 describe('aba Qualidade: codec pendente', () => {
   it('quando o codec não entrou no ar, avisa que vale no próximo compartilhamento e oferece Reiniciar', async () => {
     const usuario = userEvent.setup()
-    const compartilhamento = montarQualidade({ perfil: { ...PERFIL_PADRAO, codec: 'av1' }, codecPendente: 'av1' })
+    const compartilhamento = montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.texto, codec: 'av1' }, codecPendente: 'av1' })
 
     expect(screen.getByText(/não entrou no ar/)).toHaveTextContent('AV1 não entrou no ar: vale no próximo compartilhamento.')
 

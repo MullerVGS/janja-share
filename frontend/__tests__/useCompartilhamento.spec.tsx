@@ -3,7 +3,7 @@ import { Track, type Room, type TrackPublishOptions } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { OPCOES_DO_AUDIO_DA_TELA } from '../src/sala/audioDaTela'
-import { PERFIL_PADRAO, PRESET_DO_CONTEUDO } from '../src/sala/qualidade'
+import { PRESET_DO_CONTEUDO } from '../src/sala/qualidade'
 import { useCompartilhamento } from '../src/sala/useCompartilhamento'
 import { amostraVaziaDoEmissor, amostraVaziaDoEspectador, type AmostraDoEmissor } from '../src/telemetria/amostra'
 import { anotar, type Historico } from '../src/telemetria/historico'
@@ -252,7 +252,7 @@ describe('useCompartilhamento: pedido e preferências', () => {
     expect(result.current.ativo).toBe(true)
     // O seletor recebe o perfil inteiro — traduzi-lo para o navegador é trabalho de `captura.ts`.
     const [perfilPedido] = seletor.abrir.mock.calls[0] ?? []
-    expect(perfilPedido).toMatchObject({ conteudo: 'texto', codec: 'vp9' })
+    expect(perfilPedido).toMatchObject({ conteudo: 'jogo', codec: 'vp9' })
     const [, opcoes] = sala.localParticipant.publishTrack.mock.calls[0] ?? []
     expect(opcoes).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L3T3_KEY' })
 
@@ -277,7 +277,7 @@ describe('useCompartilhamento: governador', () => {
   it('com o automático ligado, limitação persistente desce o degrau e o perfil efetivo vai para o encoder', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, amostras } = montar(sala)
-    act(() => result.current.definirPerfil({ ...PERFIL_PADRAO, fps: 60 }))
+    act(() => result.current.definirPerfil({ ...PRESET_DO_CONTEUDO.texto, fps: 60 }))
     await ligar()
     await assentar()
     expect(sala.video()?.track.parametros().encodings[0]?.maxFramerate).toBe(60)
@@ -295,7 +295,7 @@ describe('useCompartilhamento: governador', () => {
   it('mexer em qualquer controle zera o governador; desligar o automático também', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, amostras } = montar(sala)
-    act(() => result.current.definirPerfil({ ...PERFIL_PADRAO, fps: 60 }))
+    act(() => result.current.definirPerfil({ ...PRESET_DO_CONTEUDO.texto, fps: 60 }))
     await ligar()
     amostras(5, CPU)
     expect(result.current.governador.degrau).toBe(30)
@@ -318,15 +318,15 @@ describe('useCompartilhamento: governador', () => {
     const { result, ligar, amostras } = montar(sala)
     await ligar()
     await assentar()
-    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(4_000_000)
+    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(8_000_000)
 
     amostras(35, FOLGADO)
     await assentar()
 
-    expect(result.current.governador.tetoKbps).toBe(5_000)
-    expect(result.current.perfil.tetoKbps).toBe(4_000)
-    expect(result.current.perfilEfetivo.tetoKbps).toBe(5_000)
-    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(5_000_000)
+    expect(result.current.governador.tetoKbps).toBe(10_000)
+    expect(result.current.perfil.tetoKbps).toBe(8_000)
+    expect(result.current.perfilEfetivo.tetoKbps).toBe(10_000)
+    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(10_000_000)
   })
 
   it('um espectador sofrendo segura a subida — o mesmo link folgado não rende nada', async () => {
@@ -337,13 +337,13 @@ describe('useCompartilhamento: governador', () => {
     await assentar()
 
     expect(result.current.governador.tetoKbps).toBeNull()
-    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(4_000_000)
+    expect(sala.video()?.track.parametros().encodings[0]?.maxBitrate).toBe(8_000_000)
   })
 
   it('parar de compartilhar zera o governador', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, amostras } = montar(sala)
-    act(() => result.current.definirPerfil({ ...PERFIL_PADRAO, fps: 60 }))
+    act(() => result.current.definirPerfil({ ...PRESET_DO_CONTEUDO.texto, fps: 60 }))
     await ligar()
     amostras(5, CPU)
     expect(result.current.governador.degrau).toBe(30)
@@ -704,7 +704,7 @@ describe('useCompartilhamento: trocar de tela', () => {
     await ligar()
     amostras(35, FOLGADO)
     await assentar()
-    expect(result.current.governador.tetoKbps).toBe(5_000)
+    expect(result.current.governador.tetoKbps).toBe(10_000)
 
     let promessa: Promise<void> | undefined
     act(() => {
@@ -715,14 +715,14 @@ describe('useCompartilhamento: trocar de tela', () => {
     for (let passo = 0; passo < 4; passo += 1) {
       await batida()
       expect(result.current.ativo).toBe(true)
-      expect(result.current.governador.tetoKbps).toBe(5_000)
+      expect(result.current.governador.tetoKbps).toBe(10_000)
     }
 
     await act(async () => {
       await promessa
     })
     expect(result.current.ativo).toBe(true)
-    expect(result.current.governador.tetoKbps).toBe(5_000)
-    expect(result.current.perfilEfetivo.tetoKbps).toBe(5_000)
+    expect(result.current.governador.tetoKbps).toBe(10_000)
+    expect(result.current.perfilEfetivo.tetoKbps).toBe(10_000)
   })
 })

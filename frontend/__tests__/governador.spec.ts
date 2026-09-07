@@ -8,13 +8,13 @@ import {
   zerarGovernador,
   type EstadoDoGovernador,
 } from '../src/sala/governador'
-import { PERFIL_PADRAO, PRESET_DO_CONTEUDO, type Codec, type PerfilDeQualidade } from '../src/sala/qualidade'
+import { PRESET_DO_CONTEUDO, type Codec, type PerfilDeQualidade } from '../src/sala/qualidade'
 import { amostraVaziaDoEmissor, amostraVaziaDoEspectador, type AmostraDoEmissor, type AmostraDoEspectador } from '../src/telemetria/amostra'
 import { anotar } from '../src/telemetria/historico'
 import type { Espectador } from '../src/telemetria/relato'
 
-const QUADROS: PerfilDeQualidade = { ...PERFIL_PADRAO, fps: 60, ceder: 'quadros' }
-const RESOLUCAO: PerfilDeQualidade = { ...PERFIL_PADRAO, resolucao: '1080p', fps: 30, ceder: 'resolucao' }
+const QUADROS: PerfilDeQualidade = { ...PRESET_DO_CONTEUDO.texto, fps: 60, ceder: 'quadros' }
+const RESOLUCAO: PerfilDeQualidade = { ...PRESET_DO_CONTEUDO.texto, resolucao: '1080p', fps: 30, ceder: 'resolucao' }
 const TEXTO: PerfilDeQualidade = PRESET_DO_CONTEUDO.texto // VP9 (SVC), cede quadros
 const JOGO: PerfilDeQualidade = PRESET_DO_CONTEUDO.jogo // cede resolução; o codec vem da máquina
 /** Codec sem SVC: o SFU não tem camada menor para dar ao espectador lento, e o pior deles é o teto. */

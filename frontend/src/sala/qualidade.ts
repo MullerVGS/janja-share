@@ -128,7 +128,14 @@ export const PRESET_DO_CONTEUDO: Record<Conteudo, PerfilDeQualidade> = {
   jogo: { conteudo: 'jogo', codec: 'vp9', resolucao: '1080p', fps: 60, ceder: 'resolucao', tetoKbps: 8_000 },
 }
 
-export const PERFIL_PADRAO: PerfilDeQualidade = PRESET_DO_CONTEUDO.texto
+/**
+ * Jogo, e não texto, porque é o que as pessoas de fato compartilham aqui — e errar para o lado
+ * do texto é caro: `contentHint: 'text'` sobre VP9 de tela devolve o encoder ao caminho de
+ * screen-content do Chrome, que não passa de 5 fps, e `ceder: 'quadros'` manda jogar quadro fora
+ * justamente quando a tela inteira está mudando. Errar para o lado do jogo custa borrão num
+ * documento parado, que quem lê corrige em um clique.
+ */
+export const PERFIL_PADRAO: PerfilDeQualidade = PRESET_DO_CONTEUDO.jogo
 
 /**
  * Troca de conteúdo aplicando o preset do novo — menos a resolução e o codec.
