@@ -51,3 +51,14 @@ describe('montarPalco: recepção da tela', () => {
     expect(montarPalco(sala, recepcao).telas[0]?.recepcao).toBeUndefined()
   })
 })
+
+describe('montarPalco: pessoa nunca tem imagem', () => {
+  it('uma câmera publicada não vira imagem de pessoa — o palco não tem quadro de pessoa', () => {
+    const eu = participanteFalso('ana-a1b2', 'Ana', [publicacaoFalsa(Track.Source.Camera)])
+    const palco = montarPalco(salaFalsa(eu))
+
+    expect(palco.telas).toEqual([])
+    expect(palco.pessoas.map((pessoa) => pessoa.chave)).toEqual(['pessoa:ana-a1b2'])
+    expect(palco.pessoas[0]?.publicacao).toBeUndefined()
+  })
+})

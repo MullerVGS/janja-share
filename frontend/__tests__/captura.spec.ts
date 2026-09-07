@@ -8,7 +8,7 @@ import { PRESET_DO_CONTEUDO } from '../src/sala/qualidade'
  * A captura é nossa e não do SDK por um motivo só: `windowAudio` não sobrevive à tradução do
  * `createScreenTracks`. O preço é reimplementar as quinze linhas que montam as faixas — e é
  * exatamente esse preço que estes testes cobram, porque errar ali não quebra nada visivelmente:
- * uma faixa sem `source` publica como câmera e some do palco de todo mundo.
+ * uma faixa sem `source` sobe como câmera, que o SFU recusa — a tela não chega a ninguém.
  */
 
 /** O mínimo de `MediaStreamTrack` que o `LocalTrack` do SDK toca ao ser construído. */

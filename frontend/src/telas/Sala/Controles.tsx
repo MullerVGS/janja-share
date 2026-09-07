@@ -5,8 +5,6 @@ import {
   IconeAjustesDaTela,
   IconeAudioDaTela,
   IconeAudioDaTelaMudo,
-  IconeCamera,
-  IconeCameraFechada,
   IconeChat,
   IconeMicrofone,
   IconeMicrofoneMudo,
@@ -26,19 +24,14 @@ interface Props {
   aoAlternarChat(): void
   /** Abre a gaveta na aba de qualidade — o mesmo destino do ícone de ajustes do topo. */
   aoAbrirQualidade(): void
-  /** Onde a falha de microfone/câmera vira faixa na tela; `null` limpa a faixa anterior. */
+  /** Onde a falha do microfone vira faixa na tela; `null` limpa a faixa anterior. */
   aoFalhar(mensagem: string | null): void
   aoSair(): void
 }
 
-const DISPOSITIVOS = {
-  microfone: { esse: 'o microfone', aEsse: 'ao microfone' },
-  camera: { esse: 'a câmera', aEsse: 'à câmera' },
-} as const
-
 /**
- * A frase que a pessoa lê quando abrir microfone ou câmera não dá certo. `null` é o único caso
- * de desistência silenciosa: `AbortError` é a troca interrompida no meio, não uma decisão.
+ * A frase que a pessoa lê quando abrir o microfone não dá certo. `null` é o único caso de
+ * desistência silenciosa: `AbortError` é a troca interrompida no meio, não uma decisão.
  *
  * Diferente do compartilhamento de tela, aqui `NotAllowedError` NÃO é silêncio: não existe
  * seletor nativo para cancelar — é a permissão negada, e ela persiste. Sem faixa, o botão
@@ -46,20 +39,18 @@ const DISPOSITIVOS = {
  * conserta. O nome do erro é a parte estável do `DOMException`; a `message` muda com o
  * navegador e com o idioma do sistema.
  */
-function fraseDaFalha(falha: unknown, qual: keyof typeof DISPOSITIVOS): string | null {
-  const { esse, aEsse } = DISPOSITIVOS[qual]
+function fraseDaFalha(falha: unknown): string | null {
   const nome = falha instanceof Error ? falha.name : ''
   if (nome === 'AbortError') return null
   if (nome === 'NotAllowedError' || nome === 'SecurityError')
-    return `O navegador bloqueou o acesso ${aEsse}. Libere a permissão na barra de endereço e tente de novo.`
-  if (nome === 'NotFoundError' || nome === 'OverconstrainedError')
-    return `Não encontrei ${esse} neste computador.`
-  if (nome === 'NotReadableError') return `Outro programa está usando ${esse}. Feche-o e tente de novo.`
-  return falha instanceof Error && falha.message ? falha.message : `Não foi possível abrir ${esse}.`
+    return 'O navegador bloqueou o acesso ao microfone. Libere a permissão na barra de endereço e tente de novo.'
+  if (nome === 'NotFoundError' || nome === 'OverconstrainedError') return 'Não encontrei o microfone neste computador.'
+  if (nome === 'NotReadableError') return 'Outro programa está usando o microfone. Feche-o e tente de novo.'
+  return falha instanceof Error && falha.message ? falha.message : 'Não foi possível abrir o microfone.'
 }
 
 /**
- * `fechado` é mic/câmera mudos: fundo escuro e ícone apagado. `aceso` é a sua tela no ar —
+ * `fechado` é o microfone mudo: fundo escuro e ícone apagado. `aceso` é a sua tela no ar —
  * contorno de acento e halo, o único botão que brilha. `ativo` é só um painel à mostra, e por
  * isso pesa menos: tinta de acento, sem contorno. `convite` é o azul-lavanda do que ainda não
  * foi feito mas é a ação principal dali.
@@ -98,9 +89,9 @@ function Botao({
 }
 
 /**
- * A barra flutuante: microfone, câmera, tela, chat e a saída. Microfone e câmera começam
- * fechados — ninguém entra numa sala já transmitindo — e o estado de cada um está no próprio
- * botão, não escondido num menu.
+ * A barra flutuante: microfone, tela, chat e a saída. O microfone começa fechado — ninguém entra
+ * numa sala já transmitindo — e o estado está no próprio botão, não escondido num menu. Não há
+ * câmera: o projeto é compartilhar tela, e o SFU nem aceita publicá-la.
  *
  * Trocar de tela, os ajustes dela e o áudio dela só aparecem transmitindo, porque são da SUA
  * tela — e é por isso que moram aqui, e não na pílula de um quadro: enquanto você assiste a de
@@ -118,11 +109,9 @@ export function Controles({
   aoSair,
 }: Props) {
   const [mudandoMicrofone, setMudandoMicrofone] = useState(false)
-  const [mudandoCamera, setMudandoCamera] = useState(false)
 
   const microfoneLigado = sala?.localParticipant.isMicrophoneEnabled ?? false
-  const cameraLigada = sala?.localParticipant.isCameraEnabled ?? false
-  // Sem sala não há a quem pedir dispositivo nem tela: botão que não faz nada tem de dizer isso.
+  // Sem sala não há a quem pedir microfone nem tela: botão que não faz nada tem de dizer isso.
   const semSala = sala === null
   // Quem compartilha não se ouve: o medidor é a única resposta a "está saindo som?".
   const faixaDoAudioDaTela = compartilhamento.audioDaTela?.track?.mediaStreamTrack
@@ -135,22 +124,9 @@ export function Controles({
     try {
       await sala.localParticipant.setMicrophoneEnabled(!microfoneLigado)
     } catch (falha) {
-      aoFalhar(fraseDaFalha(falha, 'microfone'))
+      aoFalhar(fraseDaFalha(falha))
     } finally {
       setMudandoMicrofone(false)
-    }
-  }
-
-  async function alternarCamera() {
-    if (!sala) return
-    aoFalhar(null)
-    setMudandoCamera(true)
-    try {
-      await sala.localParticipant.setCameraEnabled(!cameraLigada)
-    } catch (falha) {
-      aoFalhar(fraseDaFalha(falha, 'camera'))
-    } finally {
-      setMudandoCamera(false)
     }
   }
 
@@ -164,16 +140,6 @@ export function Controles({
         aoClicar={() => void alternarMicrofone()}
       >
         {microfoneLigado ? <IconeMicrofone tamanho={22} /> : <IconeMicrofoneMudo tamanho={22} />}
-      </Botao>
-
-      <Botao
-        rotulo={cameraLigada ? 'Fechar câmera' : 'Abrir câmera'}
-        tom={cameraLigada ? 'normal' : 'fechado'}
-        ligado={cameraLigada}
-        desabilitado={semSala || mudandoCamera}
-        aoClicar={() => void alternarCamera()}
-      >
-        {cameraLigada ? <IconeCamera tamanho={22} /> : <IconeCameraFechada tamanho={22} />}
       </Botao>
 
       <span className={estilos.separador} aria-hidden="true" />

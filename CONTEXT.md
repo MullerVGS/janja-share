@@ -14,4 +14,4 @@ O janja-share permite compartilhar tela em salas efêmeras, sem contas.
 
 **Palco** — a área principal de uma Sala, onde a imagem no ar é mostrada.
 
-**Quadro** — o espaço do Palco ocupado por uma Tela ou por uma câmera aberta. Presença sem imagem não vira Quadro.
+**Quadro** — o espaço do Palco ocupado por uma Tela. Presença não vira Quadro, e a Sala não tem câmera.

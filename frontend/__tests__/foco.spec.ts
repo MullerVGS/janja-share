@@ -42,14 +42,6 @@ describe('decidirFoco: clique', () => {
     })
     expect(resultado).toEqual({ chave: 'tela:b' })
   })
-
-  it('vale para peça de pessoa também, não só tela — câmera aberta é imagem como qualquer outra', () => {
-    const resultado = decidirFoco(FOCO_INICIAL, palco([], [peca({ chave: 'pessoa:bea', ehTela: false })]), {
-      tipo: 'clicouNaPeca',
-      chave: 'pessoa:bea',
-    })
-    expect(resultado).toEqual({ chave: 'pessoa:bea' })
-  })
 })
 
 describe('decidirFoco: tela nova não rouba o destaque', () => {
@@ -112,8 +104,8 @@ describe('decidirFoco: peça em destaque que sai', () => {
     expect(resultado).toEqual({ chave: 'tela:b' })
   })
 
-  it('a pessoa em destaque que sai da sala não promove ninguém quando não há tela no ar', () => {
-    const estado: EstadoDoFoco = { chave: 'pessoa:bea' }
+  it('pessoa não é quadro: um foco numa chave de pessoa não se sustenta, mesmo com ela na sala', () => {
+    const estado: EstadoDoFoco = { chave: 'pessoa:eu' }
     const resultado = decidirFoco(estado, palco([], [peca({ chave: 'pessoa:eu', ehTela: false })]), {
       tipo: 'palcoMudou',
       telasAntes: [],

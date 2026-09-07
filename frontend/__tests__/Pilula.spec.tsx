@@ -46,21 +46,6 @@ describe('pílula: os botões saem do papel de quem vê', () => {
     expect(screen.queryByRole('button', { name: /parar|trocar/i })).not.toBeInTheDocument()
   })
 
-  it('na câmera de outra pessoa: a voz dela e como assistir — zoom é coisa de tela', () => {
-    habilitarPiP()
-    habilitarTelaCheia()
-    montarPilula({ peca: peca('Bia') })
-
-    expect(rotulos()).toEqual(['Calar a voz de Bia', 'Ver na janelinha', 'Ver em tela cheia'])
-  })
-
-  it('na sua própria câmera não há pílula nenhuma: nem volume do seu som, nem nada a apertar', () => {
-    habilitarPiP()
-    habilitarTelaCheia()
-    const { container } = montarPilula({ peca: peca('Ana', { proprio: true }) })
-    expect(container).toBeEmptyDOMElement()
-  })
-
   it('ninguém vê fixar: fixar é o clique', () => {
     habilitarTelaCheia()
     montarPilula({ peca: peca('Bia', { ehTela: true }) })

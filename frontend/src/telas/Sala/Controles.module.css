@@ -40,7 +40,7 @@
   cursor: not-allowed;
 }
 
-/* Microfone e câmera fechados: o botão apagado é o estado, não o contorno. */
+/* Microfone fechado: o botão apagado é o estado, não o contorno. */
 .botao[data-tom='fechado'] {
   background: var(--neutro-800);
   color: var(--neutro-400);

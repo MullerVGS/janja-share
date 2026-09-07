@@ -14,13 +14,11 @@ function audioDaTelaFalso(mudo: boolean): LocalTrackPublication {
   } as unknown as LocalTrackPublication
 }
 
-/** O participante local reduzido ao que a barra toca: o estado de cada dispositivo e a troca. */
-function salaComDispositivos(parcial: { microfone?: boolean; camera?: boolean } = {}) {
+/** O participante local reduzido ao que a barra toca: o estado do microfone e a troca. */
+function salaComDispositivos(parcial: { microfone?: boolean } = {}) {
   const local = {
     isMicrophoneEnabled: parcial.microfone ?? false,
-    isCameraEnabled: parcial.camera ?? false,
     setMicrophoneEnabled: vi.fn(async () => {}),
-    setCameraEnabled: vi.fn(async () => {}),
   }
   return { local, sala: { localParticipant: local } as unknown as Room }
 }
@@ -45,10 +43,10 @@ function montarBarra(parcial: Partial<Props> = {}) {
 const rotulos = () => screen.getAllByRole('button').map((botao) => botao.getAttribute('aria-label'))
 
 describe('a barra flutuante', () => {
-  it('sem transmitir: microfone, câmera, tela, chat e a saída — nada de trocar ou áudio da tela', () => {
+  it('sem transmitir: microfone, tela, chat e a saída — nada de câmera, trocar ou áudio da tela', () => {
     montarBarra()
 
-    expect(rotulos()).toEqual(['Abrir microfone', 'Abrir câmera', 'Compartilhar tela', 'Chat', 'Sair da sala'])
+    expect(rotulos()).toEqual(['Abrir microfone', 'Compartilhar tela', 'Chat', 'Sair da sala'])
   })
 
   it('transmitindo: trocar, o áudio e os ajustes da tela entram na barra, e trocar chama o compartilhamento', async () => {
@@ -58,7 +56,6 @@ describe('a barra flutuante', () => {
 
     expect(rotulos()).toEqual([
       'Abrir microfone',
-      'Abrir câmera',
       'Parar de compartilhar a tela',
       'Trocar de tela',
       'Áudio da tela — marque "compartilhar áudio" no seletor',
@@ -113,7 +110,7 @@ describe('a barra flutuante', () => {
     expect(botao).toBeEnabled()
   })
 
-  it('microfone e câmera pedem a troca ao SDK e se anunciam pelo estado', async () => {
+  it('o microfone pede a troca ao SDK e se anuncia pelo estado', async () => {
     const usuario = userEvent.setup()
     const { local, sala } = salaComDispositivos({ microfone: true })
     montarBarra({ sala })
@@ -121,9 +118,6 @@ describe('a barra flutuante', () => {
     expect(screen.getByRole('button', { name: 'Fechar microfone' })).toHaveAttribute('aria-pressed', 'true')
     await usuario.click(screen.getByRole('button', { name: 'Fechar microfone' }))
     expect(local.setMicrophoneEnabled).toHaveBeenCalledWith(false)
-
-    await usuario.click(screen.getByRole('button', { name: 'Abrir câmera' }))
-    expect(local.setCameraEnabled).toHaveBeenCalledWith(true)
   })
 
   it('permissão negada vira frase explicando onde destravar; desistir no meio não vira frase', async () => {
@@ -140,8 +134,8 @@ describe('a barra flutuante', () => {
       'O navegador bloqueou o acesso ao microfone. Libere a permissão na barra de endereço e tente de novo.',
     )
 
-    local.setCameraEnabled.mockRejectedValueOnce(Object.assign(new Error('abortou'), { name: 'AbortError' }))
-    await usuario.click(screen.getByRole('button', { name: 'Abrir câmera' }))
+    local.setMicrophoneEnabled.mockRejectedValueOnce(Object.assign(new Error('abortou'), { name: 'AbortError' }))
+    await usuario.click(screen.getByRole('button', { name: 'Abrir microfone' }))
     expect(aoFalhar).toHaveBeenLastCalledWith(null)
   })
 
@@ -172,7 +166,6 @@ describe('a barra flutuante', () => {
     montarBarra({ sala: null })
 
     expect(screen.getByRole('button', { name: 'Abrir microfone' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Abrir câmera' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Compartilhar tela' })).toBeDisabled()
     // Chat e saída não dependem da sala: os dois funcionam desconectado.
     expect(screen.getByRole('button', { name: 'Chat' })).toBeEnabled()

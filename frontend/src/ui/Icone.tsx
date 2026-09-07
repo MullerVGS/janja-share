@@ -27,8 +27,6 @@ import {
   SpeakerHigh,
   SpeakerSlash,
   Users,
-  VideoCamera,
-  VideoCameraSlash,
   Waveform,
   X,
   type Icon,
@@ -54,8 +52,6 @@ function envolver(Fonte: Icon, padrao = 20) {
 
 export const IconeMicrofone = envolver(Microphone)
 export const IconeMicrofoneMudo = envolver(MicrophoneSlash)
-export const IconeCamera = envolver(VideoCamera)
-export const IconeCameraFechada = envolver(VideoCameraSlash)
 export const IconeTela = envolver(MonitorArrowUp, 24)
 export const IconeTelaNoAr = envolver(MonitorPlay, 16)
 export const IconeFalando = envolver(Waveform)

@@ -5,7 +5,6 @@ import { useCliqueOuDuplo } from '../../sala/useCliqueOuDuplo'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
 import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
-import { iniciaisDoNome } from '../../ui/avatares'
 import { Botao } from '../../ui/Botao'
 import { IconePessoas, IconeTelaNoAr } from '../../ui/Icone'
 import { usePiP, useTelaCheia } from './assistir'
@@ -15,7 +14,7 @@ import { Tira } from './Tira'
 import estilos from './Palco.module.css'
 
 interface Props {
-  /** O quadro que ocupa o palco; `null` quando não há imagem nenhuma no ar. */
+  /** A tela que ocupa o palco; `null` quando não há tela nenhuma no ar. */
   emDestaque: Peca | null
   /** Os outros quadros, na coluna de miniaturas — vazio na imersão. */
   miniaturas: Peca[]
@@ -61,18 +60,13 @@ function PilulasDaTelaCheia({ children }: { children: ReactNode }) {
   )
 }
 
-/**
- * A imagem: a tela leva o zoom daquela peça; a sua própria câmera vai espelhada, que é como
- * você se vê no espelho e como todo aplicativo de chamada mostra.
- */
-function estiloDaImagem(peca: Peca, zoom: Zoom): CSSProperties | undefined {
-  if (peca.ehTela) return { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.escala})` }
-  return peca.proprio ? { transform: 'scaleX(-1)' } : undefined
+/** A imagem leva o zoom daquela tela. */
+function estiloDaImagem(zoom: Zoom): CSSProperties {
+  return { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.escala})` }
 }
 
 function nomeDoQuadro(peca: Peca): string {
-  if (peca.ehTela) return peca.proprio ? 'Sua tela' : `Tela de ${peca.nome}`
-  return peca.proprio ? `${peca.nome} (você)` : peca.nome
+  return peca.proprio ? 'Sua tela' : `Tela de ${peca.nome}`
 }
 
 /**
@@ -101,22 +95,18 @@ function Destaque({
     (gesto: Gesto, medidas: Medidas) => aplicar(peca.chave, gesto, medidas),
     [aplicar, peca.chave],
   )
-  // Câmera não tem botão que desfaça o zoom (quadro de pessoa não tem pílula de zoom): a roda e
-  // o arraste valem na tela em destaque.
-  const gestos = useGestosDoZoom({ moldura, video, ativo: peca.ehTela, aoGesto })
+  const gestos = useGestosDoZoom({ moldura, video, aoGesto })
 
   const clique = useCliqueOuDuplo(aoAlternarImersao, telaCheia.alternar)
 
   const pilulas = (
     <>
       <div className={estilos.pilulaDaIdentidade}>
-        {peca.ehTela && (
-          <span className={estilos.iconeDaIdentidade} aria-hidden="true">
-            <IconeTelaNoAr tamanho={15} />
-          </span>
-        )}
+        <span className={estilos.iconeDaIdentidade} aria-hidden="true">
+          <IconeTelaNoAr tamanho={15} />
+        </span>
         <span className={estilos.nomeDoQuadro}>{nomeDoQuadro(peca)}</span>
-        {peca.ehTela && <span className={estilos.pontoAoVivo} aria-hidden="true" />}
+        <span className={estilos.pontoAoVivo} aria-hidden="true" />
       </div>
 
       <Pilula
@@ -133,9 +123,8 @@ function Destaque({
     <div
       ref={quadro}
       className={estilos.quadro}
-      data-tela={peca.ehTela || undefined}
+      data-tela=""
       data-cheia={telaCheia.cheia || undefined}
-      data-falando={peca.falando || undefined}
     >
       {/* A moldura é a área da imagem: é nela que o clique, o duplo clique e os gestos do zoom
           caem. As pílulas ficam de fora, e por isso seguem clicáveis. */}
@@ -155,17 +144,13 @@ function Destaque({
         }}
         onPointerCancel={gestos.ponteiro.onPointerCancel}
       >
-        {peca.publicacao ? (
+        {peca.publicacao && (
           <Video
             publicacao={peca.publicacao}
             className={estilos.video}
-            estilo={estiloDaImagem(peca, zoom.de(peca.chave))}
+            estilo={estiloDaImagem(zoom.de(peca.chave))}
             referencia={video}
           />
-        ) : (
-          <div className={estilos.semVideo}>
-            <span className={estilos.iniciais}>{iniciaisDoNome(peca.nome)}</span>
-          </div>
         )}
       </div>
 
@@ -203,10 +188,11 @@ function Destaque({
 }
 
 /**
- * O palco: um quadro em destaque ocupando o espaço e as outras imagens em miniatura ao lado.
+ * O palco: uma tela em destaque ocupando o espaço e as outras em miniatura ao lado.
  *
- * Quem decide o destaque é `foco.ts`; aqui só se desenha. Não há mais grade: pessoa sem imagem
- * mora na faixa de avatares e na barra lateral, não em um retângulo do tamanho de uma tela.
+ * Quem decide o destaque é `foco.ts`; aqui só se desenha. Não há grade nem quadro de pessoa:
+ * presença mora na faixa de avatares e na barra lateral, não em um retângulo do tamanho de uma
+ * tela.
  */
 export function Palco({
   emDestaque,

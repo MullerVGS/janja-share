@@ -25,6 +25,18 @@ describe('LivekitTokenProvider — emitir()', () => {
     expect(claims.name).toBe('Ana')
   })
 
+  it('o grant só deixa publicar microfone, tela e som da tela — câmera fica de fora', async () => {
+    const provider = new LivekitTokenProvider()
+    const jwt = await provider.emitir('jogatina-a1b2c3d4', 'ana-112233', 'Ana')
+
+    const verificador = new TokenVerifier(process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!)
+    const claims = await verificador.verify(jwt)
+
+    // O SFU é quem recusa a câmera, não só o botão que sumiu do cliente: um cliente antigo em
+    // cache, ou modificado, continua sem conseguir publicá-la.
+    expect(claims.video?.canPublishSources).toEqual(['microphone', 'screen_share', 'screen_share_audio'])
+  })
+
   it('TTL de 8h: exp - nbf bate em 28800s', async () => {
     const provider = new LivekitTokenProvider()
     const jwt = await provider.emitir('jogatina-a1b2c3d4', 'ana-112233', 'Ana')

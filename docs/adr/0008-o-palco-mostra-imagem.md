@@ -18,3 +18,7 @@ Havendo Quadros, um deles está sempre em destaque e os outros ficam em miniatur
 `foco.chave: null` passou a significar "sem escolha da Pessoa", e quem desenha resolve o padrão (o primeiro Quadro) — não existe mais o estado "grade" para cair. `clicouNoPalco` e `soltoPelaPessoa` saíram de `foco.ts`: sem grade, não há para onde voltar nem clique no vazio.
 
 Quem só ouve não some da sala; muda de lugar. Ganhar visibilidade agora custa abrir a câmera ou a tela — o mesmo preço para todo mundo.
+
+## Revisão
+
+O ADR 0010 tira a câmera: o Quadro é sempre uma Tela e o Palco não tem quadro de Pessoa. Ganhar visibilidade custa compartilhar a tela.

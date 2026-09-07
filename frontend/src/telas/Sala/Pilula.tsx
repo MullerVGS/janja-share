@@ -55,7 +55,7 @@ function Acao({
  * A pílula inferior direita do quadro em destaque: como assistir aquilo.
  *
  * Volume, zoom, janelinha e tela cheia — tudo que muda o *seu* jeito de ver, e nada que mude o
- * que os outros veem. O que é da SUA própria tela (trocar, o áudio dela, parar) mora na barra:
+ * que os outros veem. Todo quadro é tela, então caber e 1:1 estão sempre aqui. O que é da SUA própria tela (trocar, o áudio dela, parar) mora na barra:
  * enquanto você assiste a de outra pessoa em destaque, a sua vive na coluna de miniaturas, sem
  * pílula nenhuma desenhada para ela, e um botão que só existe às vezes não pode ser a única
  * porta pra ele.
@@ -63,29 +63,22 @@ function Acao({
 export function Pilula({ peca, volumes, zoom, telaCheia, pip }: Props) {
   const alheia = !peca.proprio
   const comSom = alheia && peca.temAudio
-  const comZoom = peca.ehTela
   const comJanela = alheia && (temPiP() || temTelaCheia())
-
-  if (!comSom && !comZoom && !comJanela) return null
 
   return (
     <div className={estilos.pilula}>
       {comSom && <ControleDeSom peca={peca} volumes={volumes} />}
 
-      {comSom && comZoom && <span className={estilos.separador} aria-hidden="true" />}
+      {comSom && <span className={estilos.separador} aria-hidden="true" />}
 
-      {comZoom && (
-        <>
-          <Acao rotulo="Fazer a tela caber no quadro" dica="a tela inteira dentro do quadro" aoClicar={zoom.caber}>
-            <IconeCaber tamanho={16} />
-          </Acao>
-          <Acao rotulo="Ver em 1:1" dica="tamanho original, arraste para andar por ela" aoClicar={zoom.umPorUm}>
-            <IconePixelAPixel tamanho={16} />
-          </Acao>
-        </>
-      )}
+      <Acao rotulo="Fazer a tela caber no quadro" dica="a tela inteira dentro do quadro" aoClicar={zoom.caber}>
+        <IconeCaber tamanho={16} />
+      </Acao>
+      <Acao rotulo="Ver em 1:1" dica="tamanho original, arraste para andar por ela" aoClicar={zoom.umPorUm}>
+        <IconePixelAPixel tamanho={16} />
+      </Acao>
 
-      {comJanela && (comSom || comZoom) && <span className={estilos.separador} aria-hidden="true" />}
+      {comJanela && <span className={estilos.separador} aria-hidden="true" />}
 
       {alheia && temPiP() && (
         <Acao

@@ -62,8 +62,6 @@ function medir(moldura: HTMLElement, video: HTMLVideoElement | null): Medidas {
 interface Gestos {
   moldura: RefObject<HTMLElement | null>
   video: RefObject<HTMLVideoElement | null>
-  /** Só em foco e em tela cheia: na grade aproximar uma miniatura seria gesto sem propósito. */
-  ativo: boolean
   aoGesto(gesto: Gesto, medidas: Medidas): void
 }
 
@@ -74,7 +72,7 @@ interface Gestos {
  * alguns caminhos do React 19, e um ouvinte passivo ignora `preventDefault` — a página rolaria
  * atrás da imagem a cada aproximação.
  */
-export function useGestosDoZoom({ moldura, video, ativo, aoGesto }: Gestos) {
+export function useGestosDoZoom({ moldura, video, aoGesto }: Gestos) {
   // O ouvinte não passivo é registrado uma vez por quadro; ler o gesto de uma referência é o que
   // impede que ele seja desmontado e remontado a cada volta da roda.
   const ultimoGesto = useRef(aoGesto)
@@ -84,7 +82,7 @@ export function useGestosDoZoom({ moldura, video, ativo, aoGesto }: Gestos) {
 
   useEffect(() => {
     const elemento = moldura.current
-    if (!elemento || !ativo) return
+    if (!elemento) return
 
     const aoGirar = (evento: WheelEvent) => {
       evento.preventDefault()
@@ -101,7 +99,7 @@ export function useGestosDoZoom({ moldura, video, ativo, aoGesto }: Gestos) {
 
     elemento.addEventListener('wheel', aoGirar, { passive: false })
     return () => elemento.removeEventListener('wheel', aoGirar)
-  }, [moldura, video, ativo])
+  }, [moldura, video])
 
   const de = useRef<{ ponteiro: number; x: number; y: number } | null>(null)
 
@@ -115,7 +113,6 @@ export function useGestosDoZoom({ moldura, video, ativo, aoGesto }: Gestos) {
     /** Os ouvintes do arraste, para espalhar no elemento da imagem. */
     ponteiro: {
       onPointerDown(evento: PointerEvent<HTMLElement>) {
-        if (!ativo) return
         // Capturar o ponteiro é o que deixa a mão sair do quadro sem largar a imagem no meio.
         evento.currentTarget.setPointerCapture?.(evento.pointerId)
         de.current = { ponteiro: evento.pointerId, x: evento.clientX, y: evento.clientY }

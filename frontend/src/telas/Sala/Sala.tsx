@@ -94,13 +94,9 @@ export function Sala() {
   // entra à parte: o cão de guarda anda no relógio da telemetria, não no dos eventos do `Room`.
   const palco = useMemo(() => montarPalco(sala, telemetria.recepcao), [sala, versao, telemetria.recepcao])
   const telasPublicadas = useMemo(() => chavesDasTelasPublicadas(sala), [sala, versao])
-  // Só o que tem imagem vira quadro. Presença sem câmera é a faixa de avatares e a barra
-  // lateral: um retângulo do tamanho de uma tela para mostrar duas iniciais tirava o espaço de
-  // quem tem, de fato, o que mostrar.
-  const quadros = useMemo(
-    () => [...palco.telas, ...palco.pessoas.filter((pessoa) => pessoa.publicacao)],
-    [palco],
-  )
+  // Só a tela vira quadro. Presença é a faixa de avatares e a barra lateral: um retângulo do
+  // tamanho de uma tela para mostrar duas iniciais tirava o espaço de quem tem o que mostrar.
+  const quadros = palco.telas
   const zoom = useZoom(quadros)
   const amostraDoEmissor = ultima(telemetria.emissor)
 

@@ -18,7 +18,7 @@ export function Video({
 }: {
   publicacao?: TrackPublication
   className?: string
-  /** Onde entram as transformações da imagem: o zoom da tela e o espelho da própria câmera. */
+  /** Onde entra a transformação da imagem: o zoom da tela. */
   estilo?: CSSProperties
   /** Para quem precisa do elemento em si — a janelinha do PiP sai daqui. */
   referencia?: RefObject<HTMLVideoElement | null>

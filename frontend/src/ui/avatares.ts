@@ -1,7 +1,7 @@
 /**
- * As iniciais que representam alguém sem foto — no avatar da lista, na faixa do palco e no
- * círculo grande de quem está sem câmera. Uma regra só para os três: duas letras sempre que o
- * nome der, porque uma letra sozinha confunde metade da sala numa lista de dez pessoas.
+ * As iniciais que representam alguém sem foto — no avatar da lista e na faixa do palco. Uma
+ * regra só para os dois: duas letras sempre que o nome der, porque uma letra sozinha confunde
+ * metade da sala numa lista de dez pessoas.
  */
 export function iniciaisDoNome(nome: string): string {
   const termos = nome.trim().split(/\s+/).filter(Boolean)

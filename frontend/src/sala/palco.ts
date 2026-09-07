@@ -16,7 +16,7 @@ export interface Peca {
   nome: string
   ehTela: boolean
   proprio: boolean
-  /** Ausente quando não há o que desenhar (câmera fechada, tela ainda não assinada). */
+  /** A imagem. Só a tela a carrega — pessoa nunca tem imagem, e por isso nunca vira quadro. */
   publicacao?: TrackPublication
   microfoneLigado: boolean
   falando: boolean
@@ -78,7 +78,6 @@ export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, Es
 
   for (const participante of participantes) {
     const proprio = participante.identity === sala.localParticipant.identity
-    const camera = participante.getTrackPublication(Track.Source.Camera)
     const microfone = participante.getTrackPublication(Track.Source.Microphone)
     const tela = participante.getTrackPublication(Track.Source.ScreenShare)
     const somDaTela = participante.getTrackPublication(Track.Source.ScreenShareAudio)
@@ -89,7 +88,6 @@ export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, Es
       nome: nomeDoParticipante(participante),
       ehTela: false,
       proprio,
-      publicacao: camera && !camera.isMuted ? camera : undefined,
       microfoneLigado: Boolean(microfone && !microfone.isMuted),
       falando: participante.isSpeaking,
       temAudio: Boolean(microfone),

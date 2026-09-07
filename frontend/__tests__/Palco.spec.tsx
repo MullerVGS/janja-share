@@ -1,5 +1,4 @@
 import { act, fireEvent, render, screen, within, type RenderResult } from '@testing-library/react'
-import { Track, type TrackPublication } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Peca } from '../src/sala/palco'
 import { useZoom } from '../src/sala/useZoom'
@@ -7,10 +6,6 @@ import type { ControleDeVolumes } from '../src/sala/useVolumes'
 import { Palco } from '../src/telas/Sala/Palco'
 import { habilitarTelaCheia } from './apoio/navegador'
 import { peca, volumesFalsos } from './apoio/pecas'
-import { publicacaoFalsa } from './apoio/salaFalsa'
-
-/** Uma câmera aberta: peça de pessoa com imagem, que é o que a põe no palco. */
-const publicacaoDeCamera = () => publicacaoFalsa(Track.Source.Camera) as unknown as TrackPublication
 
 interface Cenario {
   emDestaque?: Peca | null
@@ -98,23 +93,17 @@ beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 
 describe('palco: o quadro em destaque', () => {
-  it('a pílula da esquerda diz de quem é a imagem', () => {
+  it('a pílula da esquerda diz de quem é a tela', () => {
     montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
     expect(screen.getByText('Tela de Bia')).toBeInTheDocument()
 
-    montarPalco({ emDestaque: peca('Ana', { proprio: true }) })
-    expect(screen.getByText('Ana (você)')).toBeInTheDocument()
+    montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true }) })
+    expect(screen.getByText('Sua tela')).toBeInTheDocument()
   })
 
   it('sem imagem nenhuma no ar, o palco diz isso em vez de desenhar um retângulo vazio', () => {
     montarPalco({ emDestaque: null })
     expect(screen.getByText('Nada no ar ainda.')).toBeInTheDocument()
-  })
-
-  it('quem está sem imagem aparece pelas iniciais, sem vídeo nenhum para aproximar', () => {
-    const resultado = montarPalco({ emDestaque: peca('Ana', { proprio: true, publicacao: undefined }) })
-    expect(resultado.container.querySelector('video')).toBeNull()
-    expect(screen.getByText('AN')).toBeInTheDocument()
   })
 })
 
@@ -303,15 +292,6 @@ describe('palco: o zoom no quadro em destaque', () => {
 
     expect(evento.defaultPrevented).toBe(true)
     expect(video.style.transform).toBe('translate(0px, 0px) scale(1.1)')
-  })
-
-  it('numa câmera a roda não faz nada — aproximar um rosto seria gesto sem propósito', () => {
-    const resultado = montarPalco({ emDestaque: peca('Caio', { publicacao: publicacaoDeCamera() }) })
-    const { imagem } = medir(resultado)
-
-    const evento = girar(imagem, -100)
-
-    expect(evento.defaultPrevented).toBe(false)
   })
 
   it('caber e 1:1 da pílula mexem no zoom daquela peça', () => {

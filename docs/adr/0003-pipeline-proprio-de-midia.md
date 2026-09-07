@@ -14,3 +14,7 @@ Usar `livekit-client` diretamente e manter a captura com as APIs WebRTC do naveg
 ## Consequências
 
 O frontend assume mais código e testes de mídia, mas controla integralmente o Compartilhamento. Voz, câmera e chat por data channel permanecem capacidades auxiliares do mesmo cliente.
+
+## Revisão
+
+O ADR 0010 tira a câmera das capacidades auxiliares: ficam voz e chat.

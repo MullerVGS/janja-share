@@ -60,8 +60,8 @@ export function opcoesDeCaptura(perfil: PerfilDeQualidade): OpcoesDeCapturaDeTel
  * pessoa marcou a caixa do seletor.
  *
  * `source` é o que faz a publicação chegar como tela e como som de tela; sem ele a faixa entra
- * como câmera e microfone e some do palco. `false` no terceiro argumento diz ao SDK que a faixa
- * é dele: é o que permite ao ciclo de vida da publicação pará-la.
+ * como câmera e microfone — e a câmera o SFU recusa. `false` no terceiro argumento diz ao SDK
+ * que a faixa é dele: é o que permite ao ciclo de vida da publicação pará-la.
  */
 export async function capturarTela(perfil: PerfilDeQualidade): Promise<LocalTrack[]> {
   const fluxo = await navigator.mediaDevices.getDisplayMedia(opcoesDeCaptura(perfil))

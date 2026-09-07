@@ -25,8 +25,9 @@ export const FOCO_INICIAL: EstadoDoFoco = { chave: null }
  */
 export type EventoDeFoco = { tipo: 'clicouNaPeca'; chave: string } | { tipo: 'palcoMudou'; telasAntes: string[] }
 
+/** Só tela é quadro: pessoa presente na sala não sustenta um foco. */
 function existeNoPalco(palco: Palco, chave: string): boolean {
-  return palco.telas.some((peca) => peca.chave === chave) || palco.pessoas.some((peca) => peca.chave === chave)
+  return palco.telas.some((peca) => peca.chave === chave)
 }
 
 /**

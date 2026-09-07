@@ -49,10 +49,6 @@
   animation: shCrescer 0.16s ease;
 }
 
-.quadro[data-falando] {
-  border-color: var(--acao);
-}
-
 /* Em tela cheia e na imersão o quadro é a janela inteira: a moldura arredondada daria borda no
    meio do nada. */
 .quadro[data-cheia],
@@ -100,26 +96,6 @@
   /* `contain` e não `cover`: cortar a borda de uma tela compartilhada esconde justamente a
      barra de abas, o terminal e o menu que a pessoa queria mostrar. */
   object-fit: contain;
-}
-
-.semVideo {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-}
-
-.iniciais {
-  width: clamp(58px, 8vw, 92px);
-  height: clamp(58px, 8vw, 92px);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--acento-900);
-  font-size: clamp(var(--titulo-sm), 3vw, var(--titulo-md));
-  font-weight: var(--peso-forte);
-  color: var(--acento-200);
-  letter-spacing: 0.02em;
 }
 
 /* A faixa do cão de guarda: por cima do quadro, não dentro de uma pílula — o aviso de recepção

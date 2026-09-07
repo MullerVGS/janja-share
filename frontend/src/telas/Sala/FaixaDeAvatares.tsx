@@ -15,9 +15,8 @@ const LIMITE_PADRAO = 8
  * Quem está na sala, em uma pílula no alto do palco.
  *
  * Substitui os retângulos do tamanho de uma tela que cada participante ganhava antes: presença
- * é uma informação pequena, e gastar meia tela com o avatar de quem está de câmera fechada
- * roubava o espaço de quem tem imagem de verdade para mostrar. Quem abre a câmera vira quadro;
- * quem só está aqui vira círculo.
+ * é uma informação pequena, e gastar meia tela com o avatar de quem só ouve roubava o espaço de
+ * quem tem imagem de verdade para mostrar. Só a tela vira quadro; quem está aqui vira círculo.
  *
  * O anel diz quem fala e o selo diz quem está mudo — as duas perguntas que a pessoa faz sem
  * precisar abrir a barra lateral.

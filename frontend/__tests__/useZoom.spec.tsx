@@ -18,14 +18,14 @@ function peca(chave: string): Peca {
 }
 
 /** O quadro reduzido ao que o zoom precisa: uma moldura medida e um vídeo com metadados. */
-function Quadrinho({ chave, zoom, ativo }: { chave: string; zoom: ControleDeZoom; ativo: boolean }) {
+function Quadrinho({ chave, zoom }: { chave: string; zoom: ControleDeZoom }) {
   const moldura = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const aoGesto = useCallback<Parameters<typeof useGestosDoZoom>[0]['aoGesto']>(
     (gesto, medidas) => zoom.aplicar(chave, gesto, medidas),
     [zoom, chave],
   )
-  const gestos = useGestosDoZoom({ moldura, video, ativo, aoGesto })
+  const gestos = useGestosDoZoom({ moldura, video, aoGesto })
   const { escala, x, y } = zoom.de(chave)
 
   return (
@@ -41,13 +41,13 @@ beforeEach(() => {
   renders = 0
 })
 
-function Cenario({ pecas, ativo = true }: { pecas: Peca[]; ativo?: boolean }) {
+function Cenario({ pecas }: { pecas: Peca[] }) {
   renders += 1
   const zoom = useZoom(pecas)
   return (
     <>
       {pecas.map((uma) => (
-        <Quadrinho key={uma.chave} chave={uma.chave} zoom={zoom} ativo={ativo} />
+        <Quadrinho key={uma.chave} chave={uma.chave} zoom={zoom} />
       ))}
     </>
   )
@@ -90,16 +90,6 @@ describe('useZoom: a roda', () => {
     expect(zoomDe('tela:a')).toBe('1.100 0 0')
 
     girar(moldura, 100)
-    expect(zoomDe('tela:a')).toBe('1.000 0 0')
-  })
-
-  it('na grade a roda não faz nada e não atrapalha a rolagem da página', () => {
-    render(<Cenario pecas={[peca('tela:a')]} ativo={false} />)
-    const moldura = medir('tela:a')
-
-    const evento = girar(moldura, -100)
-
-    expect(evento.defaultPrevented).toBe(false)
     expect(zoomDe('tela:a')).toBe('1.000 0 0')
   })
 })
@@ -157,15 +147,5 @@ describe('useZoom: o arraste', () => {
 
     expect(zoomDe('tela:a')).toBe('1.000 0 0')
     expect(renders).toBe(antes)
-  })
-
-  it('na grade o arraste não anda com a imagem', () => {
-    render(<Cenario pecas={[peca('tela:a')]} ativo={false} />)
-    const moldura = medir('tela:a')
-
-    fireEvent.pointerDown(moldura, { pointerId: 1, clientX: 500, clientY: 250 })
-    fireEvent.pointerMove(moldura, { pointerId: 1, clientX: 560, clientY: 250 })
-
-    expect(zoomDe('tela:a')).toBe('1.000 0 0')
   })
 })
