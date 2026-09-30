@@ -244,8 +244,6 @@ export function Sala() {
       lateralAberta={lateralAberta}
       abaAMostra={gaveta.aberta ? abaDaGaveta : null}
       aoAlternarAba={alternarPainel}
-      transmitindo={compartilhamento.ativo}
-      naoLidasNoChat={naoLidasNoChat}
       conviteCopiado={conviteCopiado}
       aoCopiarConvite={() => void copiarConvite()}
     />

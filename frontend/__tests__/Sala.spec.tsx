@@ -117,12 +117,12 @@ afterEach(() => {
 })
 
 describe('sala: a gaveta', () => {
-  it('nasce fechada — palco puro — e o botão de conversa do topo a abre', async () => {
+  it('nasce fechada — palco puro — e o botão de chat da barra a abre', async () => {
     const usuario = userEvent.setup()
     montarSala()
     expect(gaveta()).toHaveAttribute('aria-hidden', 'true')
 
-    await usuario.click(screen.getByRole('button', { name: 'Conversa' }))
+    await usuario.click(screen.getByRole('button', { name: 'Chat' }))
 
     expect(gaveta()).not.toHaveAttribute('aria-hidden')
     expect(screen.getByRole('tab', { name: /Conversa/ })).toHaveAttribute('aria-selected', 'true')
@@ -426,7 +426,7 @@ describe('sala: a interface que se esconde', () => {
 
   it('com a gaveta aberta, nunca some', () => {
     const { container } = montarSala()
-    fireEvent.click(screen.getByRole('button', { name: 'Conversa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
 
     act(() => vi.advanceTimersByTime(10_000))
 

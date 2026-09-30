@@ -1,36 +1,35 @@
 import {
   ArrowsLeftRight,
-  ArrowsOut,
-  ArrowsIn,
   Broadcast,
   CaretDown,
+  ChartLine,
   ChatCircle,
   Check,
+  Copy,
+  CornersIn,
   CornersOut,
   DiceFive,
-  FrameCorners,
   Gear,
-  Link as LinkPhosphor,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
   Microphone,
   MicrophoneSlash,
-  Monitor,
   MonitorArrowUp,
   MonitorPlay,
   PaperPlaneRight,
+  PhoneDisconnect,
   PictureInPicture,
   Plus,
-  Pulse,
   SidebarSimple,
-  SignOut,
-  SlidersHorizontal,
   SpeakerHigh,
   SpeakerSlash,
+  StopCircle,
+  UserPlus,
   Users,
   Waveform,
   X,
   type Icon,
 } from '@phosphor-icons/react'
-import estilos from './Icone.module.css'
 
 interface Props {
   tamanho?: number
@@ -42,6 +41,10 @@ interface Props {
  * A camada existe por dois motivos: o nome do ícone fica em PT-BR como o resto do código, e a
  * troca de biblioteca (ou de peso) acontece aqui, não nas trinta chamadas espalhadas. Todos
  * herdam `currentColor` — a cor vem sempre do estado de quem os hospeda.
+ *
+ * A regra da escolha é o glifo que Meet, Zoom, Teams e players de vídeo já ensinaram: quem bate
+ * o olho reconhece sem ler a dica. Uma ação, um ícone — o mesmo desenho não serve a duas coisas,
+ * e a mesma coisa não ganha dois desenhos em lugares diferentes.
  */
 function envolver(Fonte: Icon, padrao = 20) {
   return function Envolvido({ tamanho = padrao }: Props) {
@@ -52,24 +55,26 @@ function envolver(Fonte: Icon, padrao = 20) {
 export const IconeMicrofone = envolver(Microphone)
 export const IconeMicrofoneMudo = envolver(MicrophoneSlash)
 export const IconeTela = envolver(MonitorArrowUp, 24)
+export const IconePararTela = envolver(StopCircle, 24)
+export const IconeTrocarTela = envolver(ArrowsLeftRight)
 export const IconeTelaNoAr = envolver(MonitorPlay, 16)
 export const IconeFalando = envolver(Waveform)
-export const IconeSair = envolver(SignOut)
+/** Sair da sala é desligar a chamada, como em toda ferramenta de reunião. */
+export const IconeSair = envolver(PhoneDisconnect)
 export const IconeChat = envolver(ChatCircle)
 export const IconeSom = envolver(SpeakerHigh)
 export const IconeSomMudo = envolver(SpeakerSlash)
 export const IconeTelaCheia = envolver(CornersOut)
-export const IconeSairDaTelaCheia = envolver(ArrowsIn)
+export const IconeSairDaTelaCheia = envolver(CornersIn)
 export const IconeJanelinha = envolver(PictureInPicture)
-export const IconePixelAPixel = envolver(ArrowsOut)
-export const IconeCaber = envolver(FrameCorners)
+/** Caber e 1:1 são zoom: a lupa não se confunde com a tela cheia, que é o par de cantos. */
+export const IconePixelAPixel = envolver(MagnifyingGlassPlus)
+export const IconeCaber = envolver(MagnifyingGlassMinus)
 export const IconePainel = envolver(SidebarSimple)
-export const IconeMetricas = envolver(Pulse)
-/** A aba de qualidade no topo. Ali os vizinhos são glifos de traço único de 18px; a
-    composição `IconeAjustesDaTela` só se lê a partir de 24px, e menor vira borrão. */
-export const IconeQualidade = envolver(SlidersHorizontal, 18)
-export const IconeConvite = envolver(LinkPhosphor)
-export const IconeCopiar = envolver(LinkPhosphor)
+export const IconeMetricas = envolver(ChartLine)
+export const IconeQualidade = envolver(Gear)
+export const IconeConvite = envolver(UserPlus)
+export const IconeCopiar = envolver(Copy)
 export const IconeCerto = envolver(Check)
 export const IconeMais = envolver(Plus)
 export const IconeDado = envolver(DiceFive)
@@ -78,37 +83,3 @@ export const IconeMarca = envolver(Broadcast)
 export const IconeEnviar = envolver(PaperPlaneRight)
 export const IconeFechar = envolver(X)
 export const IconeSetaBaixo = envolver(CaretDown)
-
-/**
- * A composição "dentro da TV": um monitor com um símbolo pequeno na área da tela.
- *
- * Os três controles da própria transmissão — trocar de fonte, o som dela, os ajustes — falam de
- * *uma tela* e não da ação genérica. Um par de ícones lado a lado diria isso em duas peças; pôr
- * o símbolo dentro do monitor diz em uma, e é o que distingue "trocar de tela" de "trocar" na
- * barra. O deslocamento de 2px para cima centra o símbolo na parte de imagem do monitor, que
- * não é o centro geométrico do glifo — abaixo dela ainda vem o pé.
- */
-function NaTv({ Dentro, tamanho = 24 }: { Dentro: Icon; tamanho?: number }) {
-  return (
-    <span className={estilos.naTv} style={{ width: tamanho, height: tamanho }} aria-hidden="true">
-      <Monitor size={tamanho} className={estilos.moldura} />
-      <Dentro size={Math.round(tamanho * 0.46)} className={estilos.dentro} />
-    </span>
-  )
-}
-
-export function IconeTrocarTela(props: Props) {
-  return <NaTv Dentro={ArrowsLeftRight} {...props} />
-}
-
-export function IconeAudioDaTela(props: Props) {
-  return <NaTv Dentro={SpeakerHigh} {...props} />
-}
-
-export function IconeAudioDaTelaMudo(props: Props) {
-  return <NaTv Dentro={SpeakerSlash} {...props} />
-}
-
-export function IconeAjustesDaTela(props: Props) {
-  return <NaTv Dentro={Gear} {...props} />
-}

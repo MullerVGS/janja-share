@@ -68,6 +68,16 @@ describe('a barra flutuante', () => {
     expect(compartilhamento.trocarDeTela).toHaveBeenCalledOnce()
   })
 
+  it('cada botão escreve o que faz embaixo do ícone, e compartilhar vira "Parar" no ar', () => {
+    const legendas = () => screen.getAllByRole('button').map((botao) => botao.textContent)
+
+    montarBarra()
+    expect(legendas()).toEqual(['Microfone', 'Compartilhar', 'Chat', 'Sair'])
+
+    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) as Compartilhamento })
+    expect(legendas().slice(4)).toEqual(['Microfone', 'Parar', 'Trocar', 'Som da tela', 'Qualidade', 'Chat', 'Sair'])
+  })
+
   it('clicar em compartilhar/parar chama compartilhamento.alternar — o único lugar que aciona esse toggle', async () => {
     const usuario = userEvent.setup()
     const { sala } = salaComDispositivos()

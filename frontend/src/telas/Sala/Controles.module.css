@@ -15,20 +15,36 @@
   scrollbar-width: none;
 }
 
+/* Ícone em cima, legenda embaixo: o botão é largo o bastante para a palavra mais comprida
+   ("Compartilhar") sem que a barra vire uma fileira de larguras diferentes. */
 .botao {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   flex: none;
-  width: 44px;
-  height: 44px;
+  min-width: 64px;
+  height: 52px;
+  padding: 0 6px;
   cursor: pointer;
   border-radius: var(--raio-botao-da-barra);
   border: 1px solid transparent;
   background: transparent;
   color: var(--neutro-200);
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.icone {
+  position: relative;
+  display: flex;
+}
+
+.legenda {
+  font-size: var(--texto-xs);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .botao:hover:not(:disabled) {
@@ -66,12 +82,14 @@
   background: color-mix(in srgb, var(--acao) 12%, transparent);
 }
 
+/* Sair é o desligar de uma chamada: vermelho cheio, impossível de confundir com o resto. */
 .botao[data-tom='perigo'] {
-  color: var(--perigo);
+  background: var(--perigo-forte);
+  color: var(--texto);
 }
 
 .botao[data-tom='perigo']:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--perigo-forte) 16%, transparent);
+  background: var(--perigo);
 }
 
 .separador {
@@ -84,8 +102,8 @@
 
 .contador {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: -5px;
+  right: -9px;
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
@@ -105,9 +123,16 @@
     padding: 5px;
   }
 
+  /* No estreito a legenda sai e o botão volta a ser só o ícone — a dica e o nome acessível
+     continuam dizendo o que ele faz. */
   .botao {
-    width: 40px;
+    min-width: 40px;
     height: 40px;
+    padding: 0;
+  }
+
+  .legenda {
+    display: none;
   }
 
   .separador {
