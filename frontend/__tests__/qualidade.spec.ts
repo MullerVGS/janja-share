@@ -3,7 +3,8 @@ import {
   aplicarPerfil,
   CEDER,
   CONTEUDOS,
-  ehPerfil,
+  lerPerfil,
+  tetoDaSala,
   parametrosDoPerfil,
   PERFIL_PADRAO,
   PRESET_DO_CONTEUDO,
@@ -212,8 +213,31 @@ describe('presets por conteúdo', () => {
     expect(PERFIL_PADRAO).toBe(PRESET_DO_CONTEUDO.jogo)
   })
 
-  it('o teto de busca vai de 200 kb/s a 50 Mb/s — limite superior, não promessa', () => {
-    expect(TETO).toEqual({ minimoKbps: 200, maximoKbps: 50_000, passoKbps: 100 })
+  it('o teto de busca vai de 200 kb/s ao orçamento da Sala, 10 Mb/s', () => {
+    expect(TETO).toEqual({ minimoKbps: 200, maximoKbps: 10_000 })
+  })
+})
+
+/**
+ * O orçamento é o downlink de quem assiste, e quem assiste recebe todas as telas: a soma delas
+ * tem de caber. Medido em produção, espectadores com 5–10 Mb/s recebendo 12–24 Mb/s travavam.
+ */
+describe('teto da Sala', () => {
+  it('uma tela sozinha fica com o orçamento inteiro', () => {
+    expect(tetoDaSala(1)).toBe(10_000)
+  })
+
+  it('duas telas dividem o orçamento, e a soma cabe nele', () => {
+    expect(tetoDaSala(2)).toBe(5_000)
+    expect(3 * tetoDaSala(3)).toBeLessThanOrEqual(10_000)
+  })
+
+  it('zero telas vale como uma — é a de quem ainda vai publicar', () => {
+    expect(tetoDaSala(0)).toBe(10_000)
+  })
+
+  it('nunca desce abaixo do mínimo, nem com a Sala cheia de telas', () => {
+    expect(tetoDaSala(1000)).toBe(200)
   })
 })
 
@@ -235,31 +259,46 @@ describe('troca de conteúdo', () => {
 })
 
 describe('perfil vindo de fora (preferências)', () => {
-  it('aceita um perfil inteiro e válido', () => {
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.jogo, resolucao: '540p', tetoKbps: 12_300 })).toBe(true)
+  it('aceita um perfil inteiro e válido, com o teto de partida do conteúdo', () => {
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.jogo, resolucao: '540p' })).toEqual({
+      ...PRESET_DO_CONTEUDO.jogo,
+      resolucao: '540p',
+    })
+  })
+
+  /**
+   * O teto deixou de ser da pessoa. Perfis gravados no tempo do slider trazem o que ela escolheu
+   * — quase sempre o máximo —, e o teto volta ao de partida sem levar junto resolução e fps.
+   */
+  it('o teto gravado é ignorado e volta ao de partida do conteúdo', () => {
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.jogo, fps: 30, tetoKbps: 50_000 })).toEqual({
+      ...PRESET_DO_CONTEUDO.jogo,
+      fps: 30,
+    })
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, tetoKbps: 100 })?.tetoKbps).toBe(4000)
+    const { tetoKbps: _teto, ...semTeto } = PRESET_DO_CONTEUDO.texto
+    expect(lerPerfil(semTeto)).toEqual(PRESET_DO_CONTEUDO.texto)
   })
 
   /**
    * O preset antigo se chamava `movimento`. Não há código de compatibilidade: o nome sumiu do
-   * vocabulário, `ehPerfil` recusa o perfil inteiro e a pessoa cai no padrão. É assim que este
+   * vocabulário, `lerPerfil` recusa o perfil inteiro e a pessoa cai no padrão. É assim que este
    * formato muda — sem migração.
    */
   it('perfil gravado com o nome antigo do conteúdo é recusado inteiro', () => {
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.jogo, conteudo: 'movimento' })).toBe(false)
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.jogo, conteudo: 'movimento' })).toBeUndefined()
   })
 
-  it('recusa campo faltando, valor fora do vocabulário, fps estranho e teto fora do slider', () => {
+  it('recusa campo faltando, valor fora do vocabulário e fps estranho', () => {
     const { codec: _codec, ...semCodec } = PRESET_DO_CONTEUDO.texto
-    expect(ehPerfil(semCodec)).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, conteudo: 'nitidez' })).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, codec: 'h265' })).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, codec: 'constructor' })).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, ceder: 'tudo' })).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, resolucao: '4k' })).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, fps: 45 })).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, tetoKbps: 50_001 })).toBe(false)
-    expect(ehPerfil({ ...PRESET_DO_CONTEUDO.texto, tetoKbps: 100 })).toBe(false)
-    expect(ehPerfil(null)).toBe(false)
-    expect(ehPerfil('texto')).toBe(false)
+    expect(lerPerfil(semCodec)).toBeUndefined()
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, conteudo: 'nitidez' })).toBeUndefined()
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, codec: 'h265' })).toBeUndefined()
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, codec: 'constructor' })).toBeUndefined()
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, ceder: 'tudo' })).toBeUndefined()
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, resolucao: '4k' })).toBeUndefined()
+    expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, fps: 45 })).toBeUndefined()
+    expect(lerPerfil(null)).toBeUndefined()
+    expect(lerPerfil('texto')).toBeUndefined()
   })
 })

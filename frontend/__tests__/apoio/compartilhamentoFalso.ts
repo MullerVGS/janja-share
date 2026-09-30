@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import { GOVERNADOR_PARADO } from '../../src/sala/governador'
-import { PRESET_DO_CONTEUDO } from '../../src/sala/qualidade'
+import { PRESET_DO_CONTEUDO, TETO } from '../../src/sala/qualidade'
 import type { Compartilhamento } from '../../src/sala/useCompartilhamento'
 
 /**
@@ -14,6 +14,7 @@ export function compartilhamentoFalso(parcial: Partial<Compartilhamento> = {}): 
     perfil,
     definirPerfil: vi.fn(),
     perfilEfetivo: perfil,
+    tetoDaSala: TETO.maximoKbps,
     automatico: true,
     definirAutomatico: vi.fn(),
     codecPreferido: 'auto',

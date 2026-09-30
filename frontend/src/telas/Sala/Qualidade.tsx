@@ -5,7 +5,6 @@ import {
   CONTEUDOS,
   OPCOES_DE_FPS,
   RESOLUCOES,
-  TETO,
   trocarConteudo,
   type Ceder,
   type Codec,
@@ -76,13 +75,23 @@ function descreverForma(efetivo: PerfilDeQualidade): string {
  * que a cada 30 s limpos ele tenta de novo. Quando a busca já bateu no que a banda medida
  * deixa, ele para de tentar — e continuar dizendo "subindo" ali seria promessa que nenhuma
  * janela limpa vai cumprir. O número ao lado é sempre o teto de agora.
+ *
+ * O teto da Sala vem antes da busca: chegar nele não é o link acabando, é a banda de quem
+ * assiste sendo dividida entre as telas no ar.
  */
-function descreverAutomatico(pedido: PerfilDeQualidade, efetivo: PerfilDeQualidade, estado: EstadoDoGovernador): string {
+function descreverAutomatico(
+  pedido: PerfilDeQualidade,
+  efetivo: PerfilDeQualidade,
+  estado: EstadoDoGovernador,
+  tetoDaSala: number,
+): string {
   const degrau = descreverDegrau(pedido, estado)
   const unidade = pedido.ceder === 'quadros' ? ' fps' : ''
   const acao = degrau
     ? `cedeu para ${degrau.degrau}${unidade} — ${degrau.motivo}`
-    : estado.tetoKbps !== null && estado.tetoKbps < pedido.tetoKbps
+    : efetivo.tetoKbps >= tetoDaSala
+      ? 'no teto da sala'
+      : estado.tetoKbps !== null && estado.tetoKbps < pedido.tetoKbps
       ? `cedeu o teto — ${NOME_DO_MOTIVO[estado.motivo ?? 'banda']}`
       : estado.tetoNoAlvo
         ? 'no teto do link'
@@ -102,12 +111,16 @@ function descreverAutomatico(pedido: PerfilDeQualidade, efetivo: PerfilDeQualida
  * **Avançado** é saída de emergência, não painel: cada controle de lá vale no ato e sem
  * derrubar quem assiste — exceto o codec, que republica a faixa e pisca por um segundo. Mexer
  * em qualquer um deles zera o governador, porque o pedido mudou.
+ *
+ * Bitrate não tem controle: é da Sala, não de quem compartilha. Com o slider, todo mundo o punha
+ * no máximo, e o downlink de quem assiste pagava a conta de todas as telas juntas.
  */
 export function Qualidade({ compartilhamento }: { compartilhamento: Compartilhamento }) {
   const {
     perfil,
     definirPerfil,
     perfilEfetivo,
+    tetoDaSala,
     relatorio,
     ativo,
     automatico,
@@ -153,7 +166,7 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
       >
         {automatico ? (
           <>
-            <span>{descreverAutomatico(perfil, perfilEfetivo, governador)}</span>
+            <span>{descreverAutomatico(perfil, perfilEfetivo, governador, tetoDaSala)}</span>
             {degrau && (
               <Botao aparencia="fantasma" className={estilos.forcar} onClick={() => definirAutomatico(false)}>
                 forçar
@@ -210,25 +223,6 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
             <p className={estilos.explicacao}>{CEDER[perfil.ceder].explicacao}</p>
           </div>
 
-          <div className={estilos.teto}>
-            <label className={estilos.rotuloDoTeto} htmlFor="teto-de-bitrate">
-              Bitrate de partida
-              <output className={estilos.valorDoTeto} htmlFor="teto-de-bitrate">
-                {formatarKbps(perfil.tetoKbps)}
-              </output>
-            </label>
-            <input
-              id="teto-de-bitrate"
-              className={estilos.slider}
-              type="range"
-              min={TETO.minimoKbps}
-              max={TETO.maximoKbps}
-              step={TETO.passoKbps}
-              value={perfil.tetoKbps}
-              onChange={(evento) => ajustar({ tetoKbps: Number(evento.target.value) })}
-            />
-          </div>
-
           <label className={estilos.chave}>
             <input
               type="checkbox"
@@ -269,7 +263,7 @@ export function Qualidade({ compartilhamento }: { compartilhamento: Compartilham
         </p>
       )}
 
-      {/* Recusa do encoder é mais grave que a da captura: o slider mostra o valor novo, mas o
+      {/* Recusa do encoder é mais grave que a da captura: o controle mostra o valor novo, mas o
           que está no ar continua sendo o anterior. Sem este aviso, o painel mentiria. */}
       {relatorio?.encoder === 'recusado' && (
         <p className={estilos.recusaGrave} role="alert">

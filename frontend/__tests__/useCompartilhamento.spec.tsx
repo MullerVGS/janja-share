@@ -76,6 +76,9 @@ class SalaFalsa {
     })
   }
 
+  /** Os outros da Sala, pela tela que publicam ou não — é o que o teto da Sala conta. */
+  remoteParticipants = new Map<string, { getTrackPublication: (fonte: Track.Source) => unknown }>()
+
   localParticipant = {
     getTrackPublication: (fonte: Track.Source) => this.publicacoes.get(fonte),
 

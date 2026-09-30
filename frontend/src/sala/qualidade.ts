@@ -30,7 +30,7 @@ export interface PerfilDeQualidade {
   /** Quadros por segundo pedidos à captura e ao encoder. */
   fps: number
   ceder: Ceder
-  /** Bitrate de partida em kbps; o governador sobe a partir dele. */
+  /** Bitrate de partida em kbps, sempre o do preset; o governador sobe a partir dele. */
   tetoKbps: number
 }
 
@@ -88,22 +88,35 @@ export const CEDER: Record<Ceder, { rotulo: string; degradacao: RTCDegradationPr
 }
 
 /**
- * Quem costuma limitar o Compartilhamento é o upload de quem publica. O SFU faz o fan-out;
- * reduzir estes números não diminui o bitrate enviado por cada espectador.
- *
- * É também por isso que subir o teto sozinho não melhora nada: ele só dá permissão. Quem
- * entrega a melhora é o governador achar o teto real daquele link e sentar logo abaixo dele.
+ * Dois links limitam o Compartilhamento: o upload de quem publica, que o governador acha
+ * subindo em degraus, e o download de quem assiste, que é o orçamento abaixo. O teto de cada
+ * Tela é o menor dos dois (ADR 0012).
  */
 
 /**
- * Limites do teto de bitrate, em kbps. O topo não é promessa nenhuma: é até onde a busca do
- * governador pode ir quando o link medido der. Quem chega perto dele é fibra simétrica boa.
+ * Orçamento de descida de cada espectador, em kbps: a soma de todas as telas no ar tem de caber
+ * nele. O gargalo de uma Sala é o downlink de quem assiste — o SFU faz o fan-out, e cada pessoa
+ * recebe todas as telas ao mesmo tempo. Medido em produção: espectadores com 5–10 Mb/s de
+ * capacidade recebendo 12–24 Mb/s de duas telas, e o vídeo travando para todos eles.
+ */
+export const ORCAMENTO_DA_SALA_KBPS = 10_000
+
+/**
+ * Limites do teto de bitrate, em kbps. O topo é o orçamento inteiro da Sala: uma tela sozinha
+ * pode chegar nele, e só se o link de quem transmite der.
  */
 export const TETO = {
   minimoKbps: 200,
-  maximoKbps: 50_000,
-  passoKbps: 100,
+  maximoKbps: ORCAMENTO_DA_SALA_KBPS,
 } as const
+
+/**
+ * O teto de cada tela: o orçamento dividido pelas telas no ar. Contar a própria tela é dever de
+ * quem chama — zero ou negativo vale como uma, que é o caso de quem ainda vai publicar.
+ */
+export function tetoDaSala(telasNoAr: number): number {
+  return Math.max(TETO.minimoKbps, Math.floor(ORCAMENTO_DA_SALA_KBPS / Math.max(1, telasNoAr)))
+}
 
 /**
  * Perfil de partida de cada conteúdo.
@@ -157,21 +170,32 @@ export function resolucaoDaAltura(altura: number): Resolucao | null {
   return RESOLUCOES.find((opcao) => opcao.altura === altura)?.valor ?? null
 }
 
-/** O que vem do `localStorage` só vira perfil se for um perfil inteiro, campo a campo. */
-export function ehPerfil(valor: unknown): valor is PerfilDeQualidade {
-  if (valor === null || typeof valor !== 'object') return false
+/**
+ * O que vem do `localStorage` só vira perfil se for um perfil inteiro, campo a campo — menos o
+ * teto, que deixou de ser da pessoa: ele volta sempre ao de partida do conteúdo. Perfis gravados
+ * no tempo do slider traziam 50 Mb/s, e descartá-los inteiros levaria junto a resolução e os fps
+ * que a pessoa escolheu.
+ */
+export function lerPerfil(valor: unknown): PerfilDeQualidade | undefined {
+  if (valor === null || typeof valor !== 'object') return undefined
   const p = valor as Record<string, unknown>
   const entre = (vocabulario: object, valor: unknown) => typeof valor === 'string' && Object.hasOwn(vocabulario, valor)
-  return (
+  const valido =
     entre(CONTEUDOS, p.conteudo) &&
     entre(CODECS, p.codec) &&
     entre(CEDER, p.ceder) &&
     RESOLUCOES.some((opcao) => opcao.valor === p.resolucao) &&
-    OPCOES_DE_FPS.includes(p.fps as number) &&
-    typeof p.tetoKbps === 'number' &&
-    p.tetoKbps >= TETO.minimoKbps &&
-    p.tetoKbps <= TETO.maximoKbps
-  )
+    OPCOES_DE_FPS.includes(p.fps as number)
+  if (!valido) return undefined
+  const conteudo = p.conteudo as Conteudo
+  return {
+    conteudo,
+    codec: p.codec as Codec,
+    ceder: p.ceder as Ceder,
+    resolucao: p.resolucao as Resolucao,
+    fps: p.fps as number,
+    tetoKbps: PRESET_DO_CONTEUDO[conteudo].tetoKbps,
+  }
 }
 
 /**

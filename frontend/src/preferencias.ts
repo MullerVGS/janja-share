@@ -1,5 +1,5 @@
 import { LARGURA_MINIMA_DA_LATERAL } from './sala/lateral'
-import { ehCodec, ehPerfil, PERFIL_PADRAO, type Codec, type PerfilDeQualidade } from './sala/qualidade'
+import { ehCodec, lerPerfil, PERFIL_PADRAO, type Codec, type PerfilDeQualidade } from './sala/qualidade'
 import { lerVolumes, type Volumes } from './sala/volumes'
 
 /**
@@ -55,7 +55,7 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   larguraDaLateral: (valor) =>
     typeof valor === 'number' && Number.isFinite(valor) && valor >= LARGURA_MINIMA_DA_LATERAL ? valor : undefined,
   barraLateralAberta: (valor) => (typeof valor === 'boolean' ? valor : undefined),
-  perfil: (valor) => (ehPerfil(valor) ? valor : undefined),
+  perfil: lerPerfil,
   automatico: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   codecPreferido: (valor) => (valor === 'auto' || ehCodec(valor) ? valor : undefined),
   codecAprendido: (valor) => (ehCodec(valor) ? valor : valor === null ? null : undefined),

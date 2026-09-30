@@ -67,32 +67,6 @@
   color: var(--texto-fraco);
 }
 
-.teto {
-  display: flex;
-  flex-direction: column;
-  gap: var(--e2);
-}
-
-.rotuloDoTeto {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: var(--texto-sm);
-  font-weight: var(--peso-titulo);
-  color: var(--texto-fraco);
-}
-
-.valorDoTeto {
-  font-family: var(--fonte-mono);
-  font-size: var(--texto-sm);
-  color: var(--acao-texto);
-}
-
-.slider {
-  width: 100%;
-  accent-color: var(--acao);
-}
-
 .chave {
   display: inline-flex;
   align-items: center;

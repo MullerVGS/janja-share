@@ -29,7 +29,12 @@ import { alturaDaResolucao, CODECS, resolucaoDaAltura, RESOLUCOES, TETO, type Co
  * `espectadores`: o caso que o emissor sozinho não enxerga é encoder feliz, banda sobrando e um
  * amigo travando. Essa voz segura a subida com qualquer sinal — inclusive o ambíguo, porque não
  * subir é barato. Para **descer** ela precisa de perda de pacote, que só a rede explica; e nem
- * isso com codec SVC, porque aí o SFU já dá ao amigo lento uma camada menor.
+ * isso com codec SVC, porque aí o SFU já dá ao amigo lento uma camada menor — e essa camada
+ * menor é, ela mesma, sinal para não subir.
+ *
+ * Acima de tudo isso está o **teto da Sala** (`tetoDaSala` em `qualidade.ts`): o orçamento de
+ * descida de quem assiste, dividido pelas telas no ar. O link de quem transmite diz até onde dá
+ * para mandar; o da Sala diz até onde vale a pena, porque quem assiste recebe todas as telas.
  *
  * É uma função pura sobre estado serializável; o relógio é o das amostras (`emMs`), não o da
  * máquina. Quem alimenta é o hook, uma vez por amostra nova. O pedido da pessoa deixou de ser
@@ -135,7 +140,7 @@ export const GOVERNADOR_PARADO: EstadoDoGovernador = {
  *
  * O codec é a exceção, e pela mesma razão que o teto sobrevive à troca de tela: ele descreve o
  * **encoder daquela máquina**, não o pedido. Devolver o codec reprovado porque a pessoa mexeu no
- * slider de bitrate republicaria a faixa de volta para o que já tinha falhado.
+ * controle de resolução republicaria a faixa de volta para o que já tinha falhado.
  */
 export function zerarGovernador(
   historico: readonly AmostraDoEmissor[],
@@ -197,6 +202,16 @@ function irregular(relato: AmostraDoEspectador): boolean {
 }
 
 /**
+ * O SFU entregando uma camada menor que a enviada: com SVC é assim que o downlink de quem assiste
+ * diz que não cabe o que está no ar. Não autoriza descer — o SFU já resolveu aquele espectador —,
+ * mas subir só pioraria: cada troca de camada para cima pede quadro-chave, e quadro-chave no
+ * teto é a rajada que congestiona de novo o link que acabou de se recuperar.
+ */
+function camadaCortada(relato: AmostraDoEspectador, alturaNoAr: number | null): boolean {
+  return alturaNoAr !== null && relato.altura !== null && relato.altura < FOLGA * alturaNoAr
+}
+
+/**
  * Recepção parada de vez — o espectador mais prejudicado de todos, e o que some dos outros dois
  * sinais: sem quadro decodificado não há desvio (`amostra.ts`, `decodificados > 0`), e sem
  * pacote não há perda (`perdidos + recebidos === 0`). Os dois chegam `null`, e o relato de quem
@@ -213,11 +228,18 @@ function parado(relato: AmostraDoEspectador): boolean {
  * Segura a subida. Qualquer suspeita serve, inclusive a ambígua: não subir custa o que a pessoa
  * já tem, e é o lado barato de errar.
  */
-export function alguemSofrendo(espectadores: readonly Espectador[], agora: number): boolean {
+export function alguemSofrendo(
+  espectadores: readonly Espectador[],
+  agora: number,
+  alturaNoAr: number | null = null,
+): boolean {
   return espectadores.some(
     (espectador) =>
       !sumiu(espectador, agora) &&
-      (temPerda(espectador.relato) || irregular(espectador.relato) || parado(espectador.relato)),
+      (temPerda(espectador.relato) ||
+        irregular(espectador.relato) ||
+        parado(espectador.relato) ||
+        camadaCortada(espectador.relato, alturaNoAr)),
   )
 }
 
@@ -233,16 +255,21 @@ export function alguemPerdendo(espectadores: readonly Espectador[], agora: numbe
   return espectadores.some((espectador) => !sumiu(espectador, agora) && temPerda(espectador.relato))
 }
 
-/** O teto que a banda medida permite. Sem medida não há alvo — e sem alvo não se sobe. */
-function alvoDoTeto(janela: readonly AmostraDoEmissor[]): number | null {
+/** O teto que a banda medida e a Sala permitem. Sem medida não há alvo — e sem alvo não se sobe. */
+function alvoDoTeto(janela: readonly AmostraDoEmissor[], daSala: number): number | null {
   const banda = media(janela.map((amostra) => amostra.bandaDisponivelKbps))
-  return banda === null ? null : Math.min(TETO.maximoKbps, Math.round(ALVO_DA_BANDA * banda))
+  return banda === null ? null : Math.min(daSala, Math.round(ALVO_DA_BANDA * banda))
+}
+
+/** O teto em vigor: o achado pela busca, ou o de partida, e nunca acima do da Sala. */
+function tetoAtual(estado: EstadoDoGovernador, pedido: PerfilDeQualidade, daSala: number): number {
+  return Math.min(daSala, estado.tetoKbps ?? pedido.tetoKbps)
 }
 
 /** O teto depois de um degrau de subida; `null` quando já chegou onde a banda deixa. */
-function subirOTeto(estado: EstadoDoGovernador, pedido: PerfilDeQualidade, alvo: number | null): number | null {
+function subirOTeto(estado: EstadoDoGovernador, pedido: PerfilDeQualidade, alvo: number | null, daSala: number): number | null {
   if (alvo === null) return null
-  const atual = estado.tetoKbps ?? pedido.tetoKbps
+  const atual = tetoAtual(estado, pedido, daSala)
   return atual >= alvo ? null : Math.min(alvo, Math.round(PASSO_DA_SUBIDA * atual))
 }
 
@@ -252,9 +279,10 @@ function subirOTeto(estado: EstadoDoGovernador, pedido: PerfilDeQualidade, alvo:
  * O piso é fração do valor de partida: abaixo dele apertar mais o encoder é entregar borrão em
  * vez de menos quadros, e a pessoa escolheu o que ceder.
  */
-function descerOTeto(estado: EstadoDoGovernador, pedido: PerfilDeQualidade): number | null {
-  const atual = estado.tetoKbps ?? pedido.tetoKbps
-  const piso = Math.round(PASSO_DA_DESCIDA * pedido.tetoKbps)
+function descerOTeto(estado: EstadoDoGovernador, pedido: PerfilDeQualidade, daSala: number): number | null {
+  const atual = tetoAtual(estado, pedido, daSala)
+  // A partida acima do teto da Sala nunca foi ao ar: o piso é fração do que de fato partiu.
+  const piso = Math.round(PASSO_DA_DESCIDA * Math.min(daSala, pedido.tetoKbps))
   return atual <= piso ? null : Math.max(piso, Math.round(PASSO_DA_DESCIDA * atual))
 }
 
@@ -278,6 +306,7 @@ export function decidir(
   pedido: PerfilDeQualidade,
   espectadores: readonly Espectador[] = [],
   candidatoDeCodec: Codec | null = null,
+  daSala: number = TETO.maximoKbps,
 ): EstadoDoGovernador {
   const nova = historico[historico.length - 1]
   if (!nova) return estado
@@ -297,7 +326,7 @@ export function decidir(
   // Sem limitação e sem passado, os 30 s contam da primeira amostra: é o que permite a primeira
   // subida numa transmissão que nunca cedeu nada.
   const limpoDesdeMs = motivoDe(nova, pedido) !== null ? agora : (estado.limpoDesdeMs ?? agora)
-  const sofrendo = alguemSofrendo(espectadores, agora)
+  const sofrendo = alguemSofrendo(espectadores, agora, nova.altura)
   const perdendo = alguemPerdendo(espectadores, agora)
 
   const janelaCheia = janela.length >= JANELA
@@ -344,7 +373,7 @@ export function decidir(
     // alvo, toda subida de degrau acontece com o teto acima do piso — e apagar a marca aqui
     // deixaria a queima morta justamente no link que subiu, devolvendo o serrilhado 30 ↔ 45.
     if (motivo === 'banda') {
-      const menor = descerOTeto(estado, pedido)
+      const menor = descerOTeto(estado, pedido, daSala)
       if (menor !== null) {
         return { ...estado, tetoKbps: menor, tetoNoAlvo: false, motivo, limpoDesdeMs: agora, janelaDesdeMs: agora }
       }
@@ -377,8 +406,8 @@ export function decidir(
   // única coisa pior que não subir é subir por cima de quem já não está dando conta.
   let tetoNoAlvo = estado.tetoNoAlvo
   if (agora - limpoDesdeMs >= SUBIR_APOS_MS && !sofrendo) {
-    const alvo = alvoDoTeto(janela)
-    const maior = subirOTeto(estado, pedido, alvo)
+    const alvo = alvoDoTeto(janela, daSala)
+    const maior = subirOTeto(estado, pedido, alvo, daSala)
     if (maior !== null) {
       // Sem `subiuEmMs`: quem queima degrau é subida no eixo cedido. Uma descida logo depois de
       // o teto subir não é degrau que falhou — é o teto voltando, e ele volta sozinho.
@@ -413,10 +442,20 @@ export function decidir(
   return { ...estado, limpoDesdeMs, tetoNoAlvo }
 }
 
-/** Pedido ⊕ teto ⊕ degrau: o perfil que de fato vai para a captura e para o encoder. */
-export function perfilEfetivo(pedido: PerfilDeQualidade, estado: EstadoDoGovernador): PerfilDeQualidade {
+/**
+ * Pedido ⊕ teto ⊕ degrau ⊕ Sala: o perfil que de fato vai para a captura e para o encoder.
+ *
+ * O teto da Sala vale mesmo com o automático desligado e antes da primeira amostra: é ele que
+ * impede a segunda tela de nascer somando por cima da primeira no downlink de quem assiste.
+ */
+export function perfilEfetivo(
+  pedido: PerfilDeQualidade,
+  estado: EstadoDoGovernador,
+  daSala: number = TETO.maximoKbps,
+): PerfilDeQualidade {
   const comCodec = estado.codec === null ? pedido : { ...pedido, codec: estado.codec }
-  const comTeto = estado.tetoKbps === null ? comCodec : { ...comCodec, tetoKbps: estado.tetoKbps }
+  const teto = tetoAtual(estado, pedido, daSala)
+  const comTeto = teto === comCodec.tetoKbps ? comCodec : { ...comCodec, tetoKbps: teto }
   if (estado.degrau === null) return comTeto
   if (pedido.ceder === 'quadros') return { ...comTeto, fps: estado.degrau }
   const resolucao = resolucaoDaAltura(estado.degrau)

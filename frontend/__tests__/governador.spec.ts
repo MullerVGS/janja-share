@@ -48,12 +48,18 @@ class Sessao {
   historico: AmostraDoEmissor[] = []
   espectadores: readonly Espectador[] = []
   candidato: Codec | null = null
+  daSala: number | undefined = undefined
   emMs = 0
 
   constructor(readonly pedido: PerfilDeQualidade) {}
 
   comEspectadores(lista: readonly Espectador[]): this {
     this.espectadores = lista
+    return this
+  }
+
+  comTetoDaSala(kbps: number): this {
+    this.daSala = kbps
     return this
   }
 
@@ -66,7 +72,7 @@ class Sessao {
     for (let i = 0; i < quantos; i += 1) {
       this.emMs += 1000
       this.historico = anotar(this.historico, { ...amostraVaziaDoEmissor(this.emMs), ...NO_AR, ...parcial })
-      this.estado = decidir(this.estado, this.historico, this.pedido, this.espectadores, this.candidato)
+      this.estado = decidir(this.estado, this.historico, this.pedido, this.espectadores, this.candidato, this.daSala)
     }
     return this
   }
@@ -431,7 +437,63 @@ describe('governador: subir o teto de bitrate', () => {
   })
 })
 
+/**
+ * O teto da Sala é o downlink de quem assiste dividido pelas telas no ar. O link de quem transmite
+ * diz até onde dá; a Sala diz até onde vale — quem assiste recebe todas as telas somadas.
+ */
+describe('governador: teto da Sala', () => {
+  it('a busca para no teto da Sala, por mais folgado que seja o link', () => {
+    const sessao = new Sessao(TEXTO).comTetoDaSala(5_000).segundos(600, { ...NO_AR, bandaDisponivelKbps: 50_000 })
+    expect(sessao.estado.tetoKbps).toBe(5_000)
+    expect(sessao.estado.tetoNoAlvo).toBe(true)
+  })
+
+  it('sem teto da Sala informado, o topo é o orçamento inteiro: 10 Mb/s', () => {
+    const sessao = new Sessao(TEXTO).segundos(600, { ...NO_AR, bandaDisponivelKbps: 50_000 })
+    expect(sessao.estado.tetoKbps).toBe(10_000)
+  })
+
+  it('o efetivo nunca passa do teto da Sala — nem a partida, nem o que a busca achou antes', () => {
+    expect(perfilEfetivo(JOGO, GOVERNADOR_PARADO, 5_000).tetoKbps).toBe(5_000)
+    const achado: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 10_000 }
+    expect(perfilEfetivo(JOGO, achado, 5_000).tetoKbps).toBe(5_000)
+    // A outra tela saiu do ar: o teto achado volta a valer inteiro, sem refazer a busca.
+    expect(perfilEfetivo(JOGO, achado, 10_000).tetoKbps).toBe(10_000)
+  })
+
+  it('abaixo do teto da Sala, o efetivo é o de sempre', () => {
+    expect(perfilEfetivo(TEXTO, GOVERNADOR_PARADO, 5_000)).toBe(TEXTO)
+  })
+
+  it('sob banda, a descida parte do teto da Sala, não da partida acima dele', () => {
+    const sessao = new Sessao(JOGO).comTetoDaSala(3_000).segundos(5, { ...NO_AR, limitadoPor: 'banda', altura: 720 })
+    expect(sessao.estado.tetoKbps).toBeLessThan(3_000)
+  })
+})
+
 describe('governador: o outro lado', () => {
+  /**
+   * Com SVC o SFU dá ao espectador lento uma camada menor: é o downlink dele dizendo que não
+   * cabe. Subir por cima disso só pede quadro-chave maior a cada troca de camada.
+   */
+  it('espectador recebendo camada menor que a enviada segura a subida', () => {
+    const cortado = [espectador({ altura: 540, fpsDecodificado: 60, kbps: 3_000 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(cortado).segundos(120, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeNull()
+  })
+
+  it('camada cortada não faz descer — o SFU já resolveu aquele espectador', () => {
+    const cortado = [espectador({ altura: 540, fpsDecodificado: 60, kbps: 3_000 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(cortado).segundos(20, NO_AR)
+    expect(sessao.estado).toMatchObject({ tetoKbps: null, degrau: null })
+  })
+
+  it('espectador recebendo a camada inteira não segura nada', () => {
+    const inteiro = [espectador({ altura: 1080, fpsDecodificado: 60, kbps: 5_000 })]
+    const sessao = new Sessao(TEXTO).comEspectadores(inteiro).segundos(40, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(sessao.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
+  })
+
   it('espectador congelando segura a subida mesmo com o emissor limpo', () => {
     const sofrendo = [espectador({ freezes: { quantidade: 6, duracaoMs: 3000 }, desvioEntreQuadrosMs: 240 })]
     const sessao = new Sessao(TEXTO).comEspectadores(sofrendo).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })

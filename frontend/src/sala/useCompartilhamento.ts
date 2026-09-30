@@ -28,11 +28,12 @@ import {
   type Codec,
   type PerfilDeQualidade,
   type RelatorioDeAplicacao,
+  tetoDaSala,
 } from './qualidade'
 
 /**
- * Espera antes de aplicar um perfil novo. É o que permite arrastar o slider de bitrate sem
- * disparar um `setParameters` por pixel percorrido.
+ * Espera antes de aplicar um perfil novo. É o que junta vários cliques seguidos num controle
+ * num `setParameters` só.
  */
 const ATRASO_DO_AJUSTE_MS = 180
 
@@ -76,8 +77,10 @@ export interface Compartilhamento {
   /** O pedido da pessoa: o preset de onde o governador parte. */
   perfil: PerfilDeQualidade
   definirPerfil(perfil: PerfilDeQualidade): void
-  /** Pedido ⊕ teto ⊕ degrau do governador — o que de fato está na captura e no encoder. */
+  /** Pedido ⊕ teto ⊕ degrau do governador ⊕ Sala — o que de fato está na captura e no encoder. */
   perfilEfetivo: PerfilDeQualidade
+  /** O maior teto que esta tela pode ter com as telas que estão no ar agora. */
+  tetoDaSala: number
   automatico: boolean
   definirAutomatico(ligado: boolean): void
   /** A intenção da pessoa sobre o codec; `'auto'` deixa a máquina resolver e corrigir. */
@@ -129,6 +132,15 @@ function pararOQueNaoFoiAoAr(sala: Room, capturadas: LocalTrack[]): void {
   for (const faixa of capturadas) if (!noAr.includes(faixa)) faixa.stop()
 }
 
+/** Telas dos outros no ar: cada uma disputa o mesmo downlink de quem assiste. */
+function telasDosOutros(sala: Room): number {
+  let total = 0
+  for (const participante of sala.remoteParticipants.values()) {
+    if (participante.getTrackPublication(Track.Source.ScreenShare)) total += 1
+  }
+  return total
+}
+
 /** Uma referência estável: uma sala sem espectador nenhum não pode remontar o efeito a cada render. */
 const SEM_ESPECTADORES: ReadonlyMap<string, Espectador> = new Map()
 
@@ -177,6 +189,12 @@ export function useCompartilhamento(
   const ultimosRelatos = useRef(espectadores)
   ultimosRelatos.current = espectadores
 
+  // Conta com a própria tela mesmo antes de publicar: é o teto com que ela vai nascer. A Sala
+  // re-renderiza a cada amostra da telemetria, e isso basta para acompanhar quem entra e sai do ar.
+  const daSala = tetoDaSala((sala ? telasDosOutros(sala) : 0) + 1)
+  const ultimoTetoDaSala = useRef(daSala)
+  ultimoTetoDaSala.current = daSala
+
   // O governador anda uma vez por amostra nova; parar de transmitir o zera.
   useEffect(() => {
     if (!ativo) {
@@ -185,12 +203,22 @@ export function useCompartilhamento(
     }
     if (!automatico) return
     setGovernador((estado) =>
-      decidir(estado, historico, perfil, [...ultimosRelatos.current.values()], candidatoDeCodec.current),
+      decidir(
+        estado,
+        historico,
+        perfil,
+        [...ultimosRelatos.current.values()],
+        candidatoDeCodec.current,
+        ultimoTetoDaSala.current,
+      ),
     )
   }, [historico, automatico, ativo, perfil])
 
   // Só o degrau e o teto mudam o efetivo; o resto do estado muda a cada amostra limitada.
-  const perfilEfetivo = useMemo(() => combinar(perfil, governador), [perfil, governador.degrau, governador.tetoKbps])
+  const perfilEfetivo = useMemo(
+    () => combinar(perfil, governador, daSala),
+    [perfil, governador.degrau, governador.tetoKbps, daSala],
+  )
 
   // Ajuste ao vivo: sem republicar, sem renegociar. Roda também logo depois de publicar,
   // porque a captura entrega o que o monitor tem e o teto real é este.
@@ -375,6 +403,13 @@ export function useCompartilhamento(
    * guardado do preset. `setPerfil` direto e sem `gravarPreferencias` porque isto não é a
    * intenção da pessoa — a intenção dela é `codecPreferido`, e ela continua valendo.
    */
+  // Publicar já no teto da Sala: uma segunda tela que nascesse no de partida somaria por cima da
+  // primeira no downlink de quem assiste até o primeiro ajuste ao vivo.
+  const comTetoDaSala = (partida: PerfilDeQualidade): PerfilDeQualidade => ({
+    ...partida,
+    tetoKbps: Math.min(partida.tetoKbps, ultimoTetoDaSala.current),
+  })
+
   const perfilDePartida = useCallback(async (): Promise<PerfilDeQualidade> => {
     const codec = await codecDePartida({
       preferido: codecPreferido,
@@ -409,7 +444,7 @@ export function useCompartilhamento(
         capturadas = await capturarTela(perfil)
         const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
         if (video) {
-          await participante.publishTrack(video, opcoesDePublicacao(await perfilDePartida()))
+          await participante.publishTrack(video, opcoesDePublicacao(comTetoDaSala(await perfilDePartida())))
           const audio = capturadas.find((faixa) => faixa.kind === Track.Kind.Audio)
           if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
         }
@@ -467,7 +502,7 @@ export function useCompartilhamento(
         setTrocandoTela(true)
         await participante.setScreenShareEnabled(false)
         setCodecPendente(null)
-        await participante.publishTrack(video, opcoesDePublicacao(await perfilDePartida()))
+        await participante.publishTrack(video, opcoesDePublicacao(comTetoDaSala(await perfilDePartida())))
         const audio = capturadas.find((faixa) => faixa.kind === Track.Kind.Audio)
         if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
       }
@@ -505,6 +540,7 @@ export function useCompartilhamento(
     perfil,
     definirPerfil,
     perfilEfetivo,
+    tetoDaSala: daSala,
     automatico,
     definirAutomatico,
     codecPreferido,

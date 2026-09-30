@@ -58,8 +58,9 @@ describe('preferências', () => {
     expect(PREFERENCIAS_PADRAO.perfil).toBe(PERFIL_PADRAO)
     expect(PREFERENCIAS_PADRAO.automatico).toBe(true)
 
-    const perfil = { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' as const, tetoKbps: 12_000 }
-    gravarPreferencias({ perfil, automatico: false })
+    const perfil = { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' as const }
+    gravarPreferencias({ perfil: { ...perfil, tetoKbps: 50_000 }, automatico: false })
+    // O teto não é da pessoa: o gravado no tempo do slider volta ao de partida do conteúdo.
     expect(lerPreferencias()).toMatchObject({ perfil, automatico: false })
   })
 

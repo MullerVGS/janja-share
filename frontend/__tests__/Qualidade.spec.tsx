@@ -27,7 +27,7 @@ describe('aba Qualidade: os dois botões', () => {
 })
 
 describe('aba Qualidade: controles', () => {
-  it('mostra os dois eixos, o codec, resolução, fps e bitrate com o perfil atual marcado', () => {
+  it('mostra os dois eixos, o codec, resolução e fps com o perfil atual marcado', () => {
     montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' } })
 
     expect(screen.getByRole('radio', { name: 'Jogo' })).toBeChecked()
@@ -36,7 +36,6 @@ describe('aba Qualidade: controles', () => {
     expect(screen.getByRole('radio', { name: '720p' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '60' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Resolução' })).toBeChecked()
-    expect(screen.getByRole('slider', { name: /bitrate/i })).toHaveValue('8000')
   })
 
   it('trocar o conteúdo aplica o preset e preserva a resolução escolhida', async () => {
@@ -75,11 +74,10 @@ describe('aba Qualidade: controles', () => {
     }
   })
 
-  it('o slider de bitrate vai de 200 a 50 000 kbps — é a partida, e o topo é o da busca', () => {
+  /** Bitrate é da Sala: com o slider, todo mundo o punha no máximo e quem assiste travava. */
+  it('não há controle de bitrate', () => {
     montarQualidade()
-    const slider = screen.getByRole('slider', { name: /bitrate/i })
-    expect(slider).toHaveAttribute('min', '200')
-    expect(slider).toHaveAttribute('max', '50000')
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
 
   it('explica o codec forçado numa linha', () => {
@@ -229,16 +227,27 @@ describe('aba Qualidade: automático', () => {
   })
 
   it('com o teto acima da partida, a linha mostra o teto conquistado e diz que está subindo', () => {
-    const subindo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 12_500 }
-    montarQualidade({ perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 12_500 }, governador: subindo })
-    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('12,5 Mb/s · 1080p · 15 fps · subindo')
+    const subindo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 6_250 }
+    montarQualidade({ perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 6_250 }, governador: subindo })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('6,3 Mb/s · 1080p · 15 fps · subindo')
+  })
+
+  /** No teto da Sala o limite é a banda de quem assiste, não o link — a linha diz qual. */
+  it('no teto da Sala, diz que é o da sala e não o do link', () => {
+    const dividido: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 8_000, tetoNoAlvo: true }
+    montarQualidade({
+      perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 5_000 },
+      governador: dividido,
+      tetoDaSala: 5_000,
+    })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('5,0 Mb/s · 1080p · 15 fps · no teto da sala')
   })
 
   /** "Subindo" é postura, não promessa: no teto do link não há próxima janela limpa que renda nada. */
   it('com a busca no que a banda deixa, para de dizer "subindo"', () => {
-    const noAlvo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 12_500, tetoNoAlvo: true }
-    montarQualidade({ perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 12_500 }, governador: noAlvo })
-    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('12,5 Mb/s · 1080p · 15 fps · no teto do link')
+    const noAlvo: EstadoDoGovernador = { ...GOVERNADOR_PARADO, tetoKbps: 6_250, tetoNoAlvo: true }
+    montarQualidade({ perfilEfetivo: { ...PRESET_DO_CONTEUDO.texto, tetoKbps: 6_250 }, governador: noAlvo })
+    expect(screen.getByRole('status', { name: /governador/i })).toHaveTextContent('6,3 Mb/s · 1080p · 15 fps · no teto do link')
   })
 
   it('no teto do link sem nunca ter subido (a partida já era o que o link dá) também não diz "subindo"', () => {
