@@ -22,3 +22,7 @@ que republica a faixa, e portanto extrapola o "sem renegociar nem republicar" or
 telemetria que o alimenta deixou de depender de campos exclusivos do Chrome: `motivoDe` lê
 `limitadoPor ?? inferido`, o que faz esta política existir também no Firefox, onde antes ela
 estava inerte.
+
+O ADR 0012 põe um teto acima de tudo isso: o orçamento de descida de quem assiste, dividido
+pelas Telas no ar. O uplink de quem compartilha continua dizendo até onde dá para mandar; a Sala
+diz até onde vale a pena.
