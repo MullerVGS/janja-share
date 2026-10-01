@@ -12,7 +12,7 @@
   background: var(--barra-topo);
 }
 
-/* O interruptor do painel e a contagem numa peça só: o número é o que faz a pessoa querer
+/* O ícone de pessoas e a contagem numa peça só: o número é o que faz a pessoa querer
    abrir, e separá-los daria dois alvos para a mesma intenção. */
 .pessoas {
   height: 34px;
@@ -128,32 +128,38 @@
   color: var(--acao);
 }
 
-.contador {
-  position: absolute;
-  top: 4px;
-  right: 3px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
+.convite {
+  height: 34px;
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: var(--raio-pilula);
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
-  font-size: 9px;
-  font-weight: var(--peso-forte);
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-md);
+  background: transparent;
+  color: var(--texto);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-titulo);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.convite:hover {
+  background: color-mix(in srgb, var(--texto) 8%, transparent);
 }
 
 /* No estreito o topo guarda só o essencial: onde você está e as portas dos painéis. */
 @media (max-width: 680px) {
   .efemera,
   .estado,
-  .contagem {
+  .contagem,
+  .textoDoConvite {
     display: none;
   }
 
-  .pessoas {
+  .pessoas,
+  .convite {
     padding: 0 8px;
   }
 }

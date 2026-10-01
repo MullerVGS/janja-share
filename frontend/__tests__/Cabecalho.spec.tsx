@@ -15,8 +15,6 @@ function montarCabecalho(parcial: Partial<Props> = {}) {
     lateralAberta: false,
     abaAMostra: null,
     aoAlternarAba: vi.fn(),
-    transmitindo: false,
-    naoLidasNoChat: 0,
     conviteCopiado: false,
     aoCopiarConvite: vi.fn(),
     ...parcial,
@@ -67,29 +65,25 @@ describe('cabeçalho da sala', () => {
     expect(screen.getByRole('button', { name: 'Convite copiado!' })).toBeInTheDocument()
   })
 
-  it('os ajustes da tela só existem transmitindo; métricas e conversa, sempre', () => {
+  it('o convite mostra a palavra junto do ícone', () => {
     montarCabecalho()
-    expect(screen.queryByRole('button', { name: 'Qualidade da transmissão' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Métricas da transmissão' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Conversa' })).toBeInTheDocument()
-
-    montarCabecalho({ transmitindo: true })
-    expect(screen.getByRole('button', { name: 'Qualidade da transmissão' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copiar convite' })).toHaveTextContent('Convidar')
   })
 
-  it('o botão da aba à mostra fica marcado, e clicar nele pede a troca', async () => {
+  it('só as métricas moram no topo: chat e qualidade ficam na barra, sem botão repetido', () => {
+    montarCabecalho()
+    expect(screen.getByRole('button', { name: 'Métricas da transmissão' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Conversa' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Qualidade da transmissão' })).not.toBeInTheDocument()
+  })
+
+  it('o botão das métricas fica marcado com a aba à mostra, e clicar nele pede a troca', async () => {
     const usuario = userEvent.setup()
     const { aoAlternarAba } = montarCabecalho({ abaAMostra: 'metricas' })
 
     expect(screen.getByRole('button', { name: 'Métricas da transmissão' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Conversa' })).toHaveAttribute('aria-pressed', 'false')
 
-    await usuario.click(screen.getByRole('button', { name: 'Conversa' }))
-    expect(aoAlternarAba).toHaveBeenCalledExactlyOnceWith('chat')
-  })
-
-  it('mensagem não lida vira contador no botão da conversa', () => {
-    montarCabecalho({ naoLidasNoChat: 2 })
-    expect(screen.getByLabelText('2 mensagens não lidas')).toHaveTextContent('2')
+    await usuario.click(screen.getByRole('button', { name: 'Métricas da transmissão' }))
+    expect(aoAlternarAba).toHaveBeenCalledExactlyOnceWith('metricas')
   })
 })
