@@ -55,15 +55,20 @@ export function opcoesDeCaptura(perfil: PerfilDeQualidade): OpcoesDeCapturaDeTel
   }
 }
 
+/** O que sai do seletor nativo, ainda cru: a imagem sempre, o som quando a pessoa marcou a caixa. */
+export interface CapturaCrua {
+  video: MediaStreamTrack
+  audio: MediaStreamTrack | null
+}
+
 /**
- * Abre o seletor e devolve as faixas prontas para publicar — vídeo sempre, áudio quando a
- * pessoa marcou a caixa do seletor.
+ * Abre o seletor e devolve as faixas do navegador, sem embrulhá-las no SDK.
  *
- * `source` é o que faz a publicação chegar como tela e como som de tela; sem ele a faixa entra
- * como câmera e microfone — e a câmera o SFU recusa. `false` no terceiro argumento diz ao SDK
- * que a faixa é dele: é o que permite ao ciclo de vida da publicação pará-la.
+ * Existe separado de `capturarTela` por causa de "Trocar tela": a troca entra numa publicação que
+ * já está no ar (`replaceTrack`) e não precisa de `LocalTrack` novo — um embrulho descartado
+ * ficaria pendurado nos eventos da faixa sem ninguém do outro lado.
  */
-export async function capturarTela(perfil: PerfilDeQualidade): Promise<LocalTrack[]> {
+export async function abrirSeletor(perfil: PerfilDeQualidade): Promise<CapturaCrua> {
   const fluxo = await navigator.mediaDevices.getDisplayMedia(opcoesDeCaptura(perfil))
 
   const [video] = fluxo.getVideoTracks()
@@ -73,19 +78,36 @@ export async function capturarTela(perfil: PerfilDeQualidade): Promise<LocalTrac
     fluxo.getTracks().forEach((faixa) => faixa.stop())
     throw new Error('o navegador devolveu uma captura sem vídeo')
   }
+  // O hint sobrevive ao `applyConstraints` e diz ao encoder se o conteúdo é texto ou movimento.
+  video.contentHint = CONTEUDOS[perfil.conteudo].contentHint
 
+  const [audio] = fluxo.getAudioTracks()
+  return { video, audio: audio ?? null }
+}
+
+/**
+ * Abre o seletor e devolve as faixas prontas para publicar — vídeo sempre, áudio quando a
+ * pessoa marcou a caixa do seletor.
+ *
+ * `source` é o que faz a publicação chegar como tela e como som de tela; sem ele a faixa entra
+ * como câmera e microfone — e a câmera o SFU recusa. `false` no terceiro argumento diz ao SDK
+ * que a faixa é dele: é o que permite ao ciclo de vida da publicação pará-la.
+ */
+export async function capturarTela(perfil: PerfilDeQualidade): Promise<LocalTrack[]> {
+  const { video, audio } = await abrirSeletor(perfil)
+  const faixas: LocalTrack[] = [embrulharTela(video)]
+  if (audio) faixas.push(embrulharSomDaTela(audio))
+  return faixas
+}
+
+export function embrulharTela(video: MediaStreamTrack): LocalVideoTrack {
   const tela = new LocalVideoTrack(video, undefined, false)
   tela.source = Track.Source.ScreenShare
-  // O hint sobrevive ao `applyConstraints` e diz ao encoder se o conteúdo é texto ou movimento.
-  tela.mediaStreamTrack.contentHint = CONTEUDOS[perfil.conteudo].contentHint
-  const faixas: LocalTrack[] = [tela]
+  return tela
+}
 
-  const [som] = fluxo.getAudioTracks()
-  if (som) {
-    const audio = new LocalAudioTrack(som, undefined, false)
-    audio.source = Track.Source.ScreenShareAudio
-    faixas.push(audio)
-  }
-
-  return faixas
+export function embrulharSomDaTela(som: MediaStreamTrack): LocalAudioTrack {
+  const audio = new LocalAudioTrack(som, undefined, false)
+  audio.source = Track.Source.ScreenShareAudio
+  return audio
 }

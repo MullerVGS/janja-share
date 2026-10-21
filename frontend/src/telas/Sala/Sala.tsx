@@ -107,15 +107,10 @@ export function Sala() {
 
   const telasAntes = useRef<string[]>([])
   useEffect(() => {
-    // Enquanto `trocarDeTela` está no meio do unpublish+republish da própria tela, o palco pisca
-    // sem a tela própria e volta a ter ela — não é uma mudança real.
-    // Ignorar aqui (sem nem avançar `telasAntes.current`) evita o duplo efeito colateral: seria
-    // expulsa do foco pela sumida, e roubada de volta pela heurística de "tela própria nova".
-    if (compartilhamento.trocandoTela) return
     const antes = telasAntes.current
     telasAntes.current = telasPublicadas
     setFoco((atual) => decidirFoco(atual, palco, { tipo: 'palcoMudou', telasAntes: antes }))
-  }, [palco, telasPublicadas, compartilhamento.trocandoTela])
+  }, [palco, telasPublicadas])
 
   useEffect(() => {
     if (!conviteCopiado) return

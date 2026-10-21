@@ -13,7 +13,7 @@ import type { Historico } from '../telemetria/historico'
 import type { Espectador } from '../telemetria/relato'
 import { NOME_DO_FLUXO_DA_TELA, OPCOES_DO_AUDIO_DA_TELA } from './audioDaTela'
 import { codecDePartida, escolherCorrecao } from './capacidade'
-import { capturarTela } from './captura'
+import { abrirSeletor, capturarTela, embrulharSomDaTela, type CapturaCrua } from './captura'
 import {
   decidir,
   GOVERNADOR_PARADO,
@@ -100,16 +100,11 @@ export interface Compartilhamento {
   alternar(): Promise<void>
   /** Para e começa de novo — reabre o seletor nativo. É a saída quando republicar não deu. */
   reiniciar(): Promise<void>
-  /** Reabre o seletor para escolher outra tela; cancelar deixa a de agora no ar. */
-  trocarDeTela(): Promise<void>
   /**
-   * True só durante o vaivém interno de unpublish+republish de `trocarDeTela` — a própria tela
-   * some e volta da lista de telas publicadas nesse meio-tempo. Existe para quem monta o palco
-   * (Sala.tsx) ignorar essa sumida/volta transitória: sem isso ela dispara duas vezes a
-   * heurística de "tela própria nova" de foco.ts — expulsa quem está vendo outra coisa quando a
-   * tela some, e rouba o foco de volta quando ela reaparece.
+   * Reabre o seletor e põe a fonte escolhida na mesma publicação; cancelar deixa a de agora no
+   * ar. Quem assiste não vê a Tela sair nem voltar.
    */
-  trocandoTela: boolean
+  trocarDeTela(): Promise<void>
 }
 
 function publicacaoDe(sala: Room, fonte: Track.Source): LocalTrackPublication | undefined {
@@ -167,22 +162,22 @@ export function useCompartilhamento(
   const [erro, setErro] = useState<string | null>(null)
   const [mudando, setMudando] = useState(false)
   const [republicando, setRepublicando] = useState(false)
-  const [trocandoTela, setTrocandoTela] = useState(false)
+  // Conta as capturas que entraram na publicação de agora: trocar a fonte não muda o `trackSid`,
+  // e o ajuste ao vivo precisa rodar de novo na faixa nova.
+  const [capturas, setCapturas] = useState(0)
   // O último pedido, para a republicação em curso saber se ficou para trás.
   const pedido = useRef(perfil)
   // O candidato da correção, sondado enquanto há tela no ar: `decidir` é função pura e não pode
   // esperar por uma Promise.
   const candidatoDeCodec = useRef<Codec | null>(null)
 
-  // Republicar e trocar de tela deixam a tela sem publicação por um instante; isso não é "parou".
+  // Republicar o codec deixa a tela sem publicação por um instante; isso não é "parou".
   //
-  // O teto que o governador aprendeu é propriedade do **link**, não do conteúdo: trocar a tela
-  // compartilhada não muda a banda de quem transmite. Deixar `ativo` cair na janela entre o
-  // unpublish e o publish faria o efeito do governador zerá-lo — numa live que subiu de 4 para
-  // 12 Mb/s, trocar de tela recomeçaria a busca do zero. E os dois outros leitores de `ativo`
-  // pagam junto: os botões da barra desmontam e remontam, e a gaveta de Qualidade se reabre por
-  // cima do palco de quem a tinha fechado.
-  const ativo = Boolean(publicacao) || republicando || trocandoTela
+  // O teto que o governador aprendeu é propriedade do **link**, não do codec: deixar `ativo`
+  // cair na janela entre o unpublish e o publish faria o efeito do governador zerá-lo. E os dois
+  // outros leitores de `ativo` pagam junto: os botões da barra desmontam e remontam, e a gaveta
+  // de Qualidade se reabre por cima do palco de quem a tinha fechado.
+  const ativo = Boolean(publicacao) || republicando
 
   // Os relatos chegam no ritmo de quem assiste — a cada 2 s, e um por pessoa. O governador não
   // anda com eles: ele anda uma vez por amostra do emissor, e lê o último relato de cada um.
@@ -233,8 +228,9 @@ export function useCompartilhamento(
     }, ATRASO_DO_AJUSTE_MS)
     return () => clearTimeout(espera)
     // `sid` identifica a publicação; `publicacao.track` é lido na hora para pegar o sender que
-    // costuma aparecer alguns milissegundos depois dela.
-  }, [sid, perfilEfetivo, publicacao])
+    // costuma aparecer alguns milissegundos depois dela. `capturas` é a fonte trocada por baixo
+    // da mesma publicação.
+  }, [sid, perfilEfetivo, publicacao, capturas])
 
   // `contentHint` é o equivalente sonoro do 'text'/'motion' do vídeo: diz ao encoder que o
   // conteúdo é música, não fala. Vale na faixa e sobrevive à republicação, então basta marcar
@@ -427,8 +423,8 @@ export function useCompartilhamento(
    * o mesmo `opções` — moldado para vídeo (`screenShareEncoding`, `videoCodec`...). É por isso
    * que o áudio da tela nascia em 48 kbps mono com DTX mesmo com `OPCOES_DO_AUDIO_DA_TELA`
    * existindo: o caminho comum de começar a compartilhar nunca chegava a usá-las. A saída é a
-   * mesma de `trocarDeTela` — capturar e publicar cada faixa com a opção dela, em vez de delegar
-   * as duas ao SDK de uma vez.
+   * de sempre: capturar e publicar cada faixa com a opção dela, em vez de delegar as duas ao SDK
+   * de uma vez.
    */
   const ligar = useCallback(
     async (desligarAntes: boolean) => {
@@ -482,43 +478,60 @@ export function useCompartilhamento(
   /**
    * Trocar a tela compartilhada sem sair do ar.
    *
-   * A ordem é a regra: o seletor nativo abre **antes** de qualquer despublicação, e a captura
-   * antiga só cai quando a nova já existe na mão. É isso que faz "cancelar não mexe em nada" ser
-   * verdade — `reiniciar` não serve aqui porque ele para primeiro e pergunta depois.
+   * A ordem é a regra: o seletor nativo abre **antes** de qualquer mudança, e a captura antiga só
+   * cai quando a nova já existe na mão — cancelar não mexe em nada.
+   *
+   * A imagem nova entra na publicação que já está no ar (`replaceTrack`): mesmo `trackSid`, mesmo
+   * sender, mesmo codec. Quem assiste não recebe despublicação nem publicação — o quadro só passa
+   * a mostrar outra coisa. O som acompanha a fonte nova: troca na mesma publicação quando as duas
+   * têm som, nasce quando só a nova tem, e sai do ar quando só a antiga tinha.
+   *
+   * O SDK reaplica os encodings da publicação ao trocar a faixa; o ajuste ao vivo roda de novo
+   * logo depois (`capturas`) para devolver o teto e o eixo do governador à captura nova.
    */
   const trocarDeTela = useCallback(async () => {
-    if (!sala || !publicacaoDe(sala, Track.Source.ScreenShare)) return
+    const video = sala ? (publicacaoDe(sala, Track.Source.ScreenShare)?.track as LocalVideoTrack | undefined) : undefined
+    if (!sala || !video) return
     const participante = sala.localParticipant
     setErro(null)
     setMudando(true)
-    let capturadas: LocalTrack[] = []
+    let crua: CapturaCrua | null = null
+    const emUso = new Set<MediaStreamTrack>()
     try {
-      capturadas = await capturarTela(perfil)
-      // Seletor sem vídeo não é troca de tela; a de agora continua valendo mais que nada.
-      const video = capturadas.find((faixa) => faixa.kind === Track.Kind.Video)
-      if (video) {
-        // Da despublicação até aqui embaixo a própria tela some e volta da lista de telas
-        // publicadas — `trocandoTela` avisa quem monta o palco pra ignorar esse blip.
-        setTrocandoTela(true)
-        await participante.setScreenShareEnabled(false)
-        setCodecPendente(null)
-        await participante.publishTrack(video, opcoesDePublicacao(comTetoDaSala(await perfilDePartida())))
-        const audio = capturadas.find((faixa) => faixa.kind === Track.Kind.Audio)
-        if (audio) await participante.publishTrack(audio, OPCOES_DO_AUDIO_DA_TELA)
+      crua = await abrirSeletor(perfil)
+      await video.replaceTrack(crua.video, false)
+      emUso.add(crua.video)
+
+      const audio = publicacaoDe(sala, Track.Source.ScreenShareAudio)?.track
+      if (crua.audio && audio) {
+        await audio.replaceTrack(crua.audio, false)
+        emUso.add(crua.audio)
+      } else if (crua.audio) {
+        const som = embrulharSomDaTela(crua.audio)
+        emUso.add(crua.audio)
+        try {
+          await participante.publishTrack(som, OPCOES_DO_AUDIO_DA_TELA)
+        } catch {
+          som.stop()
+          setErro('A tela nova está no ar, mas o som dela não entrou.')
+        }
+      } else if (audio) {
+        await participante.unpublishTrack(audio, true)
       }
+      setCapturas((n) => n + 1)
     } catch (falha) {
       const nome = falha instanceof Error ? falha.name : ''
       if (nome !== 'NotAllowedError' && nome !== 'AbortError') {
         setErro(falha instanceof Error ? falha.message : 'não foi possível trocar de tela')
       }
     } finally {
-      pararOQueNaoFoiAoAr(sala, capturadas)
+      // Captura aberta que não foi ao ar tem de morrer — senão o navegador segue dizendo que a
+      // pessoa compartilha uma janela que ninguém recebe.
+      for (const faixa of [crua?.video, crua?.audio]) if (faixa && !emUso.has(faixa)) faixa.stop()
       setMudando(false)
-      setTrocandoTela(false)
     }
-  }, [sala, perfil, perfilDePartida])
+  }, [sala, perfil])
 
-  /** Publica faixas capturadas fora daqui — a captura que a home abriu antes de navegar. */
   /**
    * Calar o som da tela é `mute()` na publicação, não despublicar: a faixa continua no ar,
    * quem assiste vê o silêncio chegar na hora, e voltar a falar não custa uma renegociação.
@@ -555,6 +568,5 @@ export function useCompartilhamento(
     alternar,
     reiniciar,
     trocarDeTela,
-    trocandoTela,
   }
 }

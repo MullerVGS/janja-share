@@ -17,7 +17,6 @@ import { chamadas, servir } from './apoio/servidorFalso'
 /** O que os hooks do SDK devolvem; o teste mexe aqui e re-renderiza. */
 const falso = vi.hoisted(() => ({
   compartilhando: false,
-  trocandoTela: false,
   sala: null as Room | null,
   versao: 0,
   queda: null as { tentativa: number } | null,
@@ -46,7 +45,7 @@ vi.mock('../src/telemetria/useTelemetria', async () => {
 
 vi.mock('../src/sala/useCompartilhamento', async () => {
   const { compartilhamentoFalso } = await import('./apoio/compartilhamentoFalso')
-  return { useCompartilhamento: () => compartilhamentoFalso({ ativo: falso.compartilhando, trocandoTela: falso.trocandoTela }) }
+  return { useCompartilhamento: () => compartilhamentoFalso({ ativo: falso.compartilhando }) }
 })
 
 /**
@@ -109,7 +108,6 @@ function gaveta() {
 
 afterEach(() => {
   falso.compartilhando = false
-  falso.trocandoTela = false
   falso.sala = null
   falso.versao = 0
   falso.queda = null
@@ -366,39 +364,6 @@ describe('sala: o palco', () => {
     minhaTela.isMuted = false
     await usuario.click(screen.getByRole('button', { name: 'mexer no palco' }))
 
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-  })
-
-  it('trocar de tela não arranca o destaque de quem escolheu assistir outra', async () => {
-    const usuario = userEvent.setup()
-    const minhaTela = publicacaoFalsa(Track.Source.ScreenShare)
-    // Array próprio (não literal inline): `trocarDeTela` de verdade despublica e republica a
-    // mesma fonte — para simular isso é preciso poder remover e devolver a publicação por fora.
-    const publicacoesDoEu = [minhaTela]
-    const eu = participanteFalso('ana-a1b2c3', 'Ana', publicacoesDoEu)
-    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
-    falso.sala = salaFalsa(eu, [bia])
-    const { container } = montarSala()
-    expect(palcoDe(container)).toHaveTextContent('Sua tela')
-
-    await usuario.click(screen.getByRole('button', { name: 'Pôr a tela de Bia no palco' }))
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-
-    // A partir daqui simula o vaivém interno de `trocarDeTela` (useCompartilhamento.ts): a
-    // própria tela some e volta da lista de publicadas enquanto `trocandoTela` é true.
-    falso.trocandoTela = true
-    publicacoesDoEu.length = 0
-    await usuario.click(screen.getByRole('button', { name: 'mexer no palco' })) // a tela some
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-
-    publicacoesDoEu.push(minhaTela)
-    await usuario.click(screen.getByRole('button', { name: 'mexer no palco' })) // a tela volta
-    // Sem a guarda de `trocandoTela`, a heurística de "tela própria nova" (foco.ts) roubaria o
-    // destaque de volta aqui — é exatamente o que este teste prova que não acontece.
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-
-    falso.trocandoTela = false
-    await usuario.click(screen.getByRole('button', { name: 'mexer no palco' })) // troca termina
     expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
   })
 })
