@@ -69,9 +69,12 @@ function montarNa(rota: string) {
 
 const endereco = () => screen.getByTestId('endereco').textContent
 
+/** Um instante só para o arquivo: o token montado duas vezes no mesmo teste tem de sair igual. */
+const VALIDADE_DO_TOKEN = Date.now() + 60 * 60 * 1000
+
 function credenciaisFixas(parcial: Partial<Credenciais> = {}): Credenciais {
   return {
-    ...credenciaisFalsas(Date.now() + 60 * 60 * 1000, 'Ana', 'eclipse'),
+    ...credenciaisFalsas(VALIDADE_DO_TOKEN, 'Ana', 'eclipse'),
     nomeDaSala: 'Eclipse',
     privada: false,
     fixa: true,
