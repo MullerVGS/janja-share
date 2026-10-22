@@ -104,12 +104,41 @@ describe('decidirFoco: peça em destaque que sai', () => {
     expect(resultado).toEqual({ chave: 'tela:b' })
   })
 
-  it('pessoa não é quadro: um foco numa chave de pessoa não se sustenta, mesmo com ela na sala', () => {
+  it('pessoa também é quadro (ADR 0016): o foco numa pessoa se sustenta enquanto ela está na sala', () => {
     const estado: EstadoDoFoco = { chave: 'pessoa:eu' }
     const resultado = decidirFoco(estado, palco([], [peca({ chave: 'pessoa:eu', ehTela: false })]), {
       tipo: 'palcoMudou',
       telasAntes: [],
     })
-    expect(resultado).toEqual({ chave: null })
+    expect(resultado).toEqual({ chave: 'pessoa:eu' })
+  })
+
+  it('a pessoa que sai leva o foco junto, e a primeira Tela assume', () => {
+    const resultado = decidirFoco({ chave: 'pessoa:bia' }, palco([peca({ chave: 'tela:caio' })], []), {
+      tipo: 'palcoMudou',
+      telasAntes: ['tela:caio'],
+    })
+    expect(resultado).toEqual({ chave: 'tela:caio' })
+  })
+
+  it('voltar à grade larga o foco e fica: Tela nova dos outros não tira ninguém da grade', () => {
+    const naGrade = decidirFoco({ chave: 'tela:bia' }, palco([peca({ chave: 'tela:bia' })]), { tipo: 'voltouAGrade' })
+    expect(naGrade).toEqual({ chave: null, grade: true })
+
+    const comTelaNova = decidirFoco(naGrade, palco([peca({ chave: 'tela:bia' }), peca({ chave: 'tela:caio' })]), {
+      tipo: 'palcoMudou',
+      telasAntes: ['tela:bia'],
+    })
+    expect(comTelaNova).toEqual({ chave: null, grade: true })
+  })
+
+  it('na grade, a própria Tela nova ainda vai ao foco — e o clique num quadro também tira da grade', () => {
+    const naGrade: EstadoDoFoco = { chave: null, grade: true }
+    const propria = decidirFoco(naGrade, palco([peca({ chave: 'tela:eu', proprio: true })]), {
+      tipo: 'palcoMudou',
+      telasAntes: [],
+    })
+    expect(propria).toEqual({ chave: 'tela:eu' })
+    expect(decidirFoco(naGrade, palco([]), { tipo: 'clicouNaPeca', chave: 'pessoa:bia' })).toEqual({ chave: 'pessoa:bia' })
   })
 })

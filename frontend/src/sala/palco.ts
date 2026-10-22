@@ -118,6 +118,8 @@ export function montarPalco(
       microfoneLigado: Boolean(microfone && !microfone.isMuted),
       falando: participante.isSpeaking,
       temAudio: Boolean(microfone),
+      qualidade: participante.connectionQuality,
+      redeFraca: !proprio && Boolean(redesFracas?.has(participante.identity)),
     })
 
     // A tela muda continua sendo quadro: some a imagem, fica o cartão dizendo que está pausada.
@@ -194,4 +196,14 @@ export function pecaEncerrada(peca: Peca): Peca {
     naoVejo: false,
     encerrada: true,
   }
+}
+
+/**
+ * A pessoa com problema de conexão, para os outros verem no quadro e na coluna: o SFU a perdeu
+ * (`Lost` — o único degrau da escala que vale visto de fora) ou ela mesma disse, no pulso, que a
+ * rede está fraca. A própria pessoa já vê o estado dela no painel de voz.
+ */
+export function comProblemaDeConexao(peca: Peca): boolean {
+  if (peca.proprio) return false
+  return peca.qualidade === ConnectionQuality.Lost || Boolean(peca.redeFraca)
 }

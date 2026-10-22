@@ -60,9 +60,12 @@ export function useAutoOcultar(
       reiniciarRelogio()
     }
 
+    // O toque não mexe ponteiro nenhum até encostar: tocar a tela também traz a interface.
     window.addEventListener('pointermove', aoMoverOPonteiro)
+    window.addEventListener('pointerdown', aoMoverOPonteiro)
     return () => {
       window.removeEventListener('pointermove', aoMoverOPonteiro)
+      window.removeEventListener('pointerdown', aoMoverOPonteiro)
       if (temporizador !== null) clearTimeout(temporizador)
     }
   }, [travado, atrasoMs, mostrar, ocultar])

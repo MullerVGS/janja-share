@@ -10,6 +10,11 @@ import type { Palco } from './palco'
 export interface EstadoDoFoco {
   /** Chave da peça em destaque; `null` enquanto não houver escolha nem tela a promover. */
   chave: string | null
+  /**
+   * A pessoa pediu a grade ("Voltar à grade"): nenhum quadro em foco, nem a primeira Tela. Só
+   * clicar num quadro ou começar a própria Tela tira daqui.
+   */
+  grade?: boolean
 }
 
 export const FOCO_INICIAL: EstadoDoFoco = { chave: null }
@@ -23,11 +28,14 @@ export const FOCO_INICIAL: EstadoDoFoco = { chave: null }
  * no palco: o palco esconde a tela muda, e mudo vai e volta — contar só o palco faria o desmudar
  * parecer uma tela nova.
  */
-export type EventoDeFoco = { tipo: 'clicouNaPeca'; chave: string } | { tipo: 'palcoMudou'; telasAntes: string[] }
+export type EventoDeFoco =
+  | { tipo: 'clicouNaPeca'; chave: string }
+  | { tipo: 'voltouAGrade' }
+  | { tipo: 'palcoMudou'; telasAntes: string[] }
 
-/** Só tela é quadro: pessoa presente na sala não sustenta um foco. */
+/** Telas e pessoas são quadros da grade (ADR 0016): as duas sustentam um foco. */
 function existeNoPalco(palco: Palco, chave: string): boolean {
-  return palco.telas.some((peca) => peca.chave === chave)
+  return palco.telas.some((peca) => peca.chave === chave) || palco.pessoas.some((peca) => peca.chave === chave)
 }
 
 /**
@@ -55,6 +63,9 @@ function aoMudarPalco(estado: EstadoDoFoco, palco: Palco, telasAntes: string[]):
   const propria = telaPropriaNova(palco, telasAntes)
   if (propria !== null) return { chave: propria }
 
+  // Quem pediu a grade fica nela: Tela nova dos outros aparece como quadro, sem roubar.
+  if (estado.grade) return estado
+
   // Tela nova não rouba de quem está em destaque.
   if (estado.chave !== null && existeNoPalco(palco, estado.chave)) return estado
 
@@ -67,6 +78,8 @@ export function decidirFoco(estado: EstadoDoFoco, palco: Palco, evento: EventoDe
   switch (evento.tipo) {
     case 'clicouNaPeca':
       return { chave: evento.chave }
+    case 'voltouAGrade':
+      return { chave: null, grade: true }
     case 'palcoMudou':
       return aoMudarPalco(estado, palco, evento.telasAntes)
   }

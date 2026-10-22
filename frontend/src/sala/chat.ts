@@ -82,3 +82,15 @@ export function novaIdentidadeLocal(): string {
   contador += 1
   return `m${contador}`
 }
+
+/** Mensagens do mesmo autor com menos que isto entre elas ficam no mesmo grupo. */
+export const JANELA_DO_GRUPO_MS = 7 * 60 * 1000
+
+/**
+ * Se a mensagem abre um grupo (leva avatar, nome e hora) ou continua o da anterior: mesmo
+ * autor, menos de 7 minutos depois.
+ */
+export function abreGrupo(anterior: MensagemDoChat | undefined, atual: MensagemDoChat): boolean {
+  if (!anterior) return true
+  return anterior.nome !== atual.nome || atual.ts - anterior.ts > JANELA_DO_GRUPO_MS
+}
