@@ -162,7 +162,7 @@ export function Gaveta({
           title="Fechar painel"
           onClick={aoFechar}
         >
-          <IconeFechar tamanho={14} />
+          <IconeFechar tamanho={18} />
         </button>
       </div>
 

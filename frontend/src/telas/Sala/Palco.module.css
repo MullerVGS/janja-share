@@ -1,39 +1,31 @@
-/* O palco ocupa todo o centro da sala: o destaque à esquerda, as miniaturas à direita. O
-   respiro de cima e de baixo é o que a faixa de avatares e a barra de controles ocupam
-   flutuando — nenhum dos dois pode cobrir a imagem. */
+/* O palco ocupa a área preta da chamada: a grade, ou o quadro em foco com a faixa embaixo. O
+   respiro de cima e de baixo é o do cabeçalho e da barra, que flutuam sobre o preto — nenhum
+   dos dois cobre um quadro. */
 .palco {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: row;
-  gap: var(--e3);
-  padding: 56px var(--e4) 90px;
+  flex-direction: column;
+  gap: var(--e2);
+  padding: 56px var(--e4) 88px;
   min-width: 0;
   min-height: 0;
   transition: padding 0.2s ease;
 }
 
-/* Na imersão o respiro some: topo e barra passam a flutuar sobre a imagem e somem com o mouse
-   parado, e o quadro fica com a janela toda — que é o que o clique pediu. */
+/* Na imersão o respiro some: cabeçalho e barra passam a flutuar sobre a imagem e somem com o
+   mouse parado, e o quadro fica com a janela toda. */
 .palco[data-imersao] {
   padding: 0;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 720px) {
   .palco {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 680px) {
-  .palco {
-    padding: 52px 10px 78px;
+    padding: 56px var(--e2) 92px;
   }
 
-  /* Sem respiro, as pílulas do rodapé cairiam em cima da barra de controles, que no estreito
-     ocupa quase a largura toda: sobem para a linha logo acima dela. */
   .palco[data-imersao] .comAInterface {
-    bottom: 78px;
+    bottom: 92px;
   }
 }
 
@@ -43,9 +35,8 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-radius: var(--raio-lg);
-  border: 1px solid var(--linha);
-  background: var(--vidro-do-quadro);
+  border-radius: var(--raio-do-quadro);
+  background: #000;
   animation: shCrescer 0.16s ease;
 }
 
@@ -108,7 +99,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--e4);
-  background: color-mix(in srgb, var(--fundo) 70%, transparent);
+  background: rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
 
@@ -189,19 +180,18 @@
   align-items: center;
   gap: var(--e2);
   min-width: 0;
-  padding: 5px 12px 5px 10px;
-  border-radius: var(--raio-pilula);
-  background: color-mix(in srgb, var(--fundo) 80%, transparent);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--linha);
-  color: var(--texto);
-  font-size: var(--texto-sm);
+  padding: 6px 12px;
+  border-radius: var(--raio-do-quadro);
+  background: rgba(0, 0, 0, 0.56);
+  color: #fff;
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
 }
 
 .iconeDaIdentidade {
   flex: none;
   display: flex;
-  color: var(--acao);
+  color: #fff;
 }
 
 .nomeDoQuadro {
@@ -244,9 +234,6 @@
   gap: 7px;
   text-align: center;
   color: var(--texto-fraquissimo);
-  border: 1px solid var(--linha);
-  border-radius: var(--raio-lg);
-  background: var(--vidro-do-quadro);
 }
 
 .vazio strong {

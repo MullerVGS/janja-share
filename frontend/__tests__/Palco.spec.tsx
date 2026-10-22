@@ -9,7 +9,9 @@ import { habilitarTelaCheia } from './apoio/navegador'
 import { peca, volumesFalsos } from './apoio/pecas'
 
 interface Cenario {
+  /** O quadro em foco; `null` (com outros quadros) é a grade. */
   emDestaque?: Peca | null
+  /** Os outros quadros: a faixa sob o foco, ou a grade inteira. */
   miniaturas?: Peca[]
   aoFocar?: (chave: string) => void
   aoAlternarImersao?: () => void
@@ -44,8 +46,8 @@ function Palquinho({
   const zoom = useZoom(emDestaque ? [emDestaque, ...miniaturas] : miniaturas)
   return (
     <Palco
-      emDestaque={emDestaque}
-      miniaturas={miniaturas}
+      quadros={emDestaque ? [emDestaque, ...miniaturas] : miniaturas}
+      emFoco={emDestaque}
       aoFocar={aoFocar}
       aoAlternarImersao={aoAlternarImersao}
       volumes={volumes}

@@ -1,64 +1,39 @@
-.sala {
+/* A chamada: a área preta à esquerda e a gaveta (o chat) à direita. */
+.chamada {
   position: relative;
-  height: 100%;
-  min-width: 0;
-  display: flex;
-  overflow: hidden;
-  background: var(--fundo);
-}
-
-.conteudoDaSala {
+  flex: 1;
   min-width: 0;
   min-height: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.corpoDaSala {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
   display: flex;
   overflow: hidden;
+}
+
+.areaDaChamada {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  background: var(--chamada);
 }
 
 .areaDoPalco {
   position: relative;
+  flex: 1;
   min-width: 0;
   min-height: 0;
-  flex: 1;
   overflow: hidden;
 }
 
-/* O véu das camadas: cobre o palco inteiro atrás da barra lateral ou da gaveta, e fechá-las é
-   clicar em qualquer lugar dele. */
+/* O véu da gaveta em camada: cobre a chamada atrás dela, e fechá-la é clicar em qualquer lugar. */
 .veu {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: color-mix(in srgb, var(--fundo) 65%, black);
+  background: var(--veu);
 }
 
-/* O topo na imersão: fora da coluna, por cima do palco e no mesmo relógio da moldura. Cobre a
-   largura do palco e só ela — a gaveta, quando aberta, fica ao lado e continua inteira. */
-.topoFlutuante {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 12;
-  transition: opacity 0.25s ease;
-}
-
-.topoFlutuante[data-interface='oculta'] {
-  opacity: 0;
-  pointer-events: none;
-  transition-duration: 0.45s;
-}
-
-/* A faixa de avatares e a barra de controles flutuam sobre o palco. O contêiner não captura
+/* Cabeçalho e barra flutuam sobre o preto e somem com o mouse parado. O contêiner não captura
    cliques; somente as peças interativas dentro dele voltam a receber ponteiro. */
 .interface {
   position: absolute;
@@ -67,23 +42,13 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px var(--e3) 14px;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.2s ease-in-out;
 }
 
 .interface[data-interface='oculta'] {
   opacity: 0;
   pointer-events: none;
-  transition-duration: 0.45s;
-}
-
-.alto,
-.baixo {
-  max-width: 100%;
-  display: flex;
-  justify-content: center;
 }
 
 .alto > *,
@@ -96,13 +61,50 @@
   pointer-events: none;
 }
 
-/* Erro é alarme, não moldura: permanece por cima de navegação, palco e painéis. */
+.baixo {
+  display: flex;
+  justify-content: center;
+  padding: var(--e4);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+}
+
+/* "Você está sozinho(a) aqui": no meio da grade, por cima do próprio quadro. */
+.sozinho {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  z-index: 5;
+  transform: translateX(-50%);
+  width: min(360px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e2);
+  padding: var(--e4);
+  border-radius: var(--raio-lg);
+  background: var(--superficie-alta);
+  box-shadow: var(--sombra-lg);
+  text-align: center;
+}
+
+.sozinho strong {
+  color: var(--texto-forte);
+  font-size: var(--texto-base);
+  font-weight: var(--peso-forte);
+}
+
+.sozinho span {
+  color: var(--texto-fraco);
+  font-size: var(--texto-md);
+}
+
+/* Os avisos: por cima de tudo, no alto da página, abaixo do cabeçalho. */
 .avisos {
   position: absolute;
-  top: calc(var(--altura-do-topo) + var(--e3));
+  top: calc(var(--altura-do-cabecalho) + var(--e2));
   left: 50%;
   z-index: 60;
-  width: min(580px, calc(100% - var(--e10)));
+  width: min(580px, calc(100% - 32px));
   display: flex;
   flex-direction: column;
   gap: var(--e2);
@@ -113,19 +115,30 @@
   display: none;
 }
 
+.textoDoDialogo {
+  margin: 0;
+  color: var(--texto-fraco);
+  font-size: var(--texto-md);
+}
+
+.acoesDoDialogo {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--e2);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .interface,
-  .topoFlutuante {
+  .interface {
     transition: none;
   }
 }
 
-@media (max-width: 680px) {
-  .interface {
-    padding: 10px var(--e2) 12px;
+@media (max-width: 720px) {
+  .baixo {
+    padding: var(--e3) var(--e2) var(--e4);
   }
 
-  .avisos {
-    width: calc(100% - var(--e4));
+  .sozinho {
+    bottom: 108px;
   }
 }

@@ -11,9 +11,9 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px;
+  padding: var(--e4) 0 var(--e2);
   scrollbar-width: thin;
+  scrollbar-color: #5f606a transparent;
 }
 
 .vazio {
@@ -21,73 +21,131 @@
   max-width: 28ch;
   padding: var(--e5);
   color: var(--texto-fraquissimo);
-  font-size: var(--texto-sm);
+  font-size: var(--texto-md);
   text-align: center;
 }
 
+/* A mensagem: 72 px de recuo — o avatar de 40 px a 16 px da borda e o respiro até o texto. */
 .mensagem {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  position: relative;
+  min-height: 22px;
+  padding: 2px var(--e4) 2px 72px;
 }
 
-.conteudoDaMensagem {
-  min-width: 0;
+.mensagem[data-abre-grupo] {
+  min-height: 44px;
+  margin-top: 17px;
+}
+
+.mensagem[data-abre-grupo]:first-child {
+  margin-top: 0;
+}
+
+.mensagem:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.avatar {
+  position: absolute;
+  left: var(--e4);
+  top: 4px;
 }
 
 .linhaDoAutor {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin-bottom: 2px;
+  gap: var(--e2);
+  margin: 0;
+  font-size: inherit;
+  line-height: 22px;
+  letter-spacing: 0;
 }
 
 .autor {
-  font-size: var(--texto-xs);
-  color: var(--texto-fraquissimo);
-}
-
-.propria .autor {
-  color: var(--acento-300);
+  color: var(--texto-forte);
+  font-size: var(--texto-base);
+  font-weight: var(--peso-medio);
 }
 
 .hora {
-  font-size: 10px;
-  color: var(--neutro-700);
+  color: var(--texto-da-coluna);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
   font-variant-numeric: tabular-nums;
+}
+
+/* Nas mensagens do meio do grupo, a hora aparece só no hover, na calha do avatar. */
+.horaAoLado {
+  position: absolute;
+  left: 0;
+  width: 56px;
+  top: 2px;
+  color: var(--texto-da-coluna);
+  font-size: 11px;
+  line-height: 22px;
+  text-align: right;
+  visibility: hidden;
+}
+
+.mensagem:hover .horaAoLado {
+  visibility: visible;
 }
 
 .texto {
   margin: 0;
-  color: var(--neutro-200);
-  font-size: var(--texto-md);
-  line-height: 1.45;
+  color: var(--texto);
+  font-size: var(--texto-base);
+  line-height: 22px;
   word-break: break-word;
   white-space: pre-wrap;
 }
 
 .falha {
   margin: 0;
-  padding: 0 14px var(--e2);
-  font-size: var(--texto-sm);
+  padding: 0 var(--e4) var(--e2);
+  font-size: var(--texto-md);
   color: var(--perigo-texto);
 }
 
 .formulario {
   flex: none;
+  padding: 0 var(--e2) var(--e2);
+}
+
+/* A caixa de texto: 44 px, canto de 8 px, um degrau acima do fundo. */
+.caixaDeTexto {
   display: flex;
-  gap: var(--e2);
-  padding: var(--e3);
-  border-top: 1px solid var(--linha);
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--e1) 0 var(--e4);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-md);
+  background: var(--superficie-alta);
 }
 
 .entrada {
-  composes: entrada from '../../ui/Campo.module.css';
   flex: 1;
   min-width: 0;
+  padding: 11px 0;
+  border: none;
+  background: none;
+  color: var(--texto);
+  font-size: var(--texto-base);
+  line-height: 22px;
 }
 
-/* O enviar é o primário do tema — contorno de acento —, reduzido ao quadrado do ícone. */
+.entrada:focus-visible {
+  outline: none;
+}
+
+.caixaDeTexto:focus-within {
+  border-color: var(--linha-forte);
+}
+
+.entrada::placeholder {
+  color: #6d6f78;
+}
+
 .enviar {
   width: 36px;
   height: 36px;
@@ -96,18 +154,17 @@
   place-items: center;
   padding: 0;
   cursor: pointer;
-  border: 1px solid var(--acao);
+  border: none;
   border-radius: var(--raio-md);
   background: transparent;
-  color: var(--acao);
-  transition: background-color 0.12s ease;
+  color: var(--texto-fraco);
 }
 
 .enviar:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--acao) 12%, transparent);
+  color: var(--texto-forte);
 }
 
 .enviar:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }

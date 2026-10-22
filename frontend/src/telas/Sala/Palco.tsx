@@ -10,17 +10,17 @@ import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
 import { Botao } from '../../ui/Botao'
 import { IconePessoas, IconeTelaNoAr } from '../../ui/Icone'
+import { Faixa, Grade, SeloAoVivo } from './Quadros'
 import { usePiP, useTelaCheia } from './assistir'
 import { Video } from './Midia'
 import { Pilula } from './Pilula'
-import { Tira } from './Tira'
 import estilos from './Palco.module.css'
 
 interface Props {
-  /** A tela que ocupa o palco; `null` quando não há tela nenhuma no ar. */
-  emDestaque: Peca | null
-  /** Os outros quadros, na coluna de miniaturas — vazio na imersão. */
-  miniaturas: Peca[]
+  /** Todos os quadros da chamada, Telas e Pessoas, na ordem em que a grade os mostra. */
+  quadros: Peca[]
+  /** O quadro em foco (grande, com a faixa embaixo); `null` é a grade. */
+  emFoco: Peca | null
   aoFocar(chave: string): void
   /** O clique único na imagem: entra e sai da imersão. */
   aoAlternarImersao(): void
@@ -178,7 +178,7 @@ function Destaque({
   aoFecharEncerrada,
   aoDeixarDeVer,
   aoVerDeNovo,
-}: Omit<Props, 'emDestaque' | 'miniaturas' | 'aoFocar' | 'imersao'> & { peca: Peca }) {
+}: Omit<Props, 'quadros' | 'emFoco' | 'aoFocar' | 'imersao'> & { peca: Peca }) {
   const quadro = useRef<HTMLDivElement>(null)
   const moldura = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -215,7 +215,7 @@ function Destaque({
           <IconeTelaNoAr tamanho={15} />
         </span>
         <span className={estilos.nomeDoQuadro}>{nomeDoQuadro(peca)}</span>
-        <span className={estilos.pontoAoVivo} aria-hidden="true" />
+        {!peca.encerrada && <SeloAoVivo />}
       </div>
 
       <Pilula
@@ -292,15 +292,15 @@ function Destaque({
 }
 
 /**
- * O palco: uma tela em destaque ocupando o espaço e as outras em miniatura ao lado.
+ * O palco da chamada: a grade com todos os quadros — Telas e Pessoas, do mesmo tamanho — ou um
+ * quadro em foco, grande, com os outros numa faixa embaixo (ADR 0016).
  *
- * Quem decide o destaque é `foco.ts`; aqui só se desenha. Não há grade nem quadro de pessoa:
- * presença mora na faixa de avatares e na barra lateral, não em um retângulo do tamanho de uma
- * tela.
+ * Quem decide o foco é `foco.ts`; aqui só se desenha. A Tela em foco é o `Destaque`, com zoom,
+ * cartão de estado e as pílulas; a Pessoa em foco é o quadro dela, grande.
  */
 export function Palco({
-  emDestaque,
-  miniaturas,
+  quadros,
+  emFoco,
   aoFocar,
   aoAlternarImersao,
   volumes,
@@ -314,12 +314,15 @@ export function Palco({
   aoDeixarDeVer,
   aoVerDeNovo,
 }: Props) {
+  const modo = emFoco ? 'destaque' : quadros.length > 0 ? 'grade' : 'vazio'
+  const outros = emFoco && !imersao ? quadros.filter((quadro) => quadro.chave !== emFoco.chave) : []
+
   return (
-    <div className={estilos.palco} data-modo={emDestaque ? 'destaque' : 'vazio'} data-imersao={imersao || undefined}>
-      {emDestaque ? (
+    <div className={estilos.palco} data-modo={modo} data-imersao={imersao || undefined}>
+      {emFoco?.ehTela && (
         <Destaque
-          key={emDestaque.chave}
-          peca={emDestaque}
+          key={emFoco.chave}
+          peca={emFoco}
           aoAlternarImersao={aoAlternarImersao}
           volumes={volumes}
           interfaceVisivel={interfaceVisivel}
@@ -331,7 +334,12 @@ export function Palco({
           aoDeixarDeVer={aoDeixarDeVer}
           aoVerDeNovo={aoVerDeNovo}
         />
-      ) : (
+      )}
+      {emFoco && !emFoco.ehTela && (
+        <Grade pecas={[emFoco]} aoEscolher={aoFocar} volumes={volumes} minhaConexao={minhaConexao} />
+      )}
+      {modo === 'grade' && <Grade pecas={quadros} aoEscolher={aoFocar} volumes={volumes} minhaConexao={minhaConexao} />}
+      {modo === 'vazio' && (
         <div className={estilos.vazio}>
           <span className={estilos.iconeVazio} aria-hidden="true">
             <IconePessoas tamanho={26} />
@@ -341,7 +349,7 @@ export function Palco({
         </div>
       )}
 
-      <Tira pecas={miniaturas} aoEscolher={aoFocar} volumes={volumes} visivel={interfaceVisivel} />
+      <Faixa pecas={outros} aoEscolher={aoFocar} volumes={volumes} minhaConexao={minhaConexao} visivel={interfaceVisivel} />
     </div>
   )
 }

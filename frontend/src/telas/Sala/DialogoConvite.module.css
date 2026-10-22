@@ -1,0 +1,44 @@
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+}
+
+.rotulo {
+  color: var(--texto-fraco);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-forte);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* O campo e o botão numa caixa só, como um campo com ação. */
+.campo {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  padding: 4px 4px 4px 0;
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio-md);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.campo[data-copiado] {
+  border-color: var(--positivo);
+}
+
+.link {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: var(--texto);
+  font-size: var(--texto-md);
+}
+
+.guarda {
+  margin: 0;
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-xs);
+}

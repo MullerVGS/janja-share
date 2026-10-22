@@ -1,39 +1,31 @@
-/* Flutuante e centrada no rodapé do palco. A caixa é uma pílula de vidro: contorno de divisor
-   sobre superfície translúcida, para dar contraste em cima de telas claras sem virar bloco. */
+/* A barra da chamada: botões soltos de 48 px, lado a lado, centrados no rodapé da área preta.
+   Nada de caixa em volta — cada botão é a própria região, com o fio claro de 1 px. */
 .barra {
   max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--e2);
   overflow-x: auto;
-  padding: 6px;
-  border-radius: var(--raio-lg);
-  border: 1px solid var(--linha);
-  background: color-mix(in srgb, var(--superficie) 90%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow: var(--sombra-md);
+  padding: 2px;
   scrollbar-width: none;
 }
 
-/* Ícone em cima, legenda embaixo: o botão é largo o bastante para a palavra mais comprida
-   ("Compartilhar") sem que a barra vire uma fileira de larguras diferentes. */
 .botao {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
+  display: grid;
+  place-items: center;
   flex: none;
-  min-width: 64px;
-  height: 52px;
-  padding: 0 6px;
+  width: 56px;
+  height: 48px;
+  padding: 0;
   cursor: pointer;
   border-radius: var(--raio-botao-da-barra);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--neutro-200);
-  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  border: 1px solid var(--linha-muda);
+  background: #242429;
+  color: var(--texto-forte);
+  transition:
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
 }
 
 .icone {
@@ -41,14 +33,8 @@
   display: flex;
 }
 
-.legenda {
-  font-size: var(--texto-xs);
-  line-height: 1;
-  white-space: nowrap;
-}
-
 .botao:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--texto) 9%, transparent);
+  background: #303036;
 }
 
 .botao:disabled {
@@ -56,65 +42,86 @@
   cursor: not-allowed;
 }
 
-/* Microfone fechado: o botão apagado é o estado, não o contorno. */
+/* Microfone fechado: tinta vermelha e o ícone em vermelho. */
 .botao[data-tom='fechado'] {
-  background: var(--neutro-800);
-  color: var(--neutro-400);
+  background: rgba(210, 45, 57, 0.16);
+  color: var(--perigo-texto);
 }
 
-/* A sua tela no ar — o único halo da interface. */
+.botao[data-tom='fechado']:hover:not(:disabled) {
+  background: rgba(210, 45, 57, 0.24);
+}
+
+/* A sua tela no ar: o botão claro, ícone escuro. */
 .botao[data-tom='aceso'] {
-  border-color: var(--acao);
-  color: var(--acao);
-  box-shadow: var(--brilho-do-acento);
+  background: #fff;
+  color: #2c2d32;
 }
 
-.botao[data-tom='ativo'] {
-  background: color-mix(in srgb, var(--acao) 14%, transparent);
-  color: var(--acao);
+.botao[data-tom='aceso']:hover:not(:disabled) {
+  background: #e0e0e3;
 }
 
-.botao[data-tom='convite'] {
-  color: var(--acento-300);
-}
-
-.botao[data-tom='convite']:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--acao) 12%, transparent);
-}
-
-/* Sair é o desligar de uma chamada: vermelho cheio, impossível de confundir com o resto. */
+/* Sair: vermelho cheio. */
 .botao[data-tom='perigo'] {
-  background: var(--perigo-forte);
-  color: var(--texto);
+  width: 64px;
+  background: var(--perigo-cheio);
+  color: #fff;
 }
 
 .botao[data-tom='perigo']:hover:not(:disabled) {
-  background: var(--perigo);
+  background: var(--perigo-cheio-hover);
+}
+
+.botao[data-tom='perigo']:active:not(:disabled) {
+  background: var(--perigo-cheio-ativo);
 }
 
 .separador {
   width: 1px;
-  height: 22px;
+  height: 24px;
   flex: none;
-  margin: 0 3px;
+  margin: 0 var(--e1);
   background: var(--linha);
 }
 
 .contador {
   position: absolute;
-  top: -5px;
-  right: -9px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
+  top: -8px;
+  right: -12px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--raio-pilula);
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
-  font-size: 9px;
+  background: var(--perigo-cheio);
+  color: #fff;
+  font-size: 11px;
   font-weight: var(--peso-forte);
+}
+
+.ancoraDoAviso {
+  position: relative;
+  display: flex;
+}
+
+.aviso {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: var(--raio-md);
+  background: var(--superficie-mais-alta);
+  box-shadow: var(--sombra-md);
+  color: var(--texto-forte);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* A lista de quem assiste, no suspenso aberto pelo contador. */
@@ -133,25 +140,16 @@
   color: var(--texto-fraco);
 }
 
-@media (max-width: 520px) {
+/* No celular os botões viram círculos de 56 px, como no app de bolso. */
+@media (max-width: 720px) {
   .barra {
-    gap: 2px;
-    padding: 5px;
+    gap: var(--e3);
   }
 
-  /* No estreito a legenda sai e o botão volta a ser só o ícone — a dica e o nome acessível
-     continuam dizendo o que ele faz. */
-  .botao {
-    min-width: 40px;
-    height: 40px;
-    padding: 0;
-  }
-
-  .legenda {
-    display: none;
-  }
-
-  .separador {
-    margin: 0 1px;
+  .botao,
+  .botao[data-tom='perigo'] {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
   }
 }

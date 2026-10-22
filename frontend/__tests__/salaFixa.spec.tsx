@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RoomEvent, type Room } from 'livekit-client'
 import { Route, Routes, useLocation } from 'react-router-dom'
@@ -136,14 +136,16 @@ describe('sala fixa: o link é a identidade', () => {
     const daquiAUmaHora = Date.now() + 60 * 60 * 1000
     guardarSessao(credenciaisFixas(), daquiAUmaHora)
     const { unmount } = montarNa('/sala/eclipse?k=nova.k')
-    expect(screen.getByText('Fica guardada por 7 dias depois que todos saírem.')).toBeInTheDocument()
     expect(screen.getByText('fixa')).toHaveAttribute('title', 'Fica guardada por 7 dias depois que todos saírem.')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Convidar' })[0]!)
+    const convite = screen.getByRole('dialog', { name: 'Convide a turma para Eclipse' })
+    expect(convite).toHaveTextContent('Fica guardada por 7 dias depois que todos saírem.')
+    expect(within(convite).getByLabelText('Link da sala')).toHaveValue(`${window.location.origin}/sala/eclipse?k=nova.k`)
     unmount()
 
     guardarSessao(credenciaisFixas({ slug: 'rapida', nomeDaSala: 'Rápida', fixa: false, assinatura: null }), daquiAUmaHora)
     montarNa('/sala/rapida')
-    expect(screen.getByText('Some quando todos saírem.')).toBeInTheDocument()
-    expect(screen.getByText('efêmera')).toBeInTheDocument()
+    expect(screen.getByText('efêmera')).toHaveAttribute('title', 'Some quando todos saírem.')
     expect(endereco()).toBe('/sala/rapida')
     expect(lerSuasSalas().map((sala) => sala.slug)).toEqual(['eclipse'])
   })

@@ -8,7 +8,7 @@
   flex-direction: column;
   min-height: 0;
   border-left: 1px solid var(--linha);
-  background: var(--fundo);
+  background: var(--base);
   transition: width 0.18s ease, flex-basis 0.18s ease, transform 0.18s ease, visibility 0.18s;
 }
 
@@ -49,7 +49,7 @@
 
 .divisor:hover::after,
 .divisor:focus-visible::after {
-  background: var(--acao);
+  background: var(--linha-forte);
 }
 
 .divisor:focus-visible {
@@ -61,12 +61,12 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  margin: 10px 12px 0;
+  margin: var(--e2) var(--e2) 0;
   padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, var(--acao) 30%, transparent);
+  border: 1px solid var(--linha);
   border-radius: var(--raio-md);
-  background: color-mix(in srgb, var(--acao) 7%, transparent);
-  color: var(--acento-200);
+  background: var(--base-alta);
+  color: var(--texto-fraco);
   font-size: var(--texto-xs);
   font-variant-numeric: tabular-nums;
   text-align: left;
@@ -88,7 +88,7 @@
 .iconeDoResumo {
   flex: none;
   display: flex;
-  color: var(--acao);
+  color: var(--positivo-texto);
 }
 
 .resumo[data-tom='atencao'] .iconeDoResumo {
@@ -109,7 +109,7 @@
 
 .estadoDoResumo {
   flex: none;
-  color: var(--acao);
+  color: var(--positivo-texto);
 }
 
 .resumo[data-tom='atencao'] .estadoDoResumo {
@@ -125,7 +125,8 @@
   display: flex;
   align-items: center;
   gap: var(--e2);
-  padding: var(--e2) 10px;
+  height: calc(var(--altura-do-cabecalho) + 1px);
+  padding: 0 var(--e2) 0 var(--e3);
   border-bottom: 1px solid var(--linha);
 }
 
@@ -143,43 +144,45 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
+  gap: 6px;
+  padding: 4px 8px;
   border: none;
   border-radius: var(--raio-sm);
   background: transparent;
-  color: var(--texto-fraquissimo);
-  font-size: var(--texto-sm);
+  color: var(--texto-fraco);
+  font-size: var(--texto-base);
+  font-weight: var(--peso-medio);
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .aba:hover {
-  color: var(--acento-200);
+  background: var(--interativo-hover);
+  color: var(--texto);
 }
 
 .aba[aria-selected='true'] {
-  background: color-mix(in srgb, var(--acao) 12%, transparent);
-  color: var(--acento-200);
+  background: var(--interativo-escolhido);
+  color: var(--texto-forte);
 }
 
 .contador {
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--raio-pilula);
-  background: var(--acao);
-  color: var(--texto-sobre-acento);
-  font-size: 9px;
+  background: var(--perigo-cheio);
+  color: #fff;
+  font-size: 11px;
   font-weight: var(--peso-forte);
 }
 
 .fechar {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   flex: none;
   display: grid;
   place-items: center;
@@ -215,14 +218,14 @@
   .gaveta {
     position: fixed;
     inset: 0 0 0 auto;
-    width: min(330px, 90vw);
+    width: min(380px, 100vw);
     flex-basis: auto;
     z-index: 50;
     box-shadow: var(--sombra-md);
   }
 
   .gaveta:not([data-aberta]) {
-    width: min(330px, 90vw);
+    width: min(380px, 100vw);
     transform: translateX(100%);
   }
 

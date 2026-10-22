@@ -30,9 +30,6 @@ function montarBarra(parcial: Partial<Props> = {}) {
     sala: null,
     compartilhamento: compartilhamentoFalso(),
     quemAssiste: [],
-    chatAberto: false,
-    naoLidasNoChat: 0,
-    aoAlternarChat: vi.fn(),
     aoAbrirQualidade: vi.fn(),
     aoFalhar: vi.fn(),
     aoSair: vi.fn(),
@@ -44,10 +41,25 @@ function montarBarra(parcial: Partial<Props> = {}) {
 const rotulos = () => screen.getAllByRole('button').map((botao) => botao.getAttribute('aria-label'))
 
 describe('a barra flutuante', () => {
-  it('sem transmitir: microfone, tela, chat e a saída — nada de câmera, trocar ou áudio da tela', () => {
+  it('sem transmitir: microfone, tela e a saída — nada de câmera, trocar ou áudio da tela', () => {
     montarBarra()
 
-    expect(rotulos()).toEqual(['Abrir microfone', 'Compartilhar tela', 'Chat', 'Sair da sala'])
+    expect(rotulos()).toEqual(['Abrir microfone', 'Compartilhar tela', 'Sair da sala'])
+  })
+
+  it('com um quadro em foco, a barra ganha a volta à grade antes da saída', async () => {
+    const usuario = userEvent.setup()
+    const aoVoltarAGrade = vi.fn()
+    montarBarra({ aoVoltarAGrade })
+
+    expect(rotulos()).toEqual(['Abrir microfone', 'Compartilhar tela', 'Voltar à grade', 'Sair da sala'])
+    await usuario.click(screen.getByRole('button', { name: 'Voltar à grade' }))
+    expect(aoVoltarAGrade).toHaveBeenCalledOnce()
+  })
+
+  it('o balão de "silenciado" aparece junto do microfone', () => {
+    montarBarra({ avisoDoMicrofone: 'Você está silenciado(a)!' })
+    expect(screen.getByRole('status')).toHaveTextContent('Você está silenciado(a)!')
   })
 
   it('no ar, o botão da tela vira "No ar" e abre o menu — trocar, som e qualidade saem da barra', async () => {
@@ -58,7 +70,6 @@ describe('a barra flutuante', () => {
       'Abrir microfone',
       'Sua tela está no ar — opções',
       'Ninguém assistindo ainda',
-      'Chat',
       'Sair da sala',
     ])
     const botao = screen.getByRole('button', { name: 'Sua tela está no ar — opções' })
@@ -81,14 +92,12 @@ describe('a barra flutuante', () => {
     expect(itens[0]).toHaveFocus()
   })
 
-  it('cada botão escreve o que faz embaixo do ícone, e compartilhar vira "No ar"', () => {
-    const legendas = () => screen.getAllByRole('button').map((botao) => botao.textContent)
-
+  it('os botões são só ícone: o nome mora no rótulo e na dica', () => {
     montarBarra()
-    expect(legendas()).toEqual(['Microfone', 'Compartilhar', 'Chat', 'Sair'])
-
-    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) as Compartilhamento })
-    expect(legendas().slice(4)).toEqual(['Microfone', 'No ar', 'Assistindo', 'Chat', 'Sair'])
+    for (const botao of screen.getAllByRole('button')) {
+      expect(botao).toHaveTextContent('')
+      expect(botao).toHaveAttribute('title', botao.getAttribute('aria-label'))
+    }
   })
 
   it('clicar em compartilhar chama compartilhamento.alternar', async () => {
@@ -171,7 +180,7 @@ describe('a barra flutuante', () => {
 
     it('clicar fora fecha o menu', async () => {
       const { usuario } = await abrirMenu()
-      await usuario.click(screen.getByRole('button', { name: 'Chat' }))
+      await usuario.click(screen.getByRole('button', { name: 'Sair da sala' }))
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
   })
@@ -205,23 +214,6 @@ describe('a barra flutuante', () => {
     expect(aoFalhar).toHaveBeenLastCalledWith(null)
   })
 
-  it('o chat carrega as não lidas e se anuncia aberto', async () => {
-    const usuario = userEvent.setup()
-    const { aoAlternarChat } = montarBarra({ naoLidasNoChat: 4, chatAberto: true })
-
-    const botao = screen.getByRole('button', { name: 'Chat' })
-    expect(botao).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByLabelText('4 mensagens não lidas')).toHaveTextContent('4')
-
-    await usuario.click(botao)
-    expect(aoAlternarChat).toHaveBeenCalledOnce()
-  })
-
-  it('sem mensagem nova, nenhum contador', () => {
-    montarBarra({ naoLidasNoChat: 0 })
-    expect(screen.queryByLabelText(/não lidas/)).not.toBeInTheDocument()
-  })
-
   it('compartilhar fica desabilitado enquanto o SDK está no meio da troca', () => {
     const { sala } = salaComDispositivos()
     montarBarra({ sala, compartilhamento: compartilhamentoFalso({ ocupado: true }) })
@@ -233,8 +225,7 @@ describe('a barra flutuante', () => {
 
     expect(screen.getByRole('button', { name: 'Abrir microfone' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Compartilhar tela' })).toBeDisabled()
-    // Chat e saída não dependem da sala: os dois funcionam desconectado.
-    expect(screen.getByRole('button', { name: 'Chat' })).toBeEnabled()
+    // A saída não depende da sala: funciona desconectado.
     expect(screen.getByRole('button', { name: 'Sair da sala' })).toBeEnabled()
   })
 

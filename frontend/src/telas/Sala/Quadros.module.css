@@ -1,0 +1,220 @@
+/* O quadro: 16:9, canto de 8 px, preto por trás da imagem. A pessoa ganha um fundo da cor dela,
+   escurecido, com o avatar no meio. */
+.quadro {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--raio-do-quadro);
+  background: #000;
+}
+
+.quadro[data-tipo='pessoa'] {
+  background: color-mix(in srgb, var(--cor-da-pessoa) 32%, #1a1a1e);
+}
+
+/* Quem fala: o contorno verde por dentro do quadro. */
+.quadro::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: box-shadow 0.1s ease-out;
+}
+
+.quadro[data-falando]::after {
+  box-shadow:
+    inset 0 0 0 2px var(--falando),
+    inset 0 0 0 3px #000;
+}
+
+.quadro:hover::after {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
+.quadro[data-falando]:hover::after {
+  box-shadow:
+    inset 0 0 0 2px var(--falando),
+    inset 0 0 0 3px #000;
+}
+
+.escolher {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.frase {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--e2);
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--texto-fraco);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  text-align: center;
+  pointer-events: none;
+}
+
+.alto {
+  position: absolute;
+  top: var(--e2);
+  right: var(--e2);
+  display: flex;
+  gap: var(--e1);
+  pointer-events: none;
+}
+
+.aoVivo {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--ao-vivo);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--peso-forte);
+  letter-spacing: 0.02em;
+  line-height: 16px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.alerta {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--atencao);
+  color: #000;
+  font-size: 13px;
+  font-weight: var(--peso-forte);
+  pointer-events: auto;
+}
+
+/* O nome: a pílula escura no canto de baixo, como em toda chamada. */
+.rodape {
+  position: absolute;
+  left: var(--e3);
+  right: var(--e3);
+  bottom: var(--e3);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--e2);
+  pointer-events: none;
+}
+
+.rodape > * {
+  pointer-events: auto;
+}
+
+.nome {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+  padding: 6px 12px;
+  border-radius: var(--raio-do-quadro);
+  background: rgba(0, 0, 0, 0.56);
+  color: #fff;
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  line-height: 16px;
+}
+
+.textoDoNome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iconeDoNome {
+  display: flex;
+  flex: none;
+}
+
+.mudo {
+  display: flex;
+  flex: none;
+  color: var(--microfone-fechado);
+}
+
+.quadro[data-pequeno] .rodape {
+  left: var(--e1);
+  right: var(--e1);
+  bottom: var(--e1);
+}
+
+.quadro[data-pequeno] .nome {
+  padding: 3px 8px;
+  font-size: var(--texto-xs);
+}
+
+.quadro[data-pequeno] .alto {
+  top: var(--e1);
+  right: var(--e1);
+}
+
+/* A grade: a área inteira, os quadros centrados com 8 px entre eles. */
+.grade {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quadrosDaGrade {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: var(--e2);
+  width: 100%;
+}
+
+/* Sem medida (antes do primeiro layout), cada quadro pega uma fatia razoável. */
+.quadrosDaGrade > .quadro:not([style*='width']) {
+  width: min(100%, 480px);
+}
+
+/* A faixa do foco: quadros de 112 px de altura numa fileira centrada. */
+.faixa {
+  flex: none;
+  display: flex;
+  justify-content: safe center;
+  gap: var(--e2);
+  overflow-x: auto;
+  padding-top: var(--e2);
+  scrollbar-width: none;
+  transition: opacity 0.25s ease;
+}
+
+.faixa > .quadro {
+  height: 112px;
+}
+
+@media (max-width: 720px) {
+  .faixa > .quadro {
+    height: 72px;
+  }
+}
