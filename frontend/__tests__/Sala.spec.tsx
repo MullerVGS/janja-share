@@ -17,6 +17,9 @@ import { chamadas, servir } from './apoio/servidorFalso'
 /** O que os hooks do SDK devolvem; o teste mexe aqui e re-renderiza. */
 const falso = vi.hoisted(() => ({
   compartilhando: false,
+  fimDaFonte: null as 'tela' | 'som' | null,
+  alternar: null as null | (() => Promise<void>),
+  trocarDeTela: null as null | (() => Promise<void>),
   sala: null as Room | null,
   versao: 0,
   queda: null as { tentativa: number; comTela: boolean } | null,
@@ -45,7 +48,15 @@ vi.mock('../src/telemetria/useTelemetria', async () => {
 
 vi.mock('../src/sala/useCompartilhamento', async () => {
   const { compartilhamentoFalso } = await import('./apoio/compartilhamentoFalso')
-  return { useCompartilhamento: () => compartilhamentoFalso({ ativo: falso.compartilhando }) }
+  return {
+    useCompartilhamento: () =>
+      compartilhamentoFalso({
+        ativo: falso.compartilhando,
+        fimDaFonte: falso.fimDaFonte,
+        ...(falso.alternar ? { alternar: falso.alternar } : {}),
+        ...(falso.trocarDeTela ? { trocarDeTela: falso.trocarDeTela } : {}),
+      }),
+  }
 })
 
 /**
@@ -108,6 +119,9 @@ function gaveta() {
 
 afterEach(() => {
   falso.compartilhando = false
+  falso.fimDaFonte = null
+  falso.alternar = null
+  falso.trocarDeTela = null
   falso.sala = null
   falso.versao = 0
   falso.queda = null
@@ -543,5 +557,31 @@ describe('sala: a validade da credencial decide só a entrada', () => {
     falso.queda = { tentativa: 1, comTela: true }
     montarSala()
     expect(screen.getByText(/conexão perdida/i)).toHaveTextContent('sua tela volta ao ar sozinha')
+  })
+})
+
+describe('sala: a fonte que acaba sozinha', () => {
+  it('a janela fechada avisa quem compartilhava e oferece compartilhar de novo', async () => {
+    const usuario = userEvent.setup()
+    falso.fimDaFonte = 'tela'
+    falso.alternar = vi.fn(async () => {})
+    montarSala()
+
+    expect(screen.getByText(/sua tela saiu do ar/i)).toHaveTextContent('a janela foi fechada')
+    await usuario.click(screen.getByRole('button', { name: 'Compartilhar de novo' }))
+    expect(falso.alternar).toHaveBeenCalledOnce()
+  })
+
+  it('só o som parando tem aviso próprio, e escolher a tela de novo é trocar — a imagem não sai do ar', async () => {
+    const usuario = userEvent.setup()
+    falso.compartilhando = true
+    falso.fimDaFonte = 'som'
+    falso.trocarDeTela = vi.fn(async () => {})
+    montarSala()
+
+    expect(screen.getByText(/o som da sua tela parou/i)).toBeInTheDocument()
+    expect(screen.queryByText(/sua tela saiu do ar/i)).not.toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Escolher a tela de novo' }))
+    expect(falso.trocarDeTela).toHaveBeenCalledOnce()
   })
 })

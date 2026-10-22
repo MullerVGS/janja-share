@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Track,
+  TrackEvent,
   type LocalTrack,
   type LocalTrackPublication,
   type LocalVideoTrack,
@@ -72,6 +73,13 @@ export function opcoesDePublicacao(perfil: PerfilDeQualidade): TrackPublishOptio
   }
 }
 
+/**
+ * A fonte acabou sem a pessoa pedir pelo app: `'tela'` é a imagem (janela fechada, ou o "Parar"
+ * da barra do próprio navegador) e leva o Compartilhamento junto; `'som'` é só o som da tela, e
+ * a imagem continua no ar.
+ */
+export type FimDaFonte = 'tela' | 'som'
+
 export interface Compartilhamento {
   ativo: boolean
   /** O pedido da pessoa: o preset de onde o governador parte. */
@@ -105,6 +113,9 @@ export interface Compartilhamento {
    * ar. Quem assiste não vê a Tela sair nem voltar.
    */
   trocarDeTela(): Promise<void>
+  /** A fonte que acabou sozinha, para avisar quem compartilhava; `null` quando não há o que dizer. */
+  fimDaFonte: FimDaFonte | null
+  dispensarFimDaFonte(): void
 }
 
 function publicacaoDe(sala: Room, fonte: Track.Source): LocalTrackPublication | undefined {
@@ -177,6 +188,7 @@ export function useCompartilhamento(
   const [erro, setErro] = useState<string | null>(null)
   const [mudando, setMudando] = useState(false)
   const [republicando, setRepublicando] = useState(false)
+  const [fimDaFonte, setFimDaFonte] = useState<FimDaFonte | null>(null)
   // Conta as capturas que entraram na publicação de agora: trocar a fonte não muda o `trackSid`,
   // e o ajuste ao vivo precisa rodar de novo na faixa nova.
   const [capturas, setCapturas] = useState(0)
@@ -256,6 +268,35 @@ export function useCompartilhamento(
     const faixa = publicacaoDe(sala, Track.Source.ScreenShareAudio)?.track?.mediaStreamTrack
     if (faixa) faixa.contentHint = 'music'
   }, [sala, sidDoAudio])
+
+  /**
+   * A fonte que acaba sozinha. O `ended` nativo só dispara quando quem acaba é o navegador — a
+   * janela fechada, o "Parar" da barra dele —, nunca no `stop()` do app; é por isso que ouvir o
+   * `Ended` da faixa basta para separar "a pessoa parou" de "a fonte acabou".
+   *
+   * O SDK já tira do ar a faixa que acabou. Quando é a imagem, o som dela sai junto: som de uma
+   * tela que ninguém vê não é Compartilhamento. Quando é só o som, a imagem fica.
+   */
+  useEffect(() => {
+    if (!sala) return
+    const imagem = publicacaoDe(sala, Track.Source.ScreenShare)?.track
+    const som = publicacaoDe(sala, Track.Source.ScreenShareAudio)?.track
+    const imagemAcabou = () => {
+      setFimDaFonte('tela')
+      void pararTela(sala).catch(() => {
+        // A imagem já saiu; o som que não sair agora sai quando a sala fechar.
+      })
+    }
+    const somAcabou = () => {
+      if (imagem && !faixaMorta(imagem)) setFimDaFonte('som')
+    }
+    imagem?.on(TrackEvent.Ended, imagemAcabou)
+    som?.on(TrackEvent.Ended, somAcabou)
+    return () => {
+      imagem?.off(TrackEvent.Ended, imagemAcabou)
+      som?.off(TrackEvent.Ended, somAcabou)
+    }
+  }, [sala, sid, sidDoAudio])
 
   /**
    * Troca de codec no ar: a mesma faixa de captura sai e volta com as opções novas — sem
@@ -446,6 +487,7 @@ export function useCompartilhamento(
       if (!sala) return
       const participante = sala.localParticipant
       setErro(null)
+      setFimDaFonte(null)
       setMudando(true)
       let capturadas: LocalTrack[] = []
       try {
@@ -534,6 +576,7 @@ export function useCompartilhamento(
         await participante.unpublishTrack(audio, true)
       }
       setCapturas((n) => n + 1)
+      setFimDaFonte(null)
     } catch (falha) {
       const nome = falha instanceof Error ? falha.name : ''
       if (nome !== 'NotAllowedError' && nome !== 'AbortError') {
@@ -563,6 +606,8 @@ export function useCompartilhamento(
     }
   }, [sala])
 
+  const dispensarFimDaFonte = useCallback(() => setFimDaFonte(null), [])
+
   return {
     ativo,
     perfil,
@@ -583,5 +628,7 @@ export function useCompartilhamento(
     alternar,
     reiniciar,
     trocarDeTela,
+    fimDaFonte,
+    dispensarFimDaFonte,
   }
 }

@@ -371,6 +371,28 @@ export function Sala() {
         )}
 
         {compartilhamento.erro && <Aviso tom="erro">{compartilhamento.erro}</Aviso>}
+        {compartilhamento.fimDaFonte === 'tela' && (
+          <Aviso tom="neutro">
+            Sua tela saiu do ar: a janela foi fechada ou o navegador parou o compartilhamento.{' '}
+            <Botao aparencia="fantasma" onClick={() => void compartilhamento.alternar()}>
+              Compartilhar de novo
+            </Botao>
+            <Botao aparencia="fantasma" onClick={compartilhamento.dispensarFimDaFonte}>
+              Fechar
+            </Botao>
+          </Aviso>
+        )}
+        {compartilhamento.fimDaFonte === 'som' && (
+          <Aviso tom="neutro">
+            O som da sua tela parou; a imagem continua no ar.{' '}
+            <Botao aparencia="fantasma" onClick={() => void compartilhamento.trocarDeTela()}>
+              Escolher a tela de novo
+            </Botao>
+            <Botao aparencia="fantasma" onClick={compartilhamento.dispensarFimDaFonte}>
+              Fechar
+            </Botao>
+          </Aviso>
+        )}
         {erroDeDispositivo && <Aviso tom="erro">{erroDeDispositivo}</Aviso>}
       </div>
 

@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { Track, type Room, type TrackPublishOptions } from 'livekit-client'
+import { Track, TrackEvent, type Room, type TrackPublishOptions } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { OPCOES_DO_AUDIO_DA_TELA } from '../src/sala/audioDaTela'
@@ -43,7 +43,19 @@ function faixaDoNavegador() {
 /** Uma `LocalTrack` reduzida ao que o hook toca: a faixa do navegador, o sender e o codec publicado. */
 function faixaFalsa(kind: 'video' | 'audio', codec: string | undefined = 'vp9') {
   const parametros = { transactionId: 'tx', encodings: [{ active: true }] } as unknown as RTCRtpSendParameters
+  const ouvintes = new Map<string, Set<() => void>>()
   return {
+    on: vi.fn((evento: string, ouvinte: () => void) => {
+      ouvintes.set(evento, (ouvintes.get(evento) ?? new Set()).add(ouvinte))
+    }),
+    off: vi.fn((evento: string, ouvinte: () => void) => {
+      ouvintes.get(evento)?.delete(ouvinte)
+    }),
+    /** O navegador acabando com a captura — a janela fechada, o "Parar" da barra dele. */
+    acabar() {
+      this.mediaStreamTrack.readyState = 'ended'
+      for (const ouvinte of ouvintes.get(TrackEvent.Ended) ?? []) ouvinte()
+    },
     kind,
     codec: codec as string | undefined,
     isMuted: false,
@@ -797,5 +809,76 @@ describe('useCompartilhamento: trocar de tela', () => {
     })
     expect(result.current.ativo).toBe(true)
     expect(result.current.perfilEfetivo.tetoKbps).toBe(10_000)
+  })
+})
+
+describe('useCompartilhamento: a fonte que acaba sozinha', () => {
+  it('a janela fechada tira a Tela e o som do ar e avisa quem compartilhava', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, reler, ateAssentar } = montar(sala)
+    await ligar()
+    const som = sala.audio()?.track
+
+    act(() => sala.video()?.track.acabar())
+    await ateAssentar()
+    reler()
+
+    expect(result.current.fimDaFonte).toBe('tela')
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(som, true)
+    expect(som?.mediaStreamTrack.readyState).toBe('ended')
+    expect(result.current.ativo).toBe(false)
+  })
+
+  it('só o som acabando é aviso à parte: a imagem continua no ar', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar } = montar(sala)
+    await ligar()
+    const video = sala.video()
+
+    act(() => sala.audio()?.track.acabar())
+
+    expect(result.current.fimDaFonte).toBe('som')
+    expect(sala.video()).toBe(video)
+    expect(sala.localParticipant.unpublishTrack).not.toHaveBeenCalled()
+  })
+
+  it('parar pelo app não é a fonte acabando: nenhum aviso', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar } = montar(sala)
+    await ligar()
+    await ligar()
+    expect(result.current.fimDaFonte).toBeNull()
+  })
+
+  it('compartilhar de novo apaga o aviso; dispensar também', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, ateAssentar, reler } = montar(sala)
+    await ligar()
+    act(() => sala.video()?.track.acabar())
+    await ateAssentar()
+    reler()
+    expect(result.current.fimDaFonte).toBe('tela')
+
+    await ligar()
+    expect(result.current.fimDaFonte).toBeNull()
+    expect(result.current.ativo).toBe(true)
+
+    act(() => sala.audio()?.track.acabar())
+    expect(result.current.fimDaFonte).toBe('som')
+    act(() => result.current.dispensarFimDaFonte())
+    expect(result.current.fimDaFonte).toBeNull()
+  })
+
+  it('a imagem que acaba depois de uma troca de tela também avisa — o ouvinte segue a publicação, não a captura', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir, ateAssentar, reler } = montar(sala)
+    await ligar()
+    await agir(() => result.current.trocarDeTela())
+
+    act(() => sala.video()?.track.acabar())
+    await ateAssentar()
+    reler()
+
+    expect(result.current.fimDaFonte).toBe('tela')
   })
 })
