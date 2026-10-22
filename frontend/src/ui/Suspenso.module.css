@@ -1,0 +1,19 @@
+/* Por cima da barra, centrado no botão que o abriu. A largura nunca passa da janela. */
+.suspenso {
+  position: fixed;
+  z-index: 70;
+  transform: translateX(-50%);
+  min-width: 200px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: var(--raio-lg);
+  border: 1px solid var(--linha);
+  background: color-mix(in srgb, var(--superficie) 96%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sombra-lg);
+  color: var(--texto);
+  font-size: var(--texto-md);
+}

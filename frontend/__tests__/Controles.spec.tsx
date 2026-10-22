@@ -49,36 +49,42 @@ describe('a barra flutuante', () => {
     expect(rotulos()).toEqual(['Abrir microfone', 'Compartilhar tela', 'Chat', 'Sair da sala'])
   })
 
-  it('transmitindo: trocar, o áudio e os ajustes da tela entram na barra, e trocar chama o compartilhamento', async () => {
+  it('no ar, o botão da tela vira "No ar" e abre o menu — trocar, som e qualidade saem da barra', async () => {
     const usuario = userEvent.setup()
-    const compartilhamento = compartilhamentoFalso({ ativo: true }) as Compartilhamento
-    montarBarra({ compartilhamento })
+    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) })
 
-    expect(rotulos()).toEqual([
-      'Abrir microfone',
-      'Parar de compartilhar a tela',
-      'Trocar de tela',
-      'Áudio da tela — marque "compartilhar áudio" no seletor',
-      'Qualidade da transmissão',
-      'Chat',
-      'Sair da sala',
+    expect(rotulos()).toEqual(['Abrir microfone', 'Sua tela está no ar — opções', 'Chat', 'Sair da sala'])
+    const botao = screen.getByRole('button', { name: 'Sua tela está no ar — opções' })
+    expect(botao).toHaveAttribute('aria-haspopup', 'menu')
+    expect(botao).toHaveAttribute('aria-expanded', 'false')
+
+    await usuario.click(botao)
+
+    expect(botao).toHaveAttribute('aria-expanded', 'true')
+    const menu = screen.getByRole('menu', { name: 'Sua tela no ar' })
+    // Parar primeiro, na cor de perigo; depois o que se muda sem tirar a Tela do ar.
+    const itens = [...menu.querySelectorAll('[role^="menuitem"]')]
+    expect(itens.map((item) => item.textContent)).toEqual([
+      'Parar de compartilhar',
+      'Trocar tela',
+      'Qualidade',
+      'Som da telasem som',
     ])
-
-    await usuario.click(screen.getByRole('button', { name: 'Trocar de tela' }))
-    expect(compartilhamento.trocarDeTela).toHaveBeenCalledOnce()
+    expect(itens[0]).toHaveAttribute('data-tom', 'perigo')
+    expect(itens[0]).toHaveFocus()
   })
 
-  it('cada botão escreve o que faz embaixo do ícone, e compartilhar vira "Parar" no ar', () => {
+  it('cada botão escreve o que faz embaixo do ícone, e compartilhar vira "No ar"', () => {
     const legendas = () => screen.getAllByRole('button').map((botao) => botao.textContent)
 
     montarBarra()
     expect(legendas()).toEqual(['Microfone', 'Compartilhar', 'Chat', 'Sair'])
 
     montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) as Compartilhamento })
-    expect(legendas().slice(4)).toEqual(['Microfone', 'Parar', 'Trocar', 'Som da tela', 'Qualidade', 'Chat', 'Sair'])
+    expect(legendas().slice(4)).toEqual(['Microfone', 'No ar', 'Chat', 'Sair'])
   })
 
-  it('clicar em compartilhar/parar chama compartilhamento.alternar — o único lugar que aciona esse toggle', async () => {
+  it('clicar em compartilhar chama compartilhamento.alternar', async () => {
     const usuario = userEvent.setup()
     const { sala } = salaComDispositivos()
     const compartilhamento = compartilhamentoFalso() as Compartilhamento
@@ -88,36 +94,79 @@ describe('a barra flutuante', () => {
     expect(compartilhamento.alternar).toHaveBeenCalledOnce()
   })
 
-  it('sem publicação de áudio, o botão da tela fica desabilitado e diz onde estava a escolha', () => {
-    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) })
+  describe('o menu de quem está no ar', () => {
+    async function abrirMenu(parcial: Partial<Compartilhamento> = {}, props: Partial<Props> = {}) {
+      const usuario = userEvent.setup()
+      const compartilhamento = compartilhamentoFalso({ ativo: true, ...parcial }) as Compartilhamento
+      const { aoAbrirQualidade } = montarBarra({ ...props, compartilhamento })
+      await usuario.click(screen.getByRole('button', { name: 'Sua tela está no ar — opções' }))
+      return { usuario, compartilhamento, aoAbrirQualidade }
+    }
 
-    const botao = screen.getByRole('button', { name: 'Áudio da tela — marque "compartilhar áudio" no seletor' })
-    expect(botao).toBeDisabled()
-    expect(botao).toHaveAttribute('aria-pressed', 'false')
-  })
+    it('parar chama alternar e fecha o menu', async () => {
+      const { usuario, compartilhamento } = await abrirMenu()
+      await usuario.click(screen.getByRole('menuitem', { name: 'Parar de compartilhar' }))
+      expect(compartilhamento.alternar).toHaveBeenCalledOnce()
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
 
-  it('com áudio no ar: "Calar o áudio da tela", ligado, e o clique chama alternarAudioDaTela', async () => {
-    const usuario = userEvent.setup()
-    const compartilhamento = compartilhamentoFalso({
-      ativo: true,
-      audioDaTela: audioDaTelaFalso(false),
-    }) as Compartilhamento
-    montarBarra({ compartilhamento })
+    it('trocar tela chama trocarDeTela — a Tela não sai do ar', async () => {
+      const { usuario, compartilhamento } = await abrirMenu()
+      await usuario.click(screen.getByRole('menuitem', { name: 'Trocar tela' }))
+      expect(compartilhamento.trocarDeTela).toHaveBeenCalledOnce()
+      expect(compartilhamento.alternar).not.toHaveBeenCalled()
+    })
 
-    const botao = screen.getByRole('button', { name: 'Calar o áudio da tela' })
-    expect(botao).toHaveAttribute('aria-pressed', 'true')
-    expect(botao).toBeEnabled()
+    it('qualidade abre a aba de qualidade', async () => {
+      const { usuario, aoAbrirQualidade } = await abrirMenu()
+      await usuario.click(screen.getByRole('menuitem', { name: 'Qualidade' }))
+      expect(aoAbrirQualidade).toHaveBeenCalledOnce()
+    })
 
-    await usuario.click(botao)
-    expect(compartilhamento.alternarAudioDaTela).toHaveBeenCalledOnce()
-  })
+    it('sem som na fonte, o item do som fica desabilitado e diz onde estava a escolha', async () => {
+      await abrirMenu()
+      const item = screen.getByRole('menuitemcheckbox', { name: /Som da tela/ })
+      expect(item).toBeDisabled()
+      expect(item).toHaveAttribute('title', expect.stringContaining('compartilhar áudio'))
+    })
 
-  it('com áudio mudo: "Devolver o áudio da tela", desligado', () => {
-    montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true, audioDaTela: audioDaTelaFalso(true) }) })
+    it('com som no ar, o item é um interruptor marcado que cala sem fechar o menu', async () => {
+      const { usuario, compartilhamento } = await abrirMenu({ audioDaTela: audioDaTelaFalso(false) })
+      const item = screen.getByRole('menuitemcheckbox', { name: /Som da tela/ })
+      expect(item).toHaveAttribute('aria-checked', 'true')
+      expect(item).toHaveTextContent('ligado')
 
-    const botao = screen.getByRole('button', { name: 'Devolver o áudio da tela' })
-    expect(botao).toHaveAttribute('aria-pressed', 'false')
-    expect(botao).toBeEnabled()
+      await usuario.click(item)
+
+      expect(compartilhamento.alternarAudioDaTela).toHaveBeenCalledOnce()
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+    })
+
+    it('com som calado, o interruptor aparece desmarcado', async () => {
+      await abrirMenu({ audioDaTela: audioDaTelaFalso(true) })
+      const item = screen.getByRole('menuitemcheckbox', { name: /Som da tela/ })
+      expect(item).toHaveAttribute('aria-checked', 'false')
+      expect(item).toHaveTextContent('calado')
+    })
+
+    it('Esc fecha e devolve o foco ao botão; as setas andam pelos itens', async () => {
+      const { usuario } = await abrirMenu()
+      await usuario.keyboard('{ArrowDown}')
+      expect(screen.getByRole('menuitem', { name: 'Trocar tela' })).toHaveFocus()
+      await usuario.keyboard('{ArrowUp}{ArrowUp}')
+      expect(screen.getByRole('menuitem', { name: 'Qualidade' })).toHaveFocus()
+
+      await usuario.keyboard('{Escape}')
+
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Sua tela está no ar — opções' })).toHaveFocus()
+    })
+
+    it('clicar fora fecha o menu', async () => {
+      const { usuario } = await abrirMenu()
+      await usuario.click(screen.getByRole('button', { name: 'Chat' }))
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
   })
 
   it('o microfone pede a troca ao SDK e se anuncia pelo estado', async () => {
