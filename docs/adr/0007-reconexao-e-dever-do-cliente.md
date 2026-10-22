@@ -14,3 +14,7 @@ A validade guardada da credencial decide apenas se vale abrir uma conexão nova;
 ## Consequências
 
 Sessões longas e abas em segundo plano deixam de cair por conta do cliente; quedas de rede reais se recuperam sem F5. Religar cria uma Pessoa nova no SFU: o Compartilhamento que estava no ar precisa ser reiniciado, e a sessão anterior aparece como saída para os outros.
+
+## Revisão
+
+O ADR 0014 retira o custo descrito acima: a captura sobrevive à queda e a religação devolve a Tela ao ar sozinha, sem o seletor.
