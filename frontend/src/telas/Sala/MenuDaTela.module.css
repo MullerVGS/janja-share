@@ -1,0 +1,60 @@
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--e3) 0 var(--e2);
+  border: none;
+  border-radius: var(--raio-md);
+  background: transparent;
+  color: var(--texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover:not(:disabled),
+.item:focus-visible {
+  background: color-mix(in srgb, var(--texto) 9%, transparent);
+  outline: none;
+}
+
+.item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Parar é o único item que derruba alguma coisa: a cor de perigo diz isso antes da palavra. */
+.item[data-tom='perigo'] {
+  color: var(--perigo-texto);
+}
+
+.item[data-tom='perigo']:hover:not(:disabled),
+.item[data-tom='perigo']:focus-visible {
+  background: var(--perigo-fraca);
+}
+
+.icone {
+  display: flex;
+  flex: none;
+}
+
+.estado {
+  margin-left: auto;
+  padding-left: var(--e3);
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-sm);
+}
+
+.divisor {
+  height: 1px;
+  margin: 2px var(--e1);
+  background: var(--linha);
+}

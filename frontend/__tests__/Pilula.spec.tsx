@@ -14,6 +14,7 @@ function montarPilula(parcial: Partial<Props> = {}) {
     zoom: { caber: vi.fn(), umPorUm: vi.fn() },
     telaCheia: { cheia: false, alternar: vi.fn() },
     pip: { emPiP: false, alternar: vi.fn() },
+    aoAlternarVer: vi.fn(),
     ...parcial,
   }
   return { ...props, ...render(<Pilula {...props} />) }
@@ -41,6 +42,7 @@ describe('pílula: os botões saem do papel de quem vê', () => {
       'Ver em 1:1',
       'Ver na janelinha',
       'Ver em tela cheia',
+      'Deixar de ver a tela de Bia',
     ])
     expect(screen.getByRole('slider', { name: 'Volume do som da tela de Bia' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /parar|trocar/i })).not.toBeInTheDocument()

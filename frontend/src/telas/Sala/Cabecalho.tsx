@@ -1,6 +1,6 @@
 import { ConnectionState } from 'livekit-client'
 import type { Aba } from '../../sala/lateral'
-import { IconeCerto, IconeConvite, IconeMetricas, IconePessoas } from '../../ui/Icone'
+import { IconeCerto, IconeConvite, IconeMetricas, IconePessoas, IconeRecarregar } from '../../ui/Icone'
 import estilos from './Cabecalho.module.css'
 
 interface Props {
@@ -16,6 +16,8 @@ interface Props {
   /** `true` durante os 1,6 s em que o convite já foi copiado. */
   conviteCopiado: boolean
   aoCopiarConvite(): void
+  /** Reassina tudo o que a pessoa assiste, sem sair da Sala — o conserto no lugar do F5. */
+  aoRecarregarMidia(): void
 }
 
 const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
@@ -41,6 +43,7 @@ export function Cabecalho({
   aoAlternarAba,
   conviteCopiado,
   aoCopiarConvite,
+  aoRecarregarMidia,
 }: Props) {
   const conectada = conexao === ConnectionState.Connected
   const frase = conectada ? 'conectado' : (FRASE_DA_CONEXAO[conexao] ?? 'conectando…')
@@ -70,6 +73,19 @@ export function Cabecalho({
         <span className={estilos.pulso} aria-hidden="true" />
         {frase}
       </span>
+
+      {/* Ao lado do estado da conexão, que é onde se olha quando algo não chega. Só faz sentido
+          conectado: caída, quem religa é a sala. */}
+      <button
+        type="button"
+        className={estilos.botao}
+        aria-label="Recarregar mídia"
+        title="Recarregar mídia: busca de novo as telas e o som, sem sair da sala"
+        disabled={!conectada}
+        onClick={aoRecarregarMidia}
+      >
+        <IconeRecarregar tamanho={18} />
+      </button>
 
       {/* O convite leva a palavra junto do ícone: é a primeira coisa que se faz numa sala nova. */}
       <button

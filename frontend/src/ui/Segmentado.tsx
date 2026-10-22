@@ -6,6 +6,8 @@ export interface OpcaoSegmentada<T> {
   rotulo: string
   /** Vira o `title` do botão — usado para explicar a escolha sem alongar o rótulo. */
   descricao?: string
+  /** Uma segunda linha, menor, embaixo do rótulo: o efeito da escolha em números. */
+  detalhe?: string
 }
 
 interface Props<T> {
@@ -34,10 +36,12 @@ export function Segmentado<T extends string | number>({ rotulo, opcoes, valor, a
             role="radio"
             aria-checked={opcao.valor === valor}
             title={opcao.descricao}
+            aria-label={opcao.detalhe ? `${opcao.rotulo} · ${opcao.detalhe}` : undefined}
             className={estilos.opcao}
             onClick={() => aoEscolher(opcao.valor)}
           >
             {opcao.rotulo}
+            {opcao.detalhe && <span className={estilos.detalhe}>{opcao.detalhe}</span>}
           </button>
         ))}
       </div>

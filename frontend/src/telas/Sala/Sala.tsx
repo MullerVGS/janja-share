@@ -3,17 +3,21 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
-import { chavesDasTelasPublicadas, montarPalco } from '../../sala/palco'
+import { chavesDasTelasPublicadas, montarPalco, pecaEncerrada, type Peca } from '../../sala/palco'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useFocoDeTeclado } from '../../sala/useFocoDeTeclado'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
+import { useDeixarDeVer } from '../../sala/useDeixarDeVer'
+import { AQUECIMENTO_MS, avisoParaQuemCompartilha } from '../../sala/avisoDeQualidade'
+import { useAquecido } from '../../sala/useAquecido'
 import { useMedia } from '../../sala/useMedia'
 import { useSala } from '../../sala/useSala'
 import { useVolumes } from '../../sala/useVolumes'
 import { useZoom } from '../../sala/useZoom'
 import { useSessao } from '../../sessao/sessao'
 import { ultima } from '../../telemetria/historico'
+import { sumiu } from '../../telemetria/relato'
 import { useTelemetria } from '../../telemetria/useTelemetria'
 import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
@@ -59,6 +63,7 @@ export function Sala() {
   const { sala, conexao, erro, queda, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const telemetria = useTelemetria(sala)
   const compartilhamento = useCompartilhamento(sala, telemetria.emissor, telemetria.espectadores)
+  const { naoVejo, deixarDeVer, verDeNovo } = useDeixarDeVer(sala, versao)
 
   // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
@@ -92,13 +97,57 @@ export function Sala() {
 
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou. `telemetria.recepcao`
   // entra à parte: o cão de guarda anda no relógio da telemetria, não no dos eventos do `Room`.
-  const palco = useMemo(() => montarPalco(sala, telemetria.recepcao), [sala, versao, telemetria.recepcao])
+  const palco = useMemo(
+    () => montarPalco(sala, telemetria.recepcao, naoVejo, telemetria.redesFracas),
+    [sala, versao, telemetria.recepcao, naoVejo, telemetria.redesFracas],
+  )
   const telasPublicadas = useMemo(() => chavesDasTelasPublicadas(sala), [sala, versao])
+  // A Tela alheia que sai do ar em destaque deixa o quadro dizendo que terminou, até alguém
+  // fechar, olhar outra tela ou a mesma pessoa voltar a compartilhar. `visto` é a última Tela
+  // alheia viva em destaque; a peça encerrada leva a mesma chave, e por isso a Tela que volta
+  // reassume o mesmo destaque sem ninguém precisar escolher.
+  const [visto, setVisto] = useState<Peca | null>(null)
+  const [encerrada, setEncerrada] = useState<Peca | null>(null)
+  const voltou = (peca: Peca) => palco.telas.some((tela) => tela.identidade === peca.identidade)
+  if (encerrada && voltou(encerrada)) setEncerrada(null)
+  if (!encerrada && visto && !palco.telas.some((tela) => tela.chave === visto.chave)) {
+    setEncerrada(pecaEncerrada(visto))
+    setVisto(null)
+    setFoco({ chave: visto.chave })
+  }
+  const palcoDoFoco = useMemo(() => {
+    const pendente = encerrada && !palco.telas.some((tela) => tela.identidade === encerrada.identidade)
+    return pendente ? { ...palco, telas: [...palco.telas, encerrada] } : palco
+  }, [palco, encerrada])
+
   // Só a tela vira quadro. Presença é a faixa de avatares e a barra lateral: um retângulo do
   // tamanho de uma tela para mostrar duas iniciais tirava o espaço de quem tem o que mostrar.
-  const quadros = palco.telas
+  const quadros = palcoDoFoco.telas
   const zoom = useZoom(quadros)
+
+  // O destaque é a escolha da pessoa; sem escolha (ou com ela fora do ar), é o primeiro quadro
+  // que existir — o palco não tem estado "nada em destaque com imagem no ar".
+  const emDestaque = quadros.find((quadro) => quadro.chave === foco.chave) ?? quadros[0] ?? null
+  // Olhar outra tela dispensa o cartão de quem terminou: ele é do destaque, não da coluna.
+  if (encerrada && emDestaque?.chave !== encerrada.chave) setEncerrada(null)
+  const destaqueVivo = emDestaque && !emDestaque.encerrada && !emDestaque.proprio ? emDestaque : null
+  useEffect(() => {
+    setVisto(destaqueVivo)
+    // A chave basta: é ela que diz que o destaque vivo é outro.
+  }, [destaqueVivo?.chave])
+
   const amostraDoEmissor = ultima(telemetria.emissor)
+  // Quem assiste a minha Tela agora: quem relatou nos últimos segundos. Quem deixou de ver para
+  // de relatar e sai da conta sozinho.
+  const quemAssiste = [...telemetria.espectadores.values()]
+    .filter((espectador) => !sumiu(espectador))
+    .map((espectador) => espectador.nome)
+  // A medida do SFU sobre a minha conexão; o palco re-renderiza a cada mudança dela.
+  const minhaQualidade = sala?.localParticipant.connectionQuality
+  const noArAquecido = useAquecido(compartilhamento.ativo ? 'no-ar' : null, AQUECIMENTO_MS)
+  const avisoDaMinhaTela = compartilhamento.ativo
+    ? avisoParaQuemCompartilha({ minha: minhaQualidade, assistindo: quemAssiste.length, aquecido: noArAquecido })
+    : null
 
   // Nunca some com a gaveta aberta ou com o teclado dentro do palco: sumir é para quem largou o
   // mouse parado, não para quem está no meio de alguma coisa.
@@ -107,15 +156,10 @@ export function Sala() {
 
   const telasAntes = useRef<string[]>([])
   useEffect(() => {
-    // Enquanto `trocarDeTela` está no meio do unpublish+republish da própria tela, o palco pisca
-    // sem a tela própria e volta a ter ela — não é uma mudança real.
-    // Ignorar aqui (sem nem avançar `telasAntes.current`) evita o duplo efeito colateral: seria
-    // expulsa do foco pela sumida, e roubada de volta pela heurística de "tela própria nova".
-    if (compartilhamento.trocandoTela) return
     const antes = telasAntes.current
     telasAntes.current = telasPublicadas
-    setFoco((atual) => decidirFoco(atual, palco, { tipo: 'palcoMudou', telasAntes: antes }))
-  }, [palco, telasPublicadas, compartilhamento.trocandoTela])
+    setFoco((atual) => decidirFoco(atual, palcoDoFoco, { tipo: 'palcoMudou', telasAntes: antes }))
+  }, [palcoDoFoco, telasPublicadas])
 
   useEffect(() => {
     if (!conviteCopiado) return
@@ -183,10 +227,23 @@ export function Sala() {
     }
   }
 
+  // A Tela que volta sozinha depois de uma queda (ADR 0014) não é começar a compartilhar: a
+  // gaveta não se reabre por cima do palco de quem a tinha fechado.
+  const telaGuardada = useRef(false)
+  useEffect(() => {
+    if (queda?.comTela) telaGuardada.current = true
+    else if (!queda && !compartilhamento.ativo) telaGuardada.current = false
+  }, [queda, compartilhamento.ativo])
+
   // Começar a compartilhar abre a aba de qualidade: é exatamente o momento em que ela tem o
   // que dizer, e deixá-la escondida faria o ajuste virar um segredo do app.
   useEffect(() => {
-    if (compartilhamento.ativo) mostrarAba('qualidade')
+    if (!compartilhamento.ativo) return
+    if (telaGuardada.current) {
+      telaGuardada.current = false
+      return
+    }
+    mostrarAba('qualidade')
   }, [compartilhamento.ativo])
 
   // A aba que a gaveta de fato mostra. A Qualidade só existe transmitindo, e parar leva quem
@@ -216,9 +273,6 @@ export function Sala() {
     )
   }
 
-  // O destaque é a escolha da pessoa; sem escolha (ou com ela fora do ar), é o primeiro quadro
-  // que existir — o palco não tem estado "nada em destaque com imagem no ar".
-  const emDestaque = quadros.find((quadro) => quadro.chave === foco.chave) ?? quadros[0] ?? null
   const miniaturas = imersao ? [] : quadros.filter((quadro) => quadro.chave !== emDestaque?.chave)
   const camadaAberta = (lateralEmCamada && lateralAberta) || (gavetaEmCamada && gaveta.aberta)
 
@@ -246,6 +300,7 @@ export function Sala() {
       aoAlternarAba={alternarPainel}
       conviteCopiado={conviteCopiado}
       aoCopiarConvite={() => void copiarConvite()}
+      aoRecarregarMidia={telemetria.recarregarMidia}
     />
   )
 
@@ -298,6 +353,11 @@ export function Sala() {
               imersao={imersao}
               zoom={zoom}
               aoTentarDeNovo={telemetria.rearmarRecepcao}
+              minhaConexao={conexao}
+              minhaQualidade={minhaQualidade}
+              aoFecharEncerrada={() => setEncerrada(null)}
+              aoDeixarDeVer={deixarDeVer}
+              aoVerDeNovo={verDeNovo}
             />
 
             <div className={estilos.interface} data-interface={interfaceVisivel ? 'visivel' : 'oculta'}>
@@ -314,6 +374,7 @@ export function Sala() {
                 <Controles
                   sala={sala}
                   compartilhamento={compartilhamento}
+                  quemAssiste={quemAssiste}
                   chatAberto={chatVisivel}
                   naoLidasNoChat={naoLidasNoChat}
                   aoAlternarChat={() => alternarPainel('chat')}
@@ -359,7 +420,12 @@ export function Sala() {
       {/* Os avisos não se escondem com o resto: erro não é moldura, é alarme. */}
       <div className={estilos.avisos}>
         {erro && <Aviso tom="erro">Não foi possível conectar à sala: {erro}</Aviso>}
-        {queda && <Aviso tom="erro">Conexão perdida. Voltando para a sala… (tentativa {queda.tentativa})</Aviso>}
+        {queda && (
+          <Aviso tom="erro">
+            Conexão perdida. Voltando para a sala… (tentativa {queda.tentativa})
+            {queda.comTela && ' · sua tela volta ao ar sozinha'}
+          </Aviso>
+        )}
 
         {!audioLiberado && (
           <Aviso tom="neutro">
@@ -371,6 +437,29 @@ export function Sala() {
         )}
 
         {compartilhamento.erro && <Aviso tom="erro">{compartilhamento.erro}</Aviso>}
+        {avisoDaMinhaTela && <Aviso tom="neutro">{avisoDaMinhaTela}</Aviso>}
+        {compartilhamento.fimDaFonte === 'tela' && (
+          <Aviso tom="neutro">
+            Sua tela saiu do ar: a janela foi fechada ou o navegador parou o compartilhamento.{' '}
+            <Botao aparencia="fantasma" onClick={() => void compartilhamento.alternar()}>
+              Compartilhar de novo
+            </Botao>
+            <Botao aparencia="fantasma" onClick={compartilhamento.dispensarFimDaFonte}>
+              Fechar
+            </Botao>
+          </Aviso>
+        )}
+        {compartilhamento.fimDaFonte === 'som' && (
+          <Aviso tom="neutro">
+            O som da sua tela parou; a imagem continua no ar.{' '}
+            <Botao aparencia="fantasma" onClick={() => void compartilhamento.trocarDeTela()}>
+              Escolher a tela de novo
+            </Botao>
+            <Botao aparencia="fantasma" onClick={compartilhamento.dispensarFimDaFonte}>
+              Fechar
+            </Botao>
+          </Aviso>
+        )}
         {erroDeDispositivo && <Aviso tom="erro">{erroDeDispositivo}</Aviso>}
       </div>
 

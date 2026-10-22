@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within, type RenderResult } from '@testing-library/react'
+import { ConnectionQuality, ConnectionState } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Peca } from '../src/sala/palco'
 import { useZoom } from '../src/sala/useZoom'
@@ -18,6 +19,11 @@ interface Cenario {
   /** A sala começa fora da imersão; entrar nela é escolha explícita do teste. */
   imersao?: boolean
   aoTentarDeNovo?: (identidade: string) => void
+  minhaConexao?: ConnectionState
+  minhaQualidade?: ConnectionQuality
+  aoFecharEncerrada?: () => void
+  aoDeixarDeVer?: (identidade: string) => void
+  aoVerDeNovo?: (identidade: string) => void
 }
 
 function Palquinho({
@@ -29,6 +35,11 @@ function Palquinho({
   interfaceVisivel = true,
   imersao = false,
   aoTentarDeNovo = vi.fn(),
+  minhaConexao = ConnectionState.Connected,
+  minhaQualidade,
+  aoFecharEncerrada = vi.fn(),
+  aoDeixarDeVer = vi.fn(),
+  aoVerDeNovo = vi.fn(),
 }: Cenario) {
   const zoom = useZoom(emDestaque ? [emDestaque, ...miniaturas] : miniaturas)
   return (
@@ -42,6 +53,11 @@ function Palquinho({
       imersao={imersao}
       zoom={zoom}
       aoTentarDeNovo={aoTentarDeNovo}
+      minhaConexao={minhaConexao}
+      minhaQualidade={minhaQualidade}
+      aoFecharEncerrada={aoFecharEncerrada}
+      aoDeixarDeVer={aoDeixarDeVer}
+      aoVerDeNovo={aoVerDeNovo}
     />
   )
 }
@@ -307,5 +323,110 @@ describe('palco: o zoom no quadro em destaque', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Fazer a tela caber no quadro' }))
     expect(video.style.transform).toBe('translate(0px, 0px) scale(1)')
+  })
+})
+
+describe('palco: o cartão de estado do quadro', () => {
+  it('a imagem que parou de chegar diz isso e oferece tentar de novo — o congelamento depois de chegar', () => {
+    const aoTentarDeNovo = vi.fn()
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, recepcao: 'congelada' }), aoTentarDeNovo })
+
+    expect(screen.getByRole('status')).toHaveTextContent('A imagem de Sadia parou de chegar aqui.')
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+    expect(aoTentarDeNovo).toHaveBeenCalledExactlyOnceWith('sadia')
+  })
+
+  it('a tela pausada por quem compartilha diz que está pausada, sem botão — não há o que tentar daqui', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, pausada: true }) })
+
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Sadia está pausada')
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+  })
+
+  it('a própria tela pausada fala com quem compartilha', () => {
+    montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true, pausada: true }) })
+    expect(screen.getByRole('status')).toHaveTextContent('Sua tela está pausada')
+  })
+
+  it('a tela que terminou tem o Fechar', () => {
+    const aoFecharEncerrada = vi.fn()
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, publicacao: undefined, encerrada: true }), aoFecharEncerrada })
+
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Sadia terminou.')
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(aoFecharEncerrada).toHaveBeenCalledOnce()
+  })
+
+  it('a conexão de quem compartilha caída aparece no quadro dele', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, qualidade: ConnectionQuality.Lost }) })
+    expect(screen.getByRole('status')).toHaveTextContent('A conexão de Sadia caiu — esperando voltar…')
+  })
+
+  it('a minha conexão caída aparece em cima de qualquer outra coisa', () => {
+    montarPalco({
+      emDestaque: peca('Sadia', { ehTela: true, recepcao: 'congelada', pausada: true }),
+      minhaConexao: ConnectionState.Reconnecting,
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('Sua conexão caiu — voltando…')
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+  })
+})
+
+describe('palco: deixar de ver a tela de alguém', () => {
+  it('a pílula da tela alheia oferece deixar de ver; o quadro deixado oferece ver de novo', () => {
+    const aoDeixarDeVer = vi.fn()
+    const aoVerDeNovo = vi.fn()
+    const { rerender } = render(<Palquinho emDestaque={peca('Sadia', { ehTela: true })} aoDeixarDeVer={aoDeixarDeVer} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deixar de ver a tela de Sadia' }))
+    expect(aoDeixarDeVer).toHaveBeenCalledExactlyOnceWith('sadia')
+
+    rerender(<Palquinho emDestaque={peca('Sadia', { ehTela: true, naoVejo: true })} aoVerDeNovo={aoVerDeNovo} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Você deixou de ver a tela de Sadia.')
+    fireEvent.click(screen.getByRole('button', { name: 'Ver de novo' }))
+    expect(aoVerDeNovo).toHaveBeenCalledExactlyOnceWith('sadia')
+  })
+
+  it('a própria tela não tem "deixar de ver"', () => {
+    montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true }) })
+    expect(screen.queryByRole('button', { name: /Deixar de ver/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('palco: o aviso de qualidade diz de quem é a rede', () => {
+  it('a minha rede fraca aparece só depois do aquecimento, sem cobrir a imagem com cartão', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true }), minhaQualidade: ConnectionQuality.Poor })
+    expect(screen.queryByText(/conexão está fraca/)).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(10_000))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Sua conexão está fraca — a imagem pode travar aqui.')
+  })
+
+  it('a qualidade que o SFU anuncia sobre o dono não vira aviso — ela não mede a rede dele', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, qualidade: ConnectionQuality.Poor }) })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/conexão de Sadia está fraca/)).not.toBeInTheDocument()
+  })
+
+  it('a rede fraca de quem compartilha (pelo pulso dela) leva o nome dela', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, redeFraca: true }) })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.getByRole('status')).toHaveTextContent('A conexão de Sadia está fraca')
+  })
+
+  it('com cartão de estado, o cartão explica sozinho', () => {
+    montarPalco({
+      emDestaque: peca('Sadia', { ehTela: true, pausada: true }),
+      minhaQualidade: ConnectionQuality.Poor,
+    })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/conexão está fraca/)).not.toBeInTheDocument()
+  })
+
+  it('na própria tela não há aviso de quem assiste', () => {
+    montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true }), minhaQualidade: ConnectionQuality.Poor })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/conexão está fraca/)).not.toBeInTheDocument()
   })
 })

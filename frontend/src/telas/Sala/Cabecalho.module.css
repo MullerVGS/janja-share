@@ -119,7 +119,12 @@
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.botao:hover {
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.botao:hover:not(:disabled) {
   background: color-mix(in srgb, var(--texto) 8%, transparent);
 }
 

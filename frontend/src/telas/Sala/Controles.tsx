@@ -1,24 +1,25 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { Room } from 'livekit-client'
 import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import {
+  IconeAssistindo,
   IconeChat,
   IconeMicrofone,
   IconeMicrofoneMudo,
-  IconePararTela,
-  IconeQualidade,
   IconeSair,
-  IconeSom,
-  IconeSomMudo,
   IconeTela,
-  IconeTrocarTela,
+  IconeTelaNoAr,
 } from '../../ui/Icone'
+import { Suspenso } from '../../ui/Suspenso'
+import { MenuDaTela } from './MenuDaTela'
 import { SomSaindo } from './SomSaindo'
 import estilos from './Controles.module.css'
 
 interface Props {
   sala: Room | null
   compartilhamento: Compartilhamento
+  /** Os nomes de quem está assistindo a minha Tela agora, pelos relatos da telemetria. */
+  quemAssiste: string[]
   chatAberto: boolean
   naoLidasNoChat: number
   /** Abre a gaveta no chat, ou a fecha se o chat já está à mostra. */
@@ -70,6 +71,9 @@ function Botao({
   tom = 'normal',
   ligado,
   desabilitado = false,
+  expandido,
+  abreMenu = false,
+  referencia,
   aoClicar,
   children,
 }: {
@@ -78,15 +82,24 @@ function Botao({
   tom?: Tom
   ligado?: boolean
   desabilitado?: boolean
+  /** Presente quando o botão abre um suspenso: diz se ele está aberto, no lugar de `aria-pressed`. */
+  expandido?: boolean
+  /** O suspenso é um menu de ações (e não uma lista para ler). */
+  abreMenu?: boolean
+  referencia?: RefObject<HTMLButtonElement | null>
   aoClicar(): void
   children: ReactNode
 }) {
+  const abreSuspenso = expandido !== undefined
   return (
     <button
+      ref={referencia}
       type="button"
       className={estilos.botao}
       data-tom={tom === 'normal' ? undefined : tom}
-      aria-pressed={ligado}
+      aria-pressed={abreSuspenso ? undefined : ligado}
+      aria-haspopup={abreMenu ? 'menu' : undefined}
+      aria-expanded={expandido}
       aria-label={rotulo}
       title={rotulo}
       disabled={desabilitado}
@@ -105,14 +118,15 @@ function Botao({
  * numa sala já transmitindo — e o estado está no próprio botão, não escondido num menu. Não há
  * câmera: o projeto é compartilhar tela, e o SFU nem aceita publicá-la.
  *
- * Trocar de tela, os ajustes dela e o áudio dela só aparecem transmitindo, porque são da SUA
- * tela — e é por isso que moram aqui, e não na pílula de um quadro: enquanto você assiste a de
- * outra pessoa em destaque, a sua vive nas miniaturas, sem pílula nenhuma desenhada para ela. A
- * barra é o único lugar que está sempre no ar.
+ * No ar, o botão da tela vira "No ar" e abre o menu de quem está no ar (`MenuDaTela`): parar,
+ * trocar, qualidade e som, tudo sem tirar a Tela do ar. Moram aqui, e não na pílula de um
+ * quadro, porque são da SUA tela: enquanto você assiste a de outra pessoa em destaque, a sua vive
+ * nas miniaturas, sem pílula nenhuma desenhada para ela. A barra é o único lugar sempre no ar.
  */
 export function Controles({
   sala,
   compartilhamento,
+  quemAssiste,
   chatAberto,
   naoLidasNoChat,
   aoAlternarChat,
@@ -121,13 +135,20 @@ export function Controles({
   aoSair,
 }: Props) {
   const [mudandoMicrofone, setMudandoMicrofone] = useState(false)
+  const [menuAberto, setMenuAberto] = useState(false)
+  const botaoDaTela = useRef<HTMLButtonElement>(null)
+  const [listaAberta, setListaAberta] = useState(false)
+  const botaoDeQuemAssiste = useRef<HTMLButtonElement>(null)
 
   const microfoneLigado = sala?.localParticipant.isMicrophoneEnabled ?? false
   // Sem sala não há a quem pedir microfone nem tela: botão que não faz nada tem de dizer isso.
   const semSala = sala === null
   // Quem compartilha não se ouve: o medidor é a única resposta a "está saindo som?".
   const faixaDoAudioDaTela = compartilhamento.audioDaTela?.track?.mediaStreamTrack
-  const audioDaTelaNoAr = Boolean(compartilhamento.audioDaTela && !compartilhamento.audioDaTela.isMuted)
+  const noAr = compartilhamento.ativo
+  const assistindo = quemAssiste.length
+  const fraseDeQuemAssiste =
+    assistindo === 0 ? 'Ninguém assistindo ainda' : `${assistindo} assistindo: ${quemAssiste.join(', ')}`
 
   async function alternarMicrofone() {
     if (!sala) return
@@ -157,49 +178,77 @@ export function Controles({
 
       <span className={estilos.separador} aria-hidden="true" />
 
-      <Botao
-        rotulo={compartilhamento.ativo ? 'Parar de compartilhar a tela' : 'Compartilhar tela'}
-        legenda={compartilhamento.ativo ? 'Parar' : 'Compartilhar'}
-        tom={compartilhamento.ativo ? 'aceso' : 'convite'}
-        ligado={compartilhamento.ativo}
-        desabilitado={semSala || compartilhamento.ocupado}
-        aoClicar={() => void compartilhamento.alternar()}
-      >
-        {compartilhamento.ativo ? <IconePararTela tamanho={22} /> : <IconeTela tamanho={22} />}
-      </Botao>
-
-      {compartilhamento.ativo && (
-        <>
-          <Botao
-            rotulo="Trocar de tela"
-            legenda="Trocar"
-            desabilitado={compartilhamento.ocupado}
-            aoClicar={() => void compartilhamento.trocarDeTela()}
-          >
-            <IconeTrocarTela tamanho={22} />
-          </Botao>
-          <Botao
-            rotulo={
-              !compartilhamento.audioDaTela
-                ? 'Áudio da tela — marque "compartilhar áudio" no seletor'
-                : audioDaTelaNoAr
-                  ? 'Calar o áudio da tela'
-                  : 'Devolver o áudio da tela'
-            }
-            legenda="Som da tela"
-            tom={audioDaTelaNoAr ? 'normal' : 'fechado'}
-            ligado={audioDaTelaNoAr}
-            desabilitado={!compartilhamento.audioDaTela}
-            aoClicar={() => void compartilhamento.alternarAudioDaTela()}
-          >
-            {audioDaTelaNoAr ? <IconeSom tamanho={22} /> : <IconeSomMudo tamanho={22} />}
-          </Botao>
-          <Botao rotulo="Qualidade da transmissão" legenda="Qualidade" aoClicar={aoAbrirQualidade}>
-            <IconeQualidade tamanho={22} />
-          </Botao>
-          {faixaDoAudioDaTela && <SomSaindo faixa={faixaDoAudioDaTela} />}
-        </>
+      {noAr ? (
+        <Botao
+          rotulo="Sua tela está no ar — opções"
+          legenda="No ar"
+          tom="aceso"
+          expandido={menuAberto}
+          abreMenu
+          referencia={botaoDaTela}
+          aoClicar={() => setMenuAberto((aberto) => !aberto)}
+        >
+          <IconeTelaNoAr tamanho={22} />
+        </Botao>
+      ) : (
+        <Botao
+          rotulo="Compartilhar tela"
+          legenda="Compartilhar"
+          tom="convite"
+          ligado={false}
+          desabilitado={semSala || compartilhamento.ocupado}
+          aoClicar={() => void compartilhamento.alternar()}
+        >
+          <IconeTela tamanho={22} />
+        </Botao>
       )}
+
+      {noAr && faixaDoAudioDaTela && <SomSaindo faixa={faixaDoAudioDaTela} />}
+
+      {/* Quem compartilha quer saber se alguém está vendo: o número na barra, os nomes no
+          passar do mouse e no toque (no celular não há hover). */}
+      {noAr && (
+        <Botao
+          rotulo={fraseDeQuemAssiste}
+          legenda="Assistindo"
+          expandido={listaAberta}
+          referencia={botaoDeQuemAssiste}
+          aoClicar={() => setListaAberta((aberta) => !aberta)}
+        >
+          <IconeAssistindo tamanho={22} />
+          {assistindo > 0 && (
+            <span className={estilos.contador} aria-hidden="true">
+              {assistindo}
+            </span>
+          )}
+        </Botao>
+      )}
+
+      <Suspenso
+        ancora={botaoDeQuemAssiste}
+        aberto={noAr && listaAberta}
+        aoFechar={() => setListaAberta(false)}
+        rotulo="Quem está assistindo"
+        papel="group"
+      >
+        {assistindo === 0 ? (
+          <p className={estilos.ninguem}>Ninguém assistindo ainda.</p>
+        ) : (
+          <ul className={estilos.quemAssiste}>
+            {quemAssiste.map((nome) => (
+              <li key={nome}>{nome}</li>
+            ))}
+          </ul>
+        )}
+      </Suspenso>
+
+      <MenuDaTela
+        ancora={botaoDaTela}
+        aberto={noAr && menuAberto}
+        aoFechar={() => setMenuAberto(false)}
+        compartilhamento={compartilhamento}
+        aoAbrirQualidade={aoAbrirQualidade}
+      />
 
       <span className={estilos.separador} aria-hidden="true" />
 

@@ -1,4 +1,11 @@
-import { Track, type Participant, type Room, type TrackPublication } from 'livekit-client'
+import {
+  ConnectionQuality,
+  ConnectionState,
+  Track,
+  type Participant,
+  type Room,
+  type TrackPublication,
+} from 'livekit-client'
 import type { EstadoDaRecepcao } from './recepcao'
 
 /**
@@ -30,6 +37,22 @@ export interface Peca {
   publicacaoDoAudio?: TrackPublication
   /** O veredito do cão de guarda da recepção; só existe em tela alheia — a própria não se assina. */
   recepcao?: EstadoDaRecepcao
+  /** A Tela está publicada, mas muda: quem compartilha parou de mandar quadros (o navegador pausou a captura). */
+  pausada?: boolean
+  /**
+   * A conexão do dono como o SFU a anuncia aos outros. Só `Lost` (queda) vale daqui: o resto da
+   * escala, visto de fora, não mede a rede do dono (ver `redeFraca`).
+   */
+  qualidade?: ConnectionQuality
+  /** O dono disse, no pulso, que a própria conexão está fraca. */
+  redeFraca?: boolean
+  /** Esta pessoa escolheu não ver esta Tela: está desassinada, e volta com um clique. */
+  naoVejo?: boolean
+  /**
+   * A Tela saiu do ar enquanto estava em destaque. A peça fica no palco, sem imagem, até alguém
+   * fechar o cartão ou a mesma pessoa voltar a compartilhar — quem desenha é que a cria.
+   */
+  encerrada?: boolean
 }
 
 export interface Palco {
@@ -52,11 +75,10 @@ function chaveDaTela(identidade: string): string {
 /**
  * As chaves de todas as telas **publicadas**, mudas incluídas — o `telasAntes` de `decidirFoco`.
  *
- * `montarPalco` esconde a tela muda (sem imagem não há o que pôr no palco), e mudo vai e volta:
- * o navegador pausa a captura e a devolve, e o LiveKit sinaliza isso como mudo. Comparar duas
- * fotos do palco faria o desmudar parecer uma tela nova — e uma tela própria "nova" arranca o
- * foco de quem tinha escolhido assistir outra coisa. Contar a publicação, e não a imagem, é o
- * que distingue voltar do mudo de começar a compartilhar.
+ * Mudo vai e volta: o navegador pausa a captura e a devolve, e o LiveKit sinaliza isso como
+ * mudo. O palco mostra a tela muda como pausada, mas é a publicação, e não a imagem, que
+ * distingue voltar do mudo de começar a compartilhar — uma tela própria "nova" arrancaria o foco
+ * de quem tinha escolhido assistir outra coisa.
  */
 export function chavesDasTelasPublicadas(sala: Room | null): string[] {
   if (!sala) return []
@@ -66,7 +88,12 @@ export function chavesDasTelasPublicadas(sala: Room | null): string[] {
     .map((participante) => chaveDaTela(participante.identity))
 }
 
-export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, EstadoDaRecepcao>): Palco {
+export function montarPalco(
+  sala: Room | null,
+  recepcao?: ReadonlyMap<string, EstadoDaRecepcao>,
+  naoVejo?: ReadonlySet<string>,
+  redesFracas?: ReadonlySet<string>,
+): Palco {
   if (!sala) return PALCO_VAZIO
 
   const telas: Peca[] = []
@@ -93,7 +120,8 @@ export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, Es
       temAudio: Boolean(microfone),
     })
 
-    if (tela && !tela.isMuted) {
+    // A tela muda continua sendo quadro: some a imagem, fica o cartão dizendo que está pausada.
+    if (tela) {
       telas.push({
         chave: chaveDaTela(participante.identity),
         identidade: participante.identity,
@@ -106,9 +134,64 @@ export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, Es
         temAudio: Boolean(somDaTela),
         publicacaoDoAudio: somDaTela,
         recepcao: proprio ? undefined : recepcao?.get(participante.identity),
+        pausada: tela.isMuted,
+        qualidade: participante.connectionQuality,
+        naoVejo: !proprio && Boolean(naoVejo?.has(participante.identity)),
+        redeFraca: !proprio && Boolean(redesFracas?.has(participante.identity)),
       })
     }
   }
 
   return { telas, pessoas }
+}
+
+/**
+ * O que o quadro está dizendo a quem olha para ele, além da imagem.
+ *
+ * A ordem é a do que explica mais: a própria conexão caída explica tudo o que não chega; uma
+ * Tela que terminou não tem mais o que pausar; a que a pessoa escolheu não ver não chega porque
+ * ela pediu; a conexão do dono caída explica a imagem parada
+ * dele; pausada é a imagem parada de propósito; e só então vem o que o cão de guarda viu.
+ */
+export type EstadoDoQuadro =
+  | 'aoVivo'
+  | 'voceReconectando'
+  | 'terminou'
+  | 'naoVejo'
+  | 'donoReconectando'
+  | 'pausada'
+  | 'chegando'
+  | 'nuncaChegou'
+  | 'congelada'
+
+export function estadoDoQuadro(peca: Peca, minhaConexao: ConnectionState): EstadoDoQuadro {
+  if (minhaConexao !== ConnectionState.Connected) return 'voceReconectando'
+  if (peca.encerrada) return 'terminou'
+  if (peca.naoVejo) return 'naoVejo'
+  if (!peca.proprio && peca.qualidade === ConnectionQuality.Lost) return 'donoReconectando'
+  if (peca.pausada) return 'pausada'
+  switch (peca.recepcao) {
+    case 'retomando':
+      return 'chegando'
+    case 'desistiu':
+      return 'nuncaChegou'
+    case 'congelada':
+      return 'congelada'
+    default:
+      return 'aoVivo'
+  }
+}
+
+/** A peça que fica no palco quando a Tela em destaque sai do ar: a mesma chave, sem imagem. */
+export function pecaEncerrada(peca: Peca): Peca {
+  return {
+    ...peca,
+    publicacao: undefined,
+    publicacaoDoAudio: undefined,
+    temAudio: false,
+    recepcao: undefined,
+    pausada: false,
+    naoVejo: false,
+    encerrada: true,
+  }
 }

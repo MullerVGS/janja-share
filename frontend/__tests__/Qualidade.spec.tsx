@@ -14,10 +14,18 @@ function montarQualidade(parcial: Partial<Compartilhamento> = {}) {
 }
 
 describe('aba Qualidade: os dois botões', () => {
-  it('a escolha da pessoa é uma só: o que está na tela', () => {
-    montarQualidade()
+  it('a escolha da pessoa é uma só: o que está na tela — com o efeito escrito em números', () => {
+    montarQualidade({ perfil: PRESET_DO_CONTEUDO.jogo })
     const conteudo = screen.getByRole('radiogroup', { name: 'Conteúdo' })
-    expect(within(conteudo).getAllByRole('radio').map((botao) => botao.textContent)).toEqual(['Texto', 'Jogo'])
+    expect(within(conteudo).getAllByRole('radio').map((botao) => botao.getAttribute('aria-label'))).toEqual([
+      'Texto nítido · 1080p, 15 fps',
+      'Jogo · 1080p, 60 fps',
+    ])
+  })
+
+  it('o efeito acompanha a resolução de agora, que trocar de conteúdo preserva', () => {
+    montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: 'nativa' } })
+    expect(screen.getByRole('radio', { name: 'Texto nítido · resolução original, 15 fps' })).toBeInTheDocument()
   })
 
   it('Avançado começa fechado: o painel de antes existe, mas não é o produto', () => {
@@ -30,7 +38,7 @@ describe('aba Qualidade: controles', () => {
   it('mostra os dois eixos, o codec, resolução e fps com o perfil atual marcado', () => {
     montarQualidade({ perfil: { ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' } })
 
-    expect(screen.getByRole('radio', { name: 'Jogo' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /^Jogo · / })).toBeChecked()
     // O codec em vigor é a intenção da pessoa, e ela nasce entregue à máquina.
     expect(screen.getByRole('radio', { name: 'Automático' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '720p' })).toBeChecked()
@@ -46,7 +54,7 @@ describe('aba Qualidade: controles', () => {
       definirPerfil: (perfil) => escolhido.push(perfil),
     })
 
-    await usuario.click(screen.getByRole('radio', { name: 'Jogo' }))
+    await usuario.click(screen.getByRole('radio', { name: /^Jogo · / }))
 
     expect(escolhido[0]).toEqual({ ...PRESET_DO_CONTEUDO.jogo, resolucao: '720p' })
   })

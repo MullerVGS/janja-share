@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { Track, type Room, type TrackPublishOptions } from 'livekit-client'
+import { Track, TrackEvent, type Room, type TrackPublishOptions } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { OPCOES_DO_AUDIO_DA_TELA } from '../src/sala/audioDaTela'
@@ -13,17 +13,53 @@ import type { Espectador } from '../src/telemetria/relato'
  * A captura é módulo, não método do participante: o seletor nativo não existe no jsdom, e é a
  * `SalaFalsa` de cada teste que decide o que ele "devolve" — por isso o mock só delega.
  */
-const seletor = vi.hoisted(() => ({ abrir: vi.fn() }))
-vi.mock('../src/sala/captura', () => ({ capturarTela: (perfil: unknown) => seletor.abrir(perfil) }))
+const seletor = vi.hoisted(() => ({ abrir: vi.fn(), embrulhar: vi.fn() }))
+vi.mock('../src/sala/captura', () => ({
+  capturarTela: (perfil: unknown) => seletor.abrir(perfil),
+  // A troca de tela usa a captura crua: as mesmas faixas do seletor falso, sem o embrulho.
+  abrirSeletor: async (perfil: unknown) => {
+    const faixas = (await seletor.abrir(perfil)) as { kind: string; mediaStreamTrack: unknown }[]
+    return {
+      video: faixas.find((faixa) => faixa.kind === 'video')?.mediaStreamTrack,
+      audio: faixas.find((faixa) => faixa.kind === 'audio')?.mediaStreamTrack ?? null,
+    }
+  },
+  embrulharSomDaTela: (som: unknown) => seletor.embrulhar(som),
+}))
+
+/** A `MediaStreamTrack` reduzida ao que o hook toca: estado, dica, restrições e parar. */
+function faixaDoNavegador() {
+  const faixa = {
+    readyState: 'live' as MediaStreamTrackState,
+    contentHint: '',
+    applyConstraints: vi.fn(async () => {}),
+    stop: vi.fn(() => {
+      faixa.readyState = 'ended'
+    }),
+  }
+  return faixa
+}
 
 /** Uma `LocalTrack` reduzida ao que o hook toca: a faixa do navegador, o sender e o codec publicado. */
 function faixaFalsa(kind: 'video' | 'audio', codec: string | undefined = 'vp9') {
   const parametros = { transactionId: 'tx', encodings: [{ active: true }] } as unknown as RTCRtpSendParameters
+  const ouvintes = new Map<string, Set<() => void>>()
   return {
+    on: vi.fn((evento: string, ouvinte: () => void) => {
+      ouvintes.set(evento, (ouvintes.get(evento) ?? new Set()).add(ouvinte))
+    }),
+    off: vi.fn((evento: string, ouvinte: () => void) => {
+      ouvintes.get(evento)?.delete(ouvinte)
+    }),
+    /** O navegador acabando com a captura — a janela fechada, o "Parar" da barra dele. */
+    acabar() {
+      this.mediaStreamTrack.readyState = 'ended'
+      for (const ouvinte of ouvintes.get(TrackEvent.Ended) ?? []) ouvinte()
+    },
     kind,
     codec: codec as string | undefined,
     isMuted: false,
-    mediaStreamTrack: { readyState: 'live' as MediaStreamTrackState, contentHint: '', applyConstraints: vi.fn(async () => {}) },
+    mediaStreamTrack: faixaDoNavegador(),
     sender: {
       getParameters: () => parametros,
       setParameters: vi.fn(async (novos: RTCRtpSendParameters) => {
@@ -32,6 +68,8 @@ function faixaFalsa(kind: 'video' | 'audio', codec: string | undefined = 'vp9') 
     } as unknown as RTCRtpSender | undefined,
     parametros: () => parametros,
     stop: vi.fn(),
+    /** Como no SDK: a faixa nova entra no mesmo sender, e a antiga — que é do SDK — para. */
+    replaceTrack: vi.fn(async (_nova: ReturnType<typeof faixaDoNavegador>, _doUsuario?: boolean) => {}),
   }
 }
 
@@ -74,6 +112,8 @@ class SalaFalsa {
       this.ultimaCaptura = faixas
       return faixas
     })
+    seletor.embrulhar.mockReset()
+    seletor.embrulhar.mockImplementation((som: unknown) => this.ultimaCaptura.find((faixa) => faixa.mediaStreamTrack === som))
   }
 
   /** Os outros da Sala, pela tela que publicam ou não — é o que o teto da Sala conta. */
@@ -81,18 +121,6 @@ class SalaFalsa {
 
   localParticipant = {
     getTrackPublication: (fonte: Track.Source) => this.publicacoes.get(fonte),
-
-    // Só o desligar (`ligar()` captura e publica faixa a faixa via `capturarTela` +
-    // `publishTrack` — é o próprio bug desta suíte: `setScreenShareEnabled(true, ...)` aplicaria
-    // a mesma opção, moldada para vídeo, a toda faixa que o SDK capturasse).
-    setScreenShareEnabled: vi.fn(async (ligar: boolean) => {
-      await this.proximaBatida()
-      if (!ligar) {
-        this.publicacoes.delete(Track.Source.ScreenShare)
-        this.publicacoes.delete(Track.Source.ScreenShareAudio)
-      }
-      return undefined
-    }),
 
     unpublishTrack: vi.fn(async (faixa: Faixa, parar?: boolean) => {
       await this.proximaBatida()
@@ -127,6 +155,12 @@ class SalaFalsa {
   private publicar(fonte: Track.Source, faixa: Faixa, options?: TrackPublishOptions): Publicacao {
     this.sids += 1
     faixa.sender = faixa.sender ?? faixaFalsa(faixa.kind).sender
+    faixa.replaceTrack.mockImplementation(async (nova) => {
+      await this.proximaBatida()
+      if (!faixa.sender) throw new Error('unable to replace an unpublished track')
+      faixa.mediaStreamTrack.readyState = 'ended'
+      faixa.mediaStreamTrack = nova
+    })
     const publicacao: Publicacao = {
       trackSid: `t${this.sids}`,
       track: faixa,
@@ -263,11 +297,27 @@ describe('useCompartilhamento: pedido e preferências', () => {
     expect(result.current.ativo).toBe(false)
   })
 
+  it('parar tira a Tela e o som do ar e mata a captura — a sala não para faixa ao despublicar (ADR 0014)', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    const imagem = sala.video()?.track
+    const som = sala.audio()?.track
+
+    await agir(() => result.current.alternar())
+
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(imagem, true)
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(som, true)
+    expect(imagem?.mediaStreamTrack.readyState).toBe('ended')
+    expect(som?.mediaStreamTrack.readyState).toBe('ended')
+    expect(result.current.ativo).toBe(false)
+  })
+
   it('se parar de compartilhar falhar, o erro chega à pessoa em vez de virar rejeição solta', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, agir } = montar(sala)
     await ligar()
-    sala.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('engine fechada'))
+    sala.localParticipant.unpublishTrack.mockRejectedValueOnce(new Error('engine fechada'))
 
     await agir(() => result.current.alternar())
 
@@ -507,15 +557,16 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     sala.localParticipant.publishTrack.mockRejectedValueOnce(new Error('nope'))
     await agir(() => result.current.definirCodecPreferido('av1'))
     expect(result.current.codecPendente).toBe('av1')
-    sala.localParticipant.setScreenShareEnabled.mockClear()
+    const capturaAntiga = sala.video()?.track
+    sala.localParticipant.unpublishTrack.mockClear()
     seletor.abrir.mockClear()
     sala.localParticipant.publishTrack.mockClear()
 
     await agir(() => result.current.reiniciar())
 
-    // Reiniciar para (desligarAntes) e captura+publica de novo — não delega mais ao
-    // `setScreenShareEnabled(true, ...)`, que aplicaria a mesma opção de vídeo ao áudio.
-    expect(sala.localParticipant.setScreenShareEnabled).toHaveBeenCalledExactlyOnceWith(false)
+    // Reiniciar para (desligarAntes) — parando a captura de antes — e captura+publica de novo.
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(capturaAntiga, true)
+    expect(capturaAntiga?.mediaStreamTrack.readyState).toBe('ended')
     expect(seletor.abrir).toHaveBeenCalledOnce()
     expect(sala.localParticipant.publishTrack.mock.calls[0]?.[1]).toMatchObject({ videoCodec: 'av1' })
     expect(result.current.codecPendente).toBeNull()
@@ -597,41 +648,110 @@ describe('useCompartilhamento: áudio da tela', () => {
 })
 
 describe('useCompartilhamento: trocar de tela', () => {
-  it('abre o seletor de novo e só derruba a tela antiga depois que a nova captura existe', async () => {
+  it('a fonte nova entra na mesma publicação: mesmo trackSid, mesmo codec, nada sai do ar', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, agir } = montar(sala)
     await ligar()
-    const antiga = sala.video()?.track
-    // `ligar()` já abriu o seletor na captura inicial; a contagem abaixo é só da troca.
+    const video = sala.video()
+    const audio = sala.audio()
+    const capturaAntiga = video?.track.mediaStreamTrack
+    const somAntigo = audio?.track.mediaStreamTrack
     seletor.abrir.mockClear()
+    sala.localParticipant.publishTrack.mockClear()
 
     await agir(() => result.current.trocarDeTela())
 
     expect(seletor.abrir).toHaveBeenCalledOnce()
-    // A ordem é o que garante que cancelar não derruba nada: capturar vem antes de despublicar.
-    expect(seletor.abrir.mock.invocationCallOrder[0]).toBeLessThan(
-      sala.localParticipant.setScreenShareEnabled.mock.invocationCallOrder[0] ?? Infinity,
-    )
-    expect(sala.video()?.track).not.toBe(antiga)
-    expect(sala.video()?.options).toMatchObject({ videoCodec: 'vp9', scalabilityMode: 'L3T3_KEY' })
-    expect(sala.audio()?.track.kind).toBe('audio')
+    // Quem assiste não vê nada sair: nem a imagem nem o som foram despublicados.
+    expect(sala.localParticipant.unpublishTrack).not.toHaveBeenCalled()
+    expect(sala.localParticipant.publishTrack).not.toHaveBeenCalled()
+    expect(sala.video()).toBe(video)
+    expect(sala.video()?.trackSid).toBe(video?.trackSid)
+    expect(sala.video()?.track.codec).toBe('vp9')
+    // A captura nova está no sender; a antiga parou.
+    const [novaImagem, novoSom] = sala.ultimaCaptura
+    expect(sala.video()?.track.mediaStreamTrack).toBe(novaImagem?.mediaStreamTrack)
+    expect(sala.video()?.track.replaceTrack).toHaveBeenCalledWith(novaImagem?.mediaStreamTrack, false)
+    expect(capturaAntiga?.readyState).toBe('ended')
+    expect(sala.audio()).toBe(audio)
+    expect(sala.audio()?.track.mediaStreamTrack).toBe(novoSom?.mediaStreamTrack)
+    expect(somAntigo?.readyState).toBe('ended')
     expect(result.current.ativo).toBe(true)
     expect(result.current.ocupado).toBe(false)
     expect(result.current.erro).toBeNull()
-    // A captura que foi ao ar continua viva; parar alguma delas mataria a transmissão nova.
-    for (const faixa of sala.ultimaCaptura) expect(faixa.stop).not.toHaveBeenCalled()
   })
 
-  it('se publicar a tela nova falhar, a captura recém-aberta morre — nada de indicador aceso para ninguém', async () => {
+  it('o ajuste ao vivo roda de novo na captura nova — o SDK reaplica os encodings ao trocar', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, agir } = montar(sala)
     await ligar()
-    sala.localParticipant.publishTrack.mockRejectedValueOnce(new Error('engine fechada'))
+    await assentar()
+
+    await agir(() => result.current.trocarDeTela())
+    await assentar()
+
+    expect(sala.video()?.track.mediaStreamTrack.applyConstraints).toHaveBeenCalledWith({
+      frameRate: { max: 60 },
+      height: { max: 1080 },
+    })
+  })
+
+  it('a fonte nova sem som tira o som da tela do ar — e só ele', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    const video = sala.video()
+    const somAntigo = sala.audio()?.track
+    sala.comAudio = false
 
     await agir(() => result.current.trocarDeTela())
 
-    for (const faixa of sala.ultimaCaptura) expect(faixa.stop).toHaveBeenCalledOnce()
-    expect(result.current.erro).toBe('engine fechada')
+    expect(sala.localParticipant.unpublishTrack.mock.calls).toEqual([[somAntigo, true]])
+    expect(sala.audio()).toBeUndefined()
+    expect(sala.video()).toBe(video)
+    expect(result.current.audioDaTela).toBeNull()
+  })
+
+  it('a fonte nova com som, depois de uma sem, publica o som com as opções de mídia', async () => {
+    const sala = new SalaFalsa()
+    sala.comAudio = false
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    expect(sala.audio()).toBeUndefined()
+    sala.comAudio = true
+    sala.localParticipant.publishTrack.mockClear()
+
+    await agir(() => result.current.trocarDeTela())
+
+    const [, somNovo] = sala.ultimaCaptura
+    expect(sala.localParticipant.publishTrack.mock.calls).toEqual([[somNovo, OPCOES_DO_AUDIO_DA_TELA]])
+    expect(sala.audio()?.track).toBe(somNovo)
+  })
+
+  it('o som calado continua calado na fonte nova', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    await agir(() => result.current.alternarAudioDaTela())
+
+    await agir(() => result.current.trocarDeTela())
+
+    expect(sala.audio()?.isMuted).toBe(true)
+  })
+
+  it('se a troca falhar, a captura recém-aberta morre e a de antes continua no ar', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    const capturaAntiga = sala.video()?.track.mediaStreamTrack
+    sala.video()?.track.replaceTrack.mockRejectedValueOnce(new Error('sender fechado'))
+
+    await agir(() => result.current.trocarDeTela())
+
+    for (const faixa of sala.ultimaCaptura) expect(faixa.mediaStreamTrack.stop).toHaveBeenCalledOnce()
+    expect(sala.video()?.track.mediaStreamTrack).toBe(capturaAntiga)
+    expect(capturaAntiga?.readyState).toBe('live')
+    expect(result.current.erro).toBe('sender fechado')
     expect(result.current.ocupado).toBe(false)
   })
 
@@ -639,16 +759,15 @@ describe('useCompartilhamento: trocar de tela', () => {
     const sala = new SalaFalsa()
     const { result, ligar, agir } = montar(sala)
     await ligar()
-    const antiga = sala.video()?.track
+    const antiga = sala.video()?.track.mediaStreamTrack
     const cancelou = Object.assign(new Error('cancelou'), { name: 'NotAllowedError' })
     seletor.abrir.mockRejectedValueOnce(cancelou)
 
     await agir(() => result.current.trocarDeTela())
 
-    expect(sala.video()?.track).toBe(antiga)
-    // Cancelar não passa da captura: nem o `setScreenShareEnabled(false)` do
-    // meio de `trocarDeTela` roda.
-    expect(sala.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled()
+    expect(sala.video()?.track.mediaStreamTrack).toBe(antiga)
+    expect(sala.video()?.track.replaceTrack).not.toHaveBeenCalled()
+    expect(sala.localParticipant.unpublishTrack).not.toHaveBeenCalled()
     expect(result.current.ativo).toBe(true)
     expect(result.current.erro).toBeNull()
   })
@@ -662,46 +781,11 @@ describe('useCompartilhamento: trocar de tela', () => {
     expect(seletor.abrir).not.toHaveBeenCalled()
   })
 
-  it('trocandoTela fica true do início do unpublish até o fim do republish', async () => {
-    const sala = new SalaFalsa()
-    const { result, ligar, batida } = montar(sala)
-    await ligar()
-    expect(result.current.trocandoTela).toBe(false)
-
-    let promessa: Promise<void> | undefined
-    act(() => {
-      promessa = result.current.trocarDeTela()
-    })
-    expect(result.current.trocandoTela).toBe(false) // ainda dentro do seletor nativo
-
-    await batida() // libera createScreenTracks; achou vídeo; liga trocandoTela; presa no unpublish
-    expect(result.current.trocandoTela).toBe(true)
-    expect(sala.video()).toBeDefined()
-
-    await batida() // libera o unpublish — a própria tela some da lista aqui
-    expect(result.current.trocandoTela).toBe(true)
-    expect(sala.video()).toBeUndefined()
-
-    await batida() // libera o republish do vídeo — a tela volta
-    expect(result.current.trocandoTela).toBe(true)
-    expect(sala.video()).toBeDefined()
-
-    await batida() // libera o publish do áudio da tela — fim da troca
-    expect(result.current.trocandoTela).toBe(false)
-
-    await act(async () => {
-      await promessa
-    })
-    expect(result.current.ativo).toBe(true)
-    expect(result.current.ocupado).toBe(false)
-  })
-
   /**
-   * O teto é propriedade do link, e o link não muda quando a tela muda. Se `ativo` caísse na
-   * janela do unpublish+republish, o efeito do governador o zeraria e a busca recomeçaria do
+   * O teto é propriedade do link, e o link não muda quando a tela muda: a busca não recomeça do
    * ponto de partida — dois minutos ou mais para reconquistar o que já estava medido.
    */
-  it('trocar de tela não derruba o governador: `ativo` fica de pé na janela toda e o teto aprendido sobrevive', async () => {
+  it('trocar de tela não derruba o governador: `ativo` fica de pé e o teto aprendido sobrevive', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, amostras, batida } = montar(sala)
     await ligar()
@@ -713,9 +797,8 @@ describe('useCompartilhamento: trocar de tela', () => {
     act(() => {
       promessa = result.current.trocarDeTela()
     })
-    // Uma batida por chamada ao SDK: a captura, unpublish (a tela some da lista),
-    // republish do vídeo, publish do áudio.
-    for (let passo = 0; passo < 4; passo += 1) {
+    // Uma batida por chamada ao SDK: o seletor, a troca da imagem e a do som.
+    for (let passo = 0; passo < 3; passo += 1) {
       await batida()
       expect(result.current.ativo).toBe(true)
       expect(result.current.governador.tetoKbps).toBe(10_000)
@@ -725,7 +808,77 @@ describe('useCompartilhamento: trocar de tela', () => {
       await promessa
     })
     expect(result.current.ativo).toBe(true)
-    expect(result.current.governador.tetoKbps).toBe(10_000)
     expect(result.current.perfilEfetivo.tetoKbps).toBe(10_000)
+  })
+})
+
+describe('useCompartilhamento: a fonte que acaba sozinha', () => {
+  it('a janela fechada tira a Tela e o som do ar e avisa quem compartilhava', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, reler, ateAssentar } = montar(sala)
+    await ligar()
+    const som = sala.audio()?.track
+
+    act(() => sala.video()?.track.acabar())
+    await ateAssentar()
+    reler()
+
+    expect(result.current.fimDaFonte).toBe('tela')
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(som, true)
+    expect(som?.mediaStreamTrack.readyState).toBe('ended')
+    expect(result.current.ativo).toBe(false)
+  })
+
+  it('só o som acabando é aviso à parte: a imagem continua no ar', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar } = montar(sala)
+    await ligar()
+    const video = sala.video()
+
+    act(() => sala.audio()?.track.acabar())
+
+    expect(result.current.fimDaFonte).toBe('som')
+    expect(sala.video()).toBe(video)
+    expect(sala.localParticipant.unpublishTrack).not.toHaveBeenCalled()
+  })
+
+  it('parar pelo app não é a fonte acabando: nenhum aviso', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar } = montar(sala)
+    await ligar()
+    await ligar()
+    expect(result.current.fimDaFonte).toBeNull()
+  })
+
+  it('compartilhar de novo apaga o aviso; dispensar também', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, ateAssentar, reler } = montar(sala)
+    await ligar()
+    act(() => sala.video()?.track.acabar())
+    await ateAssentar()
+    reler()
+    expect(result.current.fimDaFonte).toBe('tela')
+
+    await ligar()
+    expect(result.current.fimDaFonte).toBeNull()
+    expect(result.current.ativo).toBe(true)
+
+    act(() => sala.audio()?.track.acabar())
+    expect(result.current.fimDaFonte).toBe('som')
+    act(() => result.current.dispensarFimDaFonte())
+    expect(result.current.fimDaFonte).toBeNull()
+  })
+
+  it('a imagem que acaba depois de uma troca de tela também avisa — o ouvinte segue a publicação, não a captura', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir, ateAssentar, reler } = montar(sala)
+    await ligar()
+    await agir(() => result.current.trocarDeTela())
+
+    act(() => sala.video()?.track.acabar())
+    await ateAssentar()
+    reler()
+
+    expect(result.current.fimDaFonte).toBe('tela')
   })
 })

@@ -117,6 +117,22 @@
   font-weight: var(--peso-forte);
 }
 
+/* A lista de quem assiste, no suspenso aberto pelo contador. */
+.quemAssiste {
+  margin: 0;
+  padding: var(--e1) var(--e2);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e1);
+}
+
+.ninguem {
+  margin: 0;
+  padding: var(--e1) var(--e2);
+  color: var(--texto-fraco);
+}
+
 @media (max-width: 520px) {
   .barra {
     gap: 2px;

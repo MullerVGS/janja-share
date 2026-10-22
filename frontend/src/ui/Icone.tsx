@@ -1,4 +1,5 @@
 import {
+  ArrowClockwise,
   ArrowsLeftRight,
   Broadcast,
   CaretDown,
@@ -9,6 +10,8 @@ import {
   CornersIn,
   CornersOut,
   DiceFive,
+  Eye,
+  EyeSlash,
   Gear,
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
@@ -83,3 +86,9 @@ export const IconeMarca = envolver(Broadcast)
 export const IconeEnviar = envolver(PaperPlaneRight)
 export const IconeFechar = envolver(X)
 export const IconeSetaBaixo = envolver(CaretDown)
+/** Recarregar a mídia é o recarregar de todo navegador — sem recarregar a página. */
+export const IconeRecarregar = envolver(ArrowClockwise)
+/** Quem assiste a sua tela, e voltar a ver a de alguém: o olho aberto. */
+export const IconeAssistindo = envolver(Eye)
+/** Deixar de ver a tela de alguém sem sair da sala: o olho riscado. */
+export const IconeDeixarDeVer = envolver(EyeSlash)

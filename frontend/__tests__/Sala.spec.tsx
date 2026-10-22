@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { RoomEvent, Track, type Room } from 'livekit-client'
+import { ConnectionQuality, RoomEvent, Track, type Room } from 'livekit-client'
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,6 +9,8 @@ import { Sala } from '../src/telas/Sala/Sala'
 import { empacotar } from '../src/sala/chat'
 import { TOPICO_DO_CHAT } from '../src/sala/useChat'
 import { CHAVE_DA_SESSAO } from '../src/sessao/sessao'
+import { amostraVaziaDoEspectador } from '../src/telemetria/amostra'
+import type { Espectador } from '../src/telemetria/relato'
 import { montar } from './apoio/montar'
 import { emitirNaSala, participanteFalso, publicacaoFalsa, salaFalsa } from './apoio/salaFalsa'
 import { credenciaisFalsas, guardarSessao } from './apoio/sessaoFalsa'
@@ -17,10 +19,13 @@ import { chamadas, servir } from './apoio/servidorFalso'
 /** O que os hooks do SDK devolvem; o teste mexe aqui e re-renderiza. */
 const falso = vi.hoisted(() => ({
   compartilhando: false,
-  trocandoTela: false,
+  fimDaFonte: null as 'tela' | 'som' | null,
+  alternar: null as null | (() => Promise<void>),
+  trocarDeTela: null as null | (() => Promise<void>),
+  espectadores: new Map() as ReadonlyMap<string, unknown>,
   sala: null as Room | null,
   versao: 0,
-  queda: null as { tentativa: number } | null,
+  queda: null as { tentativa: number; comTela: boolean } | null,
 }))
 
 vi.mock('../src/sala/useSala', async () => {
@@ -41,12 +46,27 @@ vi.mock('../src/sala/useSala', async () => {
 // A telemetria tem relógio próprio a 1 Hz; nestes testes ela não tem nada a dizer.
 vi.mock('../src/telemetria/useTelemetria', async () => {
   const { TELEMETRIA_VAZIA } = await import('../src/telemetria/coletor')
-  return { useTelemetria: () => ({ ...TELEMETRIA_VAZIA, rearmarRecepcao: vi.fn() }) }
+  return {
+    useTelemetria: () => ({
+      ...TELEMETRIA_VAZIA,
+      espectadores: falso.espectadores,
+      rearmarRecepcao: vi.fn(),
+      recarregarMidia: vi.fn(),
+    }),
+  }
 })
 
 vi.mock('../src/sala/useCompartilhamento', async () => {
   const { compartilhamentoFalso } = await import('./apoio/compartilhamentoFalso')
-  return { useCompartilhamento: () => compartilhamentoFalso({ ativo: falso.compartilhando, trocandoTela: falso.trocandoTela }) }
+  return {
+    useCompartilhamento: () =>
+      compartilhamentoFalso({
+        ativo: falso.compartilhando,
+        fimDaFonte: falso.fimDaFonte,
+        ...(falso.alternar ? { alternar: falso.alternar } : {}),
+        ...(falso.trocarDeTela ? { trocarDeTela: falso.trocarDeTela } : {}),
+      }),
+  }
 })
 
 /**
@@ -109,7 +129,10 @@ function gaveta() {
 
 afterEach(() => {
   falso.compartilhando = false
-  falso.trocandoTela = false
+  falso.fimDaFonte = null
+  falso.alternar = null
+  falso.trocarDeTela = null
+  falso.espectadores = new Map()
   falso.sala = null
   falso.versao = 0
   falso.queda = null
@@ -368,39 +391,6 @@ describe('sala: o palco', () => {
 
     expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
   })
-
-  it('trocar de tela não arranca o destaque de quem escolheu assistir outra', async () => {
-    const usuario = userEvent.setup()
-    const minhaTela = publicacaoFalsa(Track.Source.ScreenShare)
-    // Array próprio (não literal inline): `trocarDeTela` de verdade despublica e republica a
-    // mesma fonte — para simular isso é preciso poder remover e devolver a publicação por fora.
-    const publicacoesDoEu = [minhaTela]
-    const eu = participanteFalso('ana-a1b2c3', 'Ana', publicacoesDoEu)
-    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
-    falso.sala = salaFalsa(eu, [bia])
-    const { container } = montarSala()
-    expect(palcoDe(container)).toHaveTextContent('Sua tela')
-
-    await usuario.click(screen.getByRole('button', { name: 'Pôr a tela de Bia no palco' }))
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-
-    // A partir daqui simula o vaivém interno de `trocarDeTela` (useCompartilhamento.ts): a
-    // própria tela some e volta da lista de publicadas enquanto `trocandoTela` é true.
-    falso.trocandoTela = true
-    publicacoesDoEu.length = 0
-    await usuario.click(screen.getByRole('button', { name: 'mexer no palco' })) // a tela some
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-
-    publicacoesDoEu.push(minhaTela)
-    await usuario.click(screen.getByRole('button', { name: 'mexer no palco' })) // a tela volta
-    // Sem a guarda de `trocandoTela`, a heurística de "tela própria nova" (foco.ts) roubaria o
-    // destaque de volta aqui — é exatamente o que este teste prova que não acontece.
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-
-    falso.trocandoTela = false
-    await usuario.click(screen.getByRole('button', { name: 'mexer no palco' })) // troca termina
-    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-  })
 })
 
 describe('sala: a interface que se esconde', () => {
@@ -568,8 +558,144 @@ describe('sala: a validade da credencial decide só a entrada', () => {
   })
 
   it('a sala caída avisa que está voltando sozinha, e em que tentativa vai', () => {
-    falso.queda = { tentativa: 3 }
+    falso.queda = { tentativa: 3, comTela: false }
     montarSala()
     expect(screen.getByText(/conexão perdida/i)).toHaveTextContent('tentativa 3')
+    expect(screen.getByText(/conexão perdida/i)).not.toHaveTextContent(/sua tela/)
+  })
+
+  it('a tela que volta sozinha da queda não reabre a gaveta na Qualidade — não é começar a compartilhar', () => {
+    falso.queda = { tentativa: 1, comTela: true }
+    montarSala()
+    expect(gaveta()).toHaveAttribute('aria-hidden', 'true')
+
+    falso.queda = null
+    fireEvent.click(screen.getByRole('button', { name: 'simular compartilhar' }))
+
+    expect(gaveta()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('caída com a tela no ar, avisa que a tela volta junto — o navegador continua dizendo que compartilha', () => {
+    falso.queda = { tentativa: 1, comTela: true }
+    montarSala()
+    expect(screen.getByText(/conexão perdida/i)).toHaveTextContent('sua tela volta ao ar sozinha')
+  })
+})
+
+describe('sala: a fonte que acaba sozinha', () => {
+  it('a janela fechada avisa quem compartilhava e oferece compartilhar de novo', async () => {
+    const usuario = userEvent.setup()
+    falso.fimDaFonte = 'tela'
+    falso.alternar = vi.fn(async () => {})
+    montarSala()
+
+    expect(screen.getByText(/sua tela saiu do ar/i)).toHaveTextContent('a janela foi fechada')
+    await usuario.click(screen.getByRole('button', { name: 'Compartilhar de novo' }))
+    expect(falso.alternar).toHaveBeenCalledOnce()
+  })
+
+  it('só o som parando tem aviso próprio, e escolher a tela de novo é trocar — a imagem não sai do ar', async () => {
+    const usuario = userEvent.setup()
+    falso.compartilhando = true
+    falso.fimDaFonte = 'som'
+    falso.trocarDeTela = vi.fn(async () => {})
+    montarSala()
+
+    expect(screen.getByText(/o som da sua tela parou/i)).toBeInTheDocument()
+    expect(screen.queryByText(/sua tela saiu do ar/i)).not.toBeInTheDocument()
+    await usuario.click(screen.getByRole('button', { name: 'Escolher a tela de novo' }))
+    expect(falso.trocarDeTela).toHaveBeenCalledOnce()
+  })
+})
+
+describe('sala: a tela que termina em destaque', () => {
+  function biaCompartilhando(outros: ReturnType<typeof participanteFalso>[] = []) {
+    const publicacoes = [publicacaoFalsa(Track.Source.ScreenShare)]
+    const bia = participanteFalso('bia-x1y2', 'Bia', publicacoes)
+    falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [bia, ...outros])
+    return {
+      parar: () => {
+        publicacoes.splice(0)
+        fireEvent.click(screen.getByRole('button', { name: 'mexer no palco' }))
+      },
+      voltar: () => {
+        publicacoes.push(publicacaoFalsa(Track.Source.ScreenShare))
+        fireEvent.click(screen.getByRole('button', { name: 'mexer no palco' }))
+      },
+    }
+  }
+
+  it('fica o cartão "terminou" com o Fechar, em vez de o quadro sumir sem explicação', async () => {
+    const usuario = userEvent.setup()
+    const bia = biaCompartilhando()
+    const { container } = montarSala()
+
+    bia.parar()
+
+    expect(palcoDe(container)).toHaveAttribute('data-modo', 'destaque')
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Bia terminou.')
+    await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(palcoDe(container)).toHaveAttribute('data-modo', 'vazio')
+  })
+
+  it('a mesma pessoa voltando a compartilhar retoma o destaque sozinha', () => {
+    const bia = biaCompartilhando()
+    const { container } = montarSala()
+    bia.parar()
+
+    bia.voltar()
+
+    expect(screen.queryByText(/terminou/)).not.toBeInTheDocument()
+    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
+    expect(container.querySelector('[data-imagem] video')).toBeInTheDocument()
+  })
+
+  it('com outra tela no ar, o cartão fica no destaque; escolher a outra o dispensa', async () => {
+    const usuario = userEvent.setup()
+    const carla = participanteFalso('carla-z9', 'Carla', [publicacaoFalsa(Track.Source.ScreenShare)])
+    const bia = biaCompartilhando([carla])
+    montarSala()
+
+    bia.parar()
+
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Bia terminou.')
+    await usuario.click(screen.getByRole('button', { name: 'Pôr a tela de Carla no palco' }))
+    expect(screen.queryByText(/terminou/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /tela de Bia/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('sala: o aviso de qualidade de quem compartilha', () => {
+  afterEach(() => vi.useRealTimers())
+
+  function noArComPlateia(quantos: number) {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    falso.compartilhando = true
+    falso.sala = salaFalsa({
+      ...participanteFalso('ana-a1b2c3', 'Ana'),
+      connectionQuality: ConnectionQuality.Poor,
+    } as ReturnType<typeof participanteFalso>)
+    const espectadores = new Map<string, Espectador>()
+    for (let i = 0; i < quantos; i += 1) {
+      espectadores.set(`p${i}`, { identidade: `p${i}`, nome: `P${i}`, relato: amostraVaziaDoEspectador(0), vistoEm: Date.now() })
+    }
+    falso.espectadores = espectadores
+  }
+
+  it('rede fraca com alguém assistindo vira aviso, depois do aquecimento', () => {
+    noArComPlateia(1)
+    montarSala()
+    expect(screen.queryByText(/quem assiste pode ver sua tela travando/)).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(10_000))
+
+    expect(screen.getByText(/quem assiste pode ver sua tela travando/)).toBeInTheDocument()
+  })
+
+  it('sem ninguém assistindo, nenhum aviso — não há o que travar para ninguém', () => {
+    noArComPlateia(0)
+    montarSala()
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/quem assiste pode ver sua tela travando/)).not.toBeInTheDocument()
   })
 })

@@ -1,8 +1,10 @@
 import {
+  ConnectionQuality,
   RoomEvent,
   Track,
   type LocalTrackPublication,
   type RemoteTrack,
+  type RemoteTrackPublication,
   type Room,
 } from 'livekit-client'
 import {
@@ -16,12 +18,16 @@ import {
   type BaseDoEspectador,
 } from './amostra'
 import { anotar, ultima, type Historico } from './historico'
-import { avaliarRecepcao, VIGIA_NOVO, type EstadoDaRecepcao, type Vigia } from '../sala/recepcao'
+import { avaliarRecepcao, rearmarVigia, VIGIA_NOVO, type EstadoDaRecepcao, type Vigia } from '../sala/recepcao'
 import {
+  desempacotarPulso,
   desempacotarRelato,
+  empacotarPulso,
   empacotarRelato,
   INTERVALO_DO_RELATO_MS,
   TOPICO_DA_TELEMETRIA,
+  TOPICO_DO_PULSO,
+  VALIDADE_DO_PULSO_MS,
   type Espectador,
 } from './relato'
 
@@ -36,6 +42,8 @@ export interface Telemetria {
   recebidas: ReadonlyMap<string, Historico<AmostraDoEspectador>>
   /** O veredito do cão de guarda para cada tela assinada, pela identidade de quem a publica. */
   recepcao: ReadonlyMap<string, EstadoDaRecepcao>
+  /** Quem compartilha e disse, no pulso, que a própria conexão está fraca. */
+  redesFracas: ReadonlySet<string>
 }
 
 export const TELEMETRIA_VAZIA: Telemetria = {
@@ -43,6 +51,7 @@ export const TELEMETRIA_VAZIA: Telemetria = {
   espectadores: new Map(),
   recebidas: new Map(),
   recepcao: new Map(),
+  redesFracas: new Set(),
 }
 
 /**
@@ -53,12 +62,19 @@ export const TELEMETRIA_VAZIA: Telemetria = {
 export interface Coletor {
   parar(): void
   /**
-   * Põe o vigia daquela tela de volta em `VIGIA_NOVO` — é o "tentar de novo" do quadro que
-   * desistiu. `'desistiu'` é absorvente de propósito (três reassinaturas sem resposta não
-   * viram uma quarta sozinhas); sem esta porta, o produto final do cão de guarda seria uma
-   * mensagem mandando pedir para o outro reiniciar a transmissão.
+   * O "tentar de novo" do quadro: a tela que nunca chegou volta a `VIGIA_NOVO`, a congelada
+   * reassina na hora (`rearmarVigia`). `'desistiu'` é absorvente de propósito (três
+   * reassinaturas sem resposta não viram uma quarta sozinhas); sem esta porta, o produto final do
+   * cão de guarda seria uma mensagem mandando pedir para o outro reiniciar a transmissão.
    */
   rearmar(identidade: string): void
+  /**
+   * "Recarregar mídia": reassina tudo o que esta pessoa recebe — Telas, som das Telas e vozes —
+   * sem sair da Sala, e põe cada vigia de volta no começo, porque toda assinatura é nova. É o
+   * conserto que o F5 fazia, sem custar a Pessoa nem a Tela de quem recarrega. O que a pessoa
+   * escolheu não ver continua sem assinar.
+   */
+  recarregar(): void
 }
 
 /**
@@ -84,10 +100,31 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   // "a tela sumiu" e apagaria o vigia junto, resetando as tentativas a cada ciclo (nunca desiste)
   // e reabrindo a vigilância de uma tela já confirmada em `'ok'` (o falso positivo de volta).
   const sidsRecebidos = new Map<string, string>()
+  // O último pulso de cada dono de Tela: quando chegou dizendo que mandava bytes, e quando
+  // chegou dizendo que a rede dele estava fraca.
+  const enviandoEm = new Map<string, number>()
+  const redeFracaEm = new Map<string, number>()
+  const valendo = (desde: number | undefined) => Date.now() - (desde ?? -Infinity) <= VALIDADE_DO_PULSO_MS
+  function redesFracasAgora(): ReadonlySet<string> {
+    return new Set([...redeFracaEm].filter(([, em]) => valendo(em)).map(([identidade]) => identidade))
+  }
 
   const publicar = (proximo: Telemetria) => {
     estado = proximo
     if (vivo) aoMudar(estado)
+  }
+
+  // As publicações no respiro do `refazerAssinatura`: desassinadas por um instante, de propósito.
+  // Elas continuam vigiadas — quem não é vigiado é só quem a pessoa escolheu não ver.
+  const emReassinatura = new Set<RemoteTrackPublication>()
+
+  function refazerAssinatura(publicacao: RemoteTrackPublication) {
+    emReassinatura.add(publicacao)
+    publicacao.setSubscribed(false)
+    setTimeout(() => {
+      emReassinatura.delete(publicacao)
+      publicacao.setSubscribed(true)
+    }, 250)
   }
 
   /**
@@ -98,14 +135,21 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   async function reassinar(identidade: string) {
     const publicacao = sala.remoteParticipants.get(identidade)?.getTrackPublication(Track.Source.ScreenShare)
     if (!publicacao || !('setSubscribed' in publicacao)) return
-    publicacao.setSubscribed(false)
-    setTimeout(() => publicacao.setSubscribed(true), 250)
+    refazerAssinatura(publicacao as RemoteTrackPublication)
   }
 
-  /** Avalia a leitura mais recente daquela tela e dispara a reassinatura quando for a vez. */
-  function avaliarEAgir(identidade: string, amostra: AmostraDoEspectador) {
+  /**
+   * Avalia a leitura mais recente daquela tela e dispara a reassinatura quando for a vez. A tela
+   * muda é a pausada por quem compartilha: nada chegar é o combinado, não o defeito.
+   */
+  function avaliarEAgir(identidade: string, amostra: AmostraDoEspectador, pausada: boolean) {
     const vigia = vigias.get(identidade) ?? VIGIA_NOVO
-    const passo = avaliarRecepcao(vigia, { emMs: amostra.emMs, kbps: amostra.kbps }, amostra.emMs)
+    const donoEnviando = valendo(enviandoEm.get(identidade))
+    const passo = avaliarRecepcao(
+      vigia,
+      { emMs: amostra.emMs, kbps: amostra.kbps, pausada, donoEnviando },
+      amostra.emMs,
+    )
     vigias.set(identidade, passo.vigia)
     if (passo.acao === 'reassinar') void reassinar(identidade)
   }
@@ -157,6 +201,10 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       // bases sobreviverem a essa ausência em vez de serem apagados a cada batida sem faixa.
       const publicacao = participante.getTrackPublication(Track.Source.ScreenShare)
       if (!publicacao) continue
+      // Deixada de ver: não se mede, não se vigia e não se relata — para quem compartilha, quem
+      // não assiste não está assistindo.
+      const remota = publicacao as RemoteTrackPublication
+      if (remota.isDesired === false && !emReassinatura.has(remota)) continue
       const identidade = participante.identity
       vistos.add(identidade)
 
@@ -171,6 +219,7 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       }
 
       const historico = estado.recebidas.get(identidade) ?? []
+      const pausada = publicacao.isMuted
       const receiver = (publicacao.track as RemoteTrack | undefined)?.receiver
 
       if (!receiver) {
@@ -180,7 +229,7 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
         // undefined`, sem aviso e sem tentativa, para sempre.
         const amostra = amostraVaziaDoEspectador(Date.now())
         recebidas.set(identidade, anotar(historico, amostra))
-        avaliarEAgir(identidade, amostra)
+        avaliarEAgir(identidade, amostra, pausada)
         continue
       }
 
@@ -191,13 +240,13 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
             const leitura = lerAmostraDoEspectador(relatorio, basesRecebidas.get(identidade) ?? null)
             basesRecebidas.set(identidade, leitura.base)
             recebidas.set(identidade, anotar(historico, leitura.amostra))
-            avaliarEAgir(identidade, leitura.amostra)
+            avaliarEAgir(identidade, leitura.amostra, pausada)
           })
           .catch(() => {
             basesRecebidas.set(identidade, null)
             const amostra = amostraVaziaDoEspectador(Date.now())
             recebidas.set(identidade, anotar(historico, amostra))
-            avaliarEAgir(identidade, amostra)
+            avaliarEAgir(identidade, amostra, pausada)
           }),
       )
     }
@@ -237,6 +286,21 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     }
   }
 
+  /**
+   * O pulso de quem compartilha, para a Sala inteira: o encoder mandou bytes nas últimas
+   * amostras? É o que deixa quem assiste separar a Tela parada da congelada.
+   */
+  function pulsar(emissor: Historico<AmostraDoEmissor>) {
+    if (emissor.length === 0) return
+    const enviando = emissor.slice(-2).some((amostra) => (amostra.kbps ?? 0) > 0)
+    const redeFraca = sala.localParticipant.connectionQuality === ConnectionQuality.Poor
+    sala.localParticipant
+      .publishData(empacotarPulso({ enviando, redeFraca }), { topic: TOPICO_DO_PULSO, reliable: false })
+      .catch(() => {
+        // Sem garantia de entrega: o pulso vale por dois intervalos.
+      })
+  }
+
   /** Quem saiu da sala não está mais assistindo; sem tela no ar, ninguém está. */
   function espectadoresAinda(publicando: boolean): ReadonlyMap<string, Espectador> {
     const vivos = new Map<string, Espectador>()
@@ -254,14 +318,23 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     try {
       const [emissor, recebidas] = await Promise.all([lerEmissor(), lerRecebidas()])
       if (!vivo) return
-      if (batidas % (INTERVALO_DO_RELATO_MS / INTERVALO_MS) === 0) relatar(recebidas)
+      if (batidas % (INTERVALO_DO_RELATO_MS / INTERVALO_MS) === 0) {
+        relatar(recebidas)
+        pulsar(emissor)
+      }
       // Sem tela no ar de ninguém não há o que dizer — e não há por que redesenhar a sala a 1 Hz.
       const ocioso = emissor.length === 0 && recebidas.size === 0
       if (ocioso && estado === TELEMETRIA_VAZIA) return
       publicar(
         ocioso
           ? TELEMETRIA_VAZIA
-          : { emissor, recebidas, espectadores: espectadoresAinda(emissor.length > 0), recepcao: recepcaoAtual() },
+          : {
+              emissor,
+              recebidas,
+              espectadores: espectadoresAinda(emissor.length > 0),
+              recepcao: recepcaoAtual(),
+              redesFracas: redesFracasAgora(),
+            },
       )
     } finally {
       lendo = false
@@ -269,7 +342,18 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   }
 
   const receber = (dados: Uint8Array, remetente?: { identity: string; name?: string }, _tipo?: unknown, topico?: string) => {
-    if (topico !== TOPICO_DA_TELEMETRIA || !remetente) return
+    if (!remetente) return
+    if (topico === TOPICO_DO_PULSO) {
+      const pulso = desempacotarPulso(dados)
+      if (!pulso) return
+      const quem = remetente.identity
+      if (pulso.enviando) enviandoEm.set(quem, Date.now())
+      else enviandoEm.delete(quem)
+      if (pulso.redeFraca) redeFracaEm.set(quem, Date.now())
+      else redeFracaEm.delete(quem)
+      return
+    }
+    if (topico !== TOPICO_DA_TELEMETRIA) return
     const relato = desempacotarRelato(dados)
     if (!relato) return
     const espectadores = new Map(estado.espectadores)
@@ -292,10 +376,26 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       sala.off(RoomEvent.DataReceived, receber)
     },
 
+    recarregar() {
+      for (const participante of sala.remoteParticipants.values()) {
+        for (const publicacao of participante.getTrackPublications()) {
+          const remota = publicacao as RemoteTrackPublication
+          // Desassinada de propósito ("deixar de ver") continua desassinada.
+          if (!('setSubscribed' in remota) || remota.isDesired === false) continue
+          refazerAssinatura(remota)
+        }
+      }
+      for (const identidade of vigias.keys()) vigias.set(identidade, VIGIA_NOVO)
+      publicar({ ...estado, recepcao: recepcaoAtual() })
+    },
+
     rearmar(identidade: string) {
       // Só tela ainda assinada se rearma; quem já saiu não tem vigia a que voltar.
-      if (!vigias.has(identidade)) return
-      vigias.set(identidade, VIGIA_NOVO)
+      const vigia = vigias.get(identidade)
+      if (!vigia) return
+      const passo = rearmarVigia(vigia, Date.now())
+      vigias.set(identidade, passo.vigia)
+      if (passo.acao === 'reassinar') void reassinar(identidade)
       // Publicar na hora, sem esperar a batida: quem clicou tem de ver o aviso sair.
       publicar({ ...estado, recepcao: recepcaoAtual() })
     },
