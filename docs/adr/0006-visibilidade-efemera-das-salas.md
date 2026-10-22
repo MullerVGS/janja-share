@@ -1,6 +1,6 @@
 # 0006 — Visibilidade efêmera das salas
 
-Status: aceito, superado em parte pelo [0011](0011-sala-privada-sem-senha.md)
+Status: aceito, superado em parte pelo [0011](0011-sala-privada-sem-senha.md) e estendido pelo [0013](0013-sala-fixa.md)
 Registro: 2026-08-25
 
 ## Contexto

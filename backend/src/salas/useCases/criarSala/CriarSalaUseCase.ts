@@ -1,22 +1,23 @@
 import { Injectable } from '@nestjs/common'
-import { env } from '../../../shared/env'
-import { Espere, MuitasSalas, SalaExiste } from '../../../shared/erros'
+import { Espere, SalaExiste } from '../../../shared/erros'
 import { Freio } from '../../../shared/freio'
 import { LivekitRoomProvider } from '../../../shared/livekit/livekit-room.provider'
 import { LivekitTokenProvider } from '../../../shared/livekit/livekit-token.provider'
 import { slugDaSala, slugDaSalaPrivada, validarNomeDaSala } from '../../../shared/slug'
-import { Credenciais } from '../../credenciais'
-import { gerarIdentidade } from '../../identidade'
+import { Credenciais, emitirCredenciais } from '../../credenciais'
 import { validarNome } from '../../nome'
 import { gerarNomeDeSalaDisponivel } from '../../nomeAutomatico'
+import { conferirTeto } from '../../teto'
 
-const TETO_SALAS = 20
-const LIMITE_POR_MINUTO = 10
-const JANELA_MINUTO_MS = 60_000
+/** Criar e trazer uma Sala de volta pelo link dividem este freio: as duas fazem nascer encarnação. */
+export const LIMITE_DE_CRIACOES_POR_MINUTO = 10
+export const JANELA_MINUTO_MS = 60_000
 
 export interface CriarSalaComando {
   nome: unknown
   privada: unknown
+  /** Ausente significa fixa: é o padrão (ADR 0013). */
+  fixa?: unknown
   seuNome: unknown
   ip: string
 }
@@ -31,7 +32,7 @@ export class CriarSalaUseCase {
 
   async execute(comando: CriarSalaComando): Promise<Credenciais> {
     const { nome: nomeBruto, privada: privadaBruta, seuNome: seuNomeBruto, ip } = comando
-    if (!this.freio.permite(`criar-sala:${ip}`, LIMITE_POR_MINUTO, JANELA_MINUTO_MS)) {
+    if (!this.freio.permite(`criar-sala:${ip}`, LIMITE_DE_CRIACOES_POR_MINUTO, JANELA_MINUTO_MS)) {
       throw new Espere()
     }
 
@@ -46,21 +47,20 @@ export class CriarSalaUseCase {
     // O DTO garante o tipo quando o campo vem pela API; a comparação estrita mantém o caso
     // ausente público e evita que valores truthy virem sala privada em chamadas internas.
     const privada = privadaBruta === true
+    // Pelo mesmo motivo, só `false` explícito faz a Sala efêmera.
+    const fixa = comando.fixa !== false
 
     // Leitura sem cache: um segundo POST precisa enxergar a sala recém-criada, senão dois
     // pedidos no mesmo instante passariam os dois pela checagem de unicidade e pelo teto.
     const salasAtuais = await this.room.listarSalasSemCache()
-    if (salasAtuais.length >= TETO_SALAS) throw new MuitasSalas()
+    conferirTeto(salasAtuais, fixa)
+    // A unicidade continua valendo contra as adormecidas: o nome de uma Sala guardada é dela até
+    // ela expirar, mesmo fora do saguão.
     const nomeDaSala = nomeDigitado ?? gerarNomeDeSalaDisponivel(salasAtuais)
     const slug = privada ? slugDaSalaPrivada(nomeDaSala) : slugDaSala(nomeDaSala)
     if (salasAtuais.some((s) => s.slug === slug)) throw new SalaExiste()
 
-    // nomeNoSfu carrega o nonce — é ele, não o slug, que vai no grant do token.
-    const nomeNoSfu = await this.room.criarSala({ slug, nomeDaSala, privada })
-
-    const identidade = gerarIdentidade(seuNome)
-    const jwt = await this.tokens.emitir(nomeNoSfu, identidade, seuNome)
-    const { livekitUrl } = env()
-    return { token: jwt, urlSfu: livekitUrl, slug, nomeDaSala, identidade, nome: seuNome }
+    const nomeNoSfu = await this.room.criarSala({ slug, nomeDaSala, privada, fixa })
+    return emitirCredenciais(this.tokens, { nomeNoSfu, slug, nome: nomeDaSala, privada, fixa }, seuNome)
   }
 }

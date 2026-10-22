@@ -15,6 +15,7 @@ import { useMedia } from '../../sala/useMedia'
 import { useSala } from '../../sala/useSala'
 import { useVolumes } from '../../sala/useVolumes'
 import { useZoom } from '../../sala/useZoom'
+import { useLinkDaSala } from '../../salas/useLinkDaSala'
 import { useSessao } from '../../sessao/sessao'
 import { ultima } from '../../telemetria/historico'
 import { sumiu } from '../../telemetria/relato'
@@ -24,6 +25,7 @@ import { Botao } from '../../ui/Botao'
 import { Cabecalho } from './Cabecalho'
 import { Chat } from './Chat'
 import { Controles } from './Controles'
+import { DialogoAjustarSala } from './DialogoAjustarSala'
 import { EntradaDaSala } from './EntradaDaSala'
 import { FaixaDeAvatares } from './FaixaDeAvatares'
 import { Gaveta } from './Gaveta'
@@ -57,10 +59,18 @@ export function Sala() {
   // muda nada. Reler a sessão a cada render era o que expulsava, para o formulário, quem
   // passava das 8h assistindo.
   const [entrada, setEntrada] = useState(() => ({ slug, credenciais: credenciaisDe(slug) }))
-  if (entrada.slug !== slug) setEntrada({ slug, credenciais: credenciaisDe(slug) })
+  if (entrada.slug !== slug) {
+    // Mesmo token com outro slug é a mesma encarnação com nome ou visibilidade novos
+    // (`useLinkDaSala`): a credencial continua a mesma, e a conexão não cai.
+    const guardadas = credenciaisDe(slug)
+    const mesma = guardadas !== null && guardadas.token === entrada.credenciais?.token
+    setEntrada({ slug, credenciais: mesma ? entrada.credenciais : guardadas })
+  }
   const { credenciais } = entrada
   const navegar = useNavigate()
   const { sala, conexao, erro, queda, versao, audioLiberado, liberarAudio } = useSala(credenciais)
+  const linkDaSala = useLinkDaSala(sala, credenciais)
+  const [ajustando, setAjustando] = useState(false)
   const telemetria = useTelemetria(sala)
   const compartilhamento = useCompartilhamento(sala, telemetria.emissor, telemetria.espectadores)
   const { naoVejo, deixarDeVer, verDeNovo } = useDeixarDeVer(sala, versao)
@@ -289,9 +299,14 @@ export function Sala() {
     navegar('/', { replace: true })
   }
 
+  const nomeDaSala = linkDaSala.link?.nomeDaSala ?? credenciais.nomeDaSala
+  const fixa = linkDaSala.link?.fixa ?? false
+
   const cabecalho = (
     <Cabecalho
-      nomeDaSala={credenciais.nomeDaSala}
+      nomeDaSala={nomeDaSala}
+      fixa={fixa}
+      aoAjustar={() => setAjustando(true)}
       conexao={conexao}
       pessoas={palco.pessoas.length}
       aoAlternarLateral={alternarLateral}
@@ -307,7 +322,8 @@ export function Sala() {
   return (
     <div className={estilos.sala}>
       <NavegacaoDaSala
-        nomeDaSala={credenciais.nomeDaSala}
+        nomeDaSala={nomeDaSala}
+        fixa={fixa}
         nomeDaPessoa={credenciais.nome}
         conexao={conexao}
         pessoas={palco.pessoas}
@@ -325,7 +341,7 @@ export function Sala() {
           cobriu o palco, sem obrigar a mirar num X de 26px. */}
       {camadaAberta && <div className={estilos.veu} onClick={fecharCamadas} aria-hidden="true" />}
 
-      <section className={estilos.conteudoDaSala} aria-label={`Sala ${credenciais.nomeDaSala}`}>
+      <section className={estilos.conteudoDaSala} aria-label={`Sala ${nomeDaSala}`}>
         {!imersao && cabecalho}
 
         <div className={estilos.corpoDaSala}>
@@ -420,6 +436,7 @@ export function Sala() {
       {/* Os avisos não se escondem com o resto: erro não é moldura, é alarme. */}
       <div className={estilos.avisos}>
         {erro && <Aviso tom="erro">Não foi possível conectar à sala: {erro}</Aviso>}
+        {linkDaSala.aviso && <Aviso tom="neutro">{linkDaSala.aviso}</Aviso>}
         {queda && (
           <Aviso tom="erro">
             Conexão perdida. Voltando para a sala… (tentativa {queda.tentativa})
@@ -464,6 +481,19 @@ export function Sala() {
       </div>
 
       <AudioDaSala sala={sala} volumes={volumes} />
+
+      {linkDaSala.link && (
+        <DialogoAjustarSala
+          aberto={ajustando}
+          link={linkDaSala.link}
+          token={credenciais.token}
+          aoAjustar={(novo) => {
+            linkDaSala.aplicar(novo)
+            setAjustando(false)
+          }}
+          aoFechar={() => setAjustando(false)}
+        />
+      )}
     </div>
   )
 }

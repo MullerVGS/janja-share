@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { LivekitRoomProvider } from '../../../shared/livekit/livekit-room.provider'
+import { estaAdormecida, LivekitRoomProvider } from '../../../shared/livekit/livekit-room.provider'
 
 export interface SalaNaLista {
   slug: string
@@ -14,7 +14,9 @@ export class ListarSalasUseCase {
   constructor(private readonly room: LivekitRoomProvider) {}
 
   /**
-   * O SFU é a verdade de quais salas existem, quem está dentro e quem publica tela.
+   * O SFU é a verdade de quais salas existem, quem está dentro e quem publica tela. O saguão
+   * mostra as públicas acordadas: a Sala adormecida é de um grupo que vai voltar pelo link, e
+   * não um convite a quem passa (ADR 0013).
    * `listarSalas()` já lança SfuIndisponivel (503) se o SFU não responder — devolver lista
    * vazia mentiria "não há salas" (contrato), então não há try/catch aqui.
    */
@@ -22,7 +24,7 @@ export class ListarSalasUseCase {
     const salasNoSfu = await this.room.listarSalas()
 
     return salasNoSfu
-      .filter((sala) => sala.privada !== true)
+      .filter((sala) => sala.privada !== true && !estaAdormecida(sala))
       .map((sala) => ({
         slug: sala.slug,
         nome: sala.nome,

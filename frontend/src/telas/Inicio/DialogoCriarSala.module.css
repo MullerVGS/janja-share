@@ -114,6 +114,12 @@
   line-height: 1.35;
 }
 
+.guarda {
+  margin: calc(-1 * var(--e2)) 0 0;
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-sm);
+}
+
 @keyframes shDadoGirando {
   50% {
     transform: rotate(90deg) scale(0.9);

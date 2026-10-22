@@ -3,6 +3,8 @@ import { entrarNaSala, type Credenciais } from '../api/salas'
 
 interface Opcoes {
   slug: string
+  /** O `?k=` do link da Sala fixa — o que a traz de volta se o servidor de mídia reiniciou. */
+  assinatura?: string
   meuNome: string
   nomeSempreEditavel?: boolean
   aoDefinirNome(nome: string): void
@@ -13,6 +15,7 @@ interface Opcoes {
 /** Estado e transação comuns às duas portas da Sala: linha do saguão e link direto. */
 export function useEntradaNaSala({
   slug,
+  assinatura,
   meuNome,
   nomeSempreEditavel = false,
   aoDefinirNome,
@@ -41,7 +44,7 @@ export function useEntradaNaSala({
     setEnviando(true)
     setErro(null)
     try {
-      const credenciais = await entrarNaSala(slug, { seuNome: nomeParaEnviar })
+      const credenciais = await entrarNaSala(slug, { seuNome: nomeParaEnviar, assinatura })
       if (!montado.current) return
       aoDefinirNome(nomeParaEnviar)
       aoEntrar(credenciais)
@@ -65,6 +68,7 @@ export function useEntradaNaSala({
     setNomeLocal,
     enviando,
     erro,
+    nomeParaEnviar,
     podeEntrar: nomeParaEnviar !== '',
     enviar,
     limpar,

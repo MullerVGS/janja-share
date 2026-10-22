@@ -3,6 +3,7 @@ import { LivekitRoomProvider } from '../shared/livekit/livekit-room.provider'
 import { LivekitTokenProvider } from '../shared/livekit/livekit-token.provider'
 import { Freio } from '../shared/freio'
 import { SalasController } from './controllers/salas.controller'
+import { AjustarSalaUseCase } from './useCases/ajustarSala/AjustarSalaUseCase'
 import { CriarSalaUseCase } from './useCases/criarSala/CriarSalaUseCase'
 import { EntrarNaSalaUseCase } from './useCases/entrarNaSala/EntrarNaSalaUseCase'
 import { ListarSalasUseCase } from './useCases/listarSalas/ListarSalasUseCase'
@@ -21,6 +22,7 @@ import { SugerirNomeDeSalaUseCase } from './useCases/sugerirNomeDeSala/SugerirNo
     SugerirNomeDeSalaUseCase,
     CriarSalaUseCase,
     EntrarNaSalaUseCase,
+    AjustarSalaUseCase,
   ],
 })
 export class SalasModule {}

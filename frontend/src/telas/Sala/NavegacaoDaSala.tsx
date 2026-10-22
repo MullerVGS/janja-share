@@ -1,5 +1,6 @@
 import { ConnectionState } from 'livekit-client'
 import type { Peca } from '../../sala/palco'
+import { fraseDaGuarda } from '../../salas/link'
 import { Avatar } from '../../ui/Avatar'
 import { Botao } from '../../ui/Botao'
 import {
@@ -16,6 +17,8 @@ import estilos from './NavegacaoDaSala.module.css'
 
 interface Props {
   nomeDaSala: string
+  /** Fixa fica guardada depois que todos saem; a efêmera some. Ausente é efêmera. */
+  fixa?: boolean
   nomeDaPessoa: string
   conexao: ConnectionState
   pessoas: Peca[]
@@ -73,6 +76,7 @@ function PessoaNaSala({ pessoa }: { pessoa: Peca }) {
  */
 export function NavegacaoDaSala({
   nomeDaSala,
+  fixa = false,
   nomeDaPessoa,
   conexao,
   pessoas,
@@ -100,7 +104,7 @@ export function NavegacaoDaSala({
         <span className={estilos.identificacao}>
           <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
           <span className={estilos.subtitulo}>
-            sala efêmera ·{' '}
+            {fixa ? 'sala fixa' : 'sala efêmera'} ·{' '}
             <span className={estilos.telasNoAr}>{frasePlural(telas.length, 'tela no ar', 'telas no ar')}</span>
           </span>
         </span>
@@ -120,6 +124,7 @@ export function NavegacaoDaSala({
           {conviteCopiado ? <IconeCerto tamanho={16} /> : <IconeConvite tamanho={16} />}
           {conviteCopiado ? 'Convite copiado' : 'Copiar convite'}
         </Botao>
+        <p className={estilos.guarda}>{fraseDaGuarda(fixa)}</p>
       </div>
 
       <div className={estilos.rolagem}>

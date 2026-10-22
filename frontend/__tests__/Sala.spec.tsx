@@ -4,7 +4,7 @@ import { ConnectionQuality, RoomEvent, Track, type Room } from 'livekit-client'
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
+import { lerPreferencias } from '../src/preferencias'
 import { Sala } from '../src/telas/Sala/Sala'
 import { empacotar } from '../src/sala/chat'
 import { TOPICO_DO_CHAT } from '../src/sala/useChat'
@@ -492,7 +492,6 @@ describe('sala: sem credenciais para o slug', () => {
     const pendente = new Promise<{ status: number; corpo: unknown }>((resolve) => {
       responder = resolve
     })
-    gravarPreferencias({ nome: 'Antiga' })
     servir({ 'POST /api/salas/privada/entrar': () => pendente })
     const usuario = userEvent.setup()
     montar(
@@ -503,9 +502,7 @@ describe('sala: sem credenciais para o slug', () => {
       '/sala/privada',
     )
 
-    const nome = screen.getByLabelText('Seu nome')
-    await usuario.clear(nome)
-    await usuario.type(nome, 'Nova')
+    await usuario.type(screen.getByLabelText('Seu nome'), 'Nova')
     await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
     await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
     expect(screen.getByText('início')).toBeInTheDocument()
@@ -515,7 +512,7 @@ describe('sala: sem credenciais para o slug', () => {
       await pendente
     })
 
-    expect(lerPreferencias().nome).toBe('Antiga')
+    expect(lerPreferencias().nome).toBe('')
     expect(sessionStorage.getItem(CHAVE_DA_SESSAO)).toBeNull()
   })
 

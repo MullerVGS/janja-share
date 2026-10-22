@@ -1,6 +1,6 @@
 # janja-share
 
-Compartilhamento de tela self-hosted, sem conta, com salas e identidades efêmeras.
+Compartilhamento de tela self-hosted, sem conta, com identidades efêmeras e salas que a turma reabre pelo mesmo link.
 
 ## Recursos
 
@@ -8,6 +8,7 @@ Compartilhamento de tela self-hosted, sem conta, com salas e identidades efêmer
 - Voz e chat efêmero.
 - Nome de sala sugerido, com troca em um clique.
 - Salas públicas ou privadas — a privada não aparece no saguão e tem link próprio, impossível de adivinhar.
+- Salas guardadas por 7 dias depois que todos saem, ou apagadas na hora, se preferir.
 - Qualidade adaptada no navegador de quem compartilha.
 
 ## Requisitos

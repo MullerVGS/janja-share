@@ -20,6 +20,7 @@ import {
   MonitorArrowUp,
   MonitorPlay,
   PaperPlaneRight,
+  PencilSimple,
   PhoneDisconnect,
   PictureInPicture,
   Plus,
@@ -92,3 +93,4 @@ export const IconeRecarregar = envolver(ArrowClockwise)
 export const IconeAssistindo = envolver(Eye)
 /** Deixar de ver a tela de alguém sem sair da sala: o olho riscado. */
 export const IconeDeixarDeVer = envolver(EyeSlash)
+export const IconeEditar = envolver(PencilSimple)

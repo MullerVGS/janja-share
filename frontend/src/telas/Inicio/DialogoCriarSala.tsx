@@ -5,6 +5,7 @@ import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
 import { Campo } from '../../ui/Campo'
 import { Dialogo } from '../../ui/Dialogo'
+import { fraseDaGuarda } from '../../salas/link'
 import { IconeDado, IconeSetaBaixo } from '../../ui/Icone'
 import estilos from './DialogoCriarSala.module.css'
 
@@ -22,6 +23,8 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
   const precisaDoNome = meuNome.trim() === ''
   const [nomeDaSala, setNomeDaSala] = useState('')
   const [privada, setPrivada] = useState(false)
+  // A fixa é o padrão (ADR 0013); marcar aqui é pedir a efêmera.
+  const [apagarAoSair, setApagarAoSair] = useState(false)
   const [nomeLocal, setNomeLocal] = useState('')
   const [sorteandoNome, setSorteandoNome] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -50,6 +53,7 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
     }
     setNomeDaSala('')
     setPrivada(false)
+    setApagarAoSair(false)
     setNomeLocal('')
     setErro(null)
     void sortearNome(true)
@@ -67,6 +71,7 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
       const credenciais = await criarSala({
         nome,
         privada: privada || undefined,
+        fixa: apagarAoSair ? false : undefined,
         seuNome,
       })
       if (precisaDoNome) aoDefinirNome(seuNome)
@@ -129,8 +134,20 @@ export function DialogoCriarSala({ aberto, meuNome, aoDefinirNome, aoFechar, aoC
                 <small>Não aparece no saguão. Só quem tiver o link entra.</small>
               </span>
             </label>
+            <label className={estilos.opcaoPrivada}>
+              <input
+                type="checkbox"
+                checked={apagarAoSair}
+                onChange={(evento) => setApagarAoSair(evento.target.checked)}
+              />
+              <span>
+                <strong>Apagar quando todos saírem</strong>
+                <small>Sem guardar: ela some logo depois que o último sair.</small>
+              </span>
+            </label>
           </div>
         </details>
+        <p className={estilos.guarda}>{fraseDaGuarda(!apagarAoSair)}</p>
         <Botao
           type="submit"
           aparencia="primario"

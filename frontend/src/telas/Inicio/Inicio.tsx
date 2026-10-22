@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { mensagemDoErro } from '../../api/cliente'
 import { LIMITE_DO_NOME, listarSalas, type Credenciais } from '../../api/salas'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
+import { enderecoDaSala } from '../../salas/link'
 import { useSessao } from '../../sessao/sessao'
 import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
@@ -11,6 +12,7 @@ import { IconeMais, IconeMarca, IconePessoas } from '../../ui/Icone'
 import { Marca } from '../../ui/Marca'
 import { CartaoDaSala } from './CartaoDaSala'
 import { DialogoCriarSala } from './DialogoCriarSala'
+import { SuasSalas } from './SuasSalas'
 import estilos from './Inicio.module.css'
 
 /**
@@ -44,7 +46,7 @@ export function Inicio() {
 
   function entrarENavegar(credenciais: Credenciais) {
     guardar(credenciais)
-    navegar(`/sala/${credenciais.slug}`)
+    navegar(enderecoDaSala(credenciais.slug, credenciais.assinatura))
   }
 
   const quantidadeDeSalas = lista.data?.length ?? 0
@@ -75,11 +77,11 @@ export function Inicio() {
       <div className={estilos.rolagem}>
         <section className={estilos.hero}>
           <div className={estilos.heroTexto}>
-            <span className={estilos.sobretitulo}>rápido · efêmero · sem conta</span>
+            <span className={estilos.sobretitulo}>rápido · leve · sem conta</span>
             <h1 className={estilos.titulo}>Sua tela, sua turma, sem complicação.</h1>
             <p className={estilos.descricao}>
-              Abra uma sala, chame quem quiser e compartilhe em poucos segundos. Quando todo mundo sair, ela
-              desaparece.
+              Abra uma sala, chame quem quiser e compartilhe em poucos segundos. Quando todo mundo sair, ela fica
+              guardada por 7 dias, e a turma volta pelo mesmo link.
             </p>
             <div className={estilos.acoesDoHero}>
               <Botao aparencia="primario" onClick={() => setCriarAberto(true)}>
@@ -111,6 +113,8 @@ export function Inicio() {
             </div>
           </div>
         </section>
+
+        <SuasSalas noAr={lista.data} />
 
         <section className={estilos.salasNoAr}>
           <header className={estilos.cabecalhoDaSecao}>
