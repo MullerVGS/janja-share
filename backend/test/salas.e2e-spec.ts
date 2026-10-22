@@ -42,11 +42,36 @@ describe('salas/', () => {
 
   describe('GET /api/salas', () => {
     it('lista salas com pessoas e telas no ar', async () => {
-      sfu.salasAtuais = [{ slug: 'jogatina', nomeNoSfu: 'jogatina-x1', nome: 'Jogatina', pessoas: ['Ana', 'Bea'], telasNoAr: 1, cheia: false }]
+      sfu.salasAtuais = [
+        {
+          slug: 'jogatina',
+          nomeNoSfu: 'jogatina-x1',
+          nome: 'Jogatina',
+          pessoas: ['Ana', 'Bea'],
+          presentes: [
+            { nome: 'Ana', aoVivo: true, microfoneAberto: true },
+            { nome: 'Bea', aoVivo: false, microfoneAberto: false },
+          ],
+          telasNoAr: 1,
+          cheia: false,
+        },
+      ]
 
       const res = await request(app.getHttpServer()).get('/api/salas').expect(200)
 
-      expect(res.body).toEqual([{ slug: 'jogatina', nome: 'Jogatina', pessoas: ['Ana', 'Bea'], telasNoAr: 1, cheia: false }])
+      expect(res.body).toEqual([
+        {
+          slug: 'jogatina',
+          nome: 'Jogatina',
+          pessoas: ['Ana', 'Bea'],
+          presentes: [
+            { nome: 'Ana', aoVivo: true, microfoneAberto: true },
+            { nome: 'Bea', aoVivo: false, microfoneAberto: false },
+          ],
+          telasNoAr: 1,
+          cheia: false,
+        },
+      ])
     })
 
     it('sala vazia (em carência) aparece na lista', async () => {
@@ -54,7 +79,7 @@ describe('salas/', () => {
 
       const res = await request(app.getHttpServer()).get('/api/salas').expect(200)
 
-      expect(res.body).toEqual([{ slug: 'vazia', nome: 'Vazia', pessoas: [], telasNoAr: 0, cheia: false }])
+      expect(res.body).toEqual([{ slug: 'vazia', nome: 'Vazia', pessoas: [], presentes: [], telasNoAr: 0, cheia: false }])
     })
 
     it('não expõe sala privada no saguão', async () => {

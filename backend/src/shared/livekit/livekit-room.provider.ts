@@ -31,6 +31,18 @@ export interface ParticipanteSala {
   identidade: string
   nome: string
   publicandoTela: boolean
+  /** Publica microfone e ele não está mudo. Ausente nos dublês antigos, conta como fechado. */
+  microfoneAberto?: boolean
+}
+
+/**
+ * Quem está na Sala como a coluna de salas mostra: o nome, se a Tela da pessoa está no ar e se
+ * o microfone está aberto. Só o que o SFU já sabe — sem identidade, que não sai do servidor.
+ */
+export interface PresenteNaSala {
+  nome: string
+  aoVivo: boolean
+  microfoneAberto: boolean
 }
 
 /**
@@ -56,6 +68,8 @@ export interface SalaNoSfu {
   /** Ver `MetadataDaSala.anteriores`. Ausente quando a Sala nunca trocou de slug. */
   anteriores?: string[]
   pessoas: string[]
+  /** As mesmas pessoas de `pessoas`, com Tela e microfone. Ausente em dublês antigos. */
+  presentes?: PresenteNaSala[]
   telasNoAr: number
   cheia: boolean
 }
@@ -93,6 +107,7 @@ export class LivekitRoomProvider {
       identidade: p.identity,
       nome: p.name,
       publicandoTela: p.tracks.some((t) => t.source === TrackSource.SCREEN_SHARE),
+      microfoneAberto: p.tracks.some((t) => t.source === TrackSource.MICROPHONE && !t.muted),
     }))
   }
 
@@ -143,6 +158,11 @@ export class LivekitRoomProvider {
           fixa: meta.fixa,
           ...(meta.anteriores.length > 0 ? { anteriores: meta.anteriores } : {}),
           pessoas: pessoas.map((p) => p.nome),
+          presentes: pessoas.map((p) => ({
+            nome: p.nome,
+            aoVivo: p.publicandoTela,
+            microfoneAberto: p.microfoneAberto === true,
+          })),
           telasNoAr: pessoas.filter((p) => p.publicandoTela).length,
           cheia: pessoas.length >= LOTACAO_MAXIMA,
         }

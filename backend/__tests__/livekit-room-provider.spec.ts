@@ -21,8 +21,9 @@ function sala(overrides: Partial<Room> = {}): Room {
   })
 }
 
-function participante(nome: string, publicandoTela = false): ParticipantInfo {
+function participante(nome: string, publicandoTela = false, microfone?: 'aberto' | 'mudo'): ParticipantInfo {
   const tracks: TrackInfo[] = publicandoTela ? [new TrackInfo({ source: TrackSource.SCREEN_SHARE })] : []
+  if (microfone) tracks.push(new TrackInfo({ source: TrackSource.MICROPHONE, muted: microfone === 'mudo' }))
   return new ParticipantInfo({ identity: `${nome}-abc123`, name: nome, tracks })
 }
 
@@ -61,9 +62,28 @@ describe('LivekitRoomProvider — listarSalas() com o SDK dublado', () => {
         privada: false,
         fixa: false,
         pessoas: ['Ana', 'Bea'],
+        presentes: [
+          { nome: 'Ana', aoVivo: true, microfoneAberto: false },
+          { nome: 'Bea', aoVivo: false, microfoneAberto: false },
+        ],
         telasNoAr: 1,
         cheia: false,
       },
+    ])
+  })
+
+  it('diz de cada presente se a Tela está no ar e se o microfone está aberto — mudo conta como fechado', async () => {
+    jest.spyOn(RoomServiceClient.prototype, 'listRooms').mockResolvedValue([sala({ numParticipants: 3 })])
+    jest
+      .spyOn(RoomServiceClient.prototype, 'listParticipants')
+      .mockResolvedValue([participante('Ana', true, 'aberto'), participante('Bea', false, 'mudo'), participante('Cid')])
+
+    const [jogatina] = await new LivekitRoomProvider().listarSalas()
+
+    expect(jogatina?.presentes).toEqual([
+      { nome: 'Ana', aoVivo: true, microfoneAberto: true },
+      { nome: 'Bea', aoVivo: false, microfoneAberto: false },
+      { nome: 'Cid', aoVivo: false, microfoneAberto: false },
     ])
   })
 
@@ -114,6 +134,7 @@ describe('LivekitRoomProvider — listarSalas() com o SDK dublado', () => {
         privada: false,
         fixa: false,
         pessoas: [],
+        presentes: [],
         telasNoAr: 0,
         cheia: false,
       },

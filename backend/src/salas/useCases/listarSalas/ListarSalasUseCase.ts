@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common'
-import { estaAdormecida, LivekitRoomProvider } from '../../../shared/livekit/livekit-room.provider'
+import { estaAdormecida, LivekitRoomProvider, type PresenteNaSala } from '../../../shared/livekit/livekit-room.provider'
 
 export interface SalaNaLista {
   slug: string
   nome: string
   pessoas: string[]
+  /** Quem está dentro, com Tela no ar e microfone — o que a coluna de salas desenha. */
+  presentes: PresenteNaSala[]
   telasNoAr: number
   cheia: boolean
 }
@@ -29,6 +31,7 @@ export class ListarSalasUseCase {
         slug: sala.slug,
         nome: sala.nome,
         pessoas: sala.pessoas,
+        presentes: sala.presentes ?? sala.pessoas.map((nome) => ({ nome, aoVivo: false, microfoneAberto: false })),
         telasNoAr: sala.telasNoAr,
         cheia: sala.cheia,
       }))
