@@ -44,8 +44,12 @@ O mesmo arquivo; muda o `.env`.
   sem porta publicada no host.
 - Proxy fora do Docker: `BIND_APP=0.0.0.0` e `BIND_LIVEKIT=0.0.0.0`.
 - `7881/tcp` e `7882/udp` abertos no host, sempre — a mídia não passa pelo proxy.
+- Opcional, para quem tem as duas bloqueadas: TURN por TLS na 443. `TURN_DOMINIO=turn.exemplo.com`
+  (DNS direto no host, sem CDN) e, no proxy, um roteador TCP por SNI desse nome que termina o TLS
+  e repassa para `janja-share-livekit:5349` (proxy na rede da borda) ou para
+  `BIND_TURN:PORTA_TURN` (proxy fora dela). Ver o ADR 0020.
 
-O projeto não inclui reverse proxy, TLS ou TURN; veja as
+O projeto não inclui reverse proxy nem TLS; veja as
 [portas e opções do LiveKit](https://docs.livekit.io/transport/self-hosting/ports-firewall/).
 
 Issues e pull requests são bem-vindos.
