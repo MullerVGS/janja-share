@@ -28,10 +28,18 @@ services:
       # Só o que depende da máquina; o resto do SFU vive em infra/livekit.yaml.
       LIVEKIT_RTC_USE_EXTERNAL_IP: "${SFU_IP_EXTERNO:-true}"
       NODE_IP: "${SFU_IP:-}"
+      # TURN embutido, só TLS e com o TLS terminado por quem está na frente (ADR 0020).
+      # Sem TURN_DOMINIO as quatro ficam vazias e o LiveKit sobe sem TURN.
+      LIVEKIT_TURN_ENABLED: "${TURN_DOMINIO:+true}"
+      LIVEKIT_TURN_DOMAIN: "${TURN_DOMINIO:-}"
+      LIVEKIT_TURN_TLS_PORT: "${TURN_DOMINIO:+5349}"
+      LIVEKIT_TURN_EXTERNAL_TLS: "${TURN_DOMINIO:+true}"
     ports:
       - "${BIND_LIVEKIT:-127.0.0.1}:${PORTA_LIVEKIT:-7880}:7880"
       - "${PORTA_MIDIA_TCP:-7881}:7881/tcp"
       - "${PORTA_MIDIA_UDP:-7882}:7882/udp"
+      # TURN em TCP puro, para o terminador TLS. Sem PORTA_TURN, porta efêmera no loopback.
+      - "${BIND_TURN:-127.0.0.1}:${PORTA_TURN:-}:5349/tcp"
     volumes:
       - ./infra/livekit.yaml:/etc/livekit.yaml:ro
     networks: [default, borda]
