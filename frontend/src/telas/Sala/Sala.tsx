@@ -227,10 +227,23 @@ export function Sala() {
     }
   }
 
+  // A Tela que volta sozinha depois de uma queda (ADR 0014) não é começar a compartilhar: a
+  // gaveta não se reabre por cima do palco de quem a tinha fechado.
+  const telaGuardada = useRef(false)
+  useEffect(() => {
+    if (queda?.comTela) telaGuardada.current = true
+    else if (!queda && !compartilhamento.ativo) telaGuardada.current = false
+  }, [queda, compartilhamento.ativo])
+
   // Começar a compartilhar abre a aba de qualidade: é exatamente o momento em que ela tem o
   // que dizer, e deixá-la escondida faria o ajuste virar um segredo do app.
   useEffect(() => {
-    if (compartilhamento.ativo) mostrarAba('qualidade')
+    if (!compartilhamento.ativo) return
+    if (telaGuardada.current) {
+      telaGuardada.current = false
+      return
+    }
+    mostrarAba('qualidade')
   }, [compartilhamento.ativo])
 
   // A aba que a gaveta de fato mostra. A Qualidade só existe transmitindo, e parar leva quem

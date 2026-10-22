@@ -564,6 +564,17 @@ describe('sala: a validade da credencial decide só a entrada', () => {
     expect(screen.getByText(/conexão perdida/i)).not.toHaveTextContent(/sua tela/)
   })
 
+  it('a tela que volta sozinha da queda não reabre a gaveta na Qualidade — não é começar a compartilhar', () => {
+    falso.queda = { tentativa: 1, comTela: true }
+    montarSala()
+    expect(gaveta()).toHaveAttribute('aria-hidden', 'true')
+
+    falso.queda = null
+    fireEvent.click(screen.getByRole('button', { name: 'simular compartilhar' }))
+
+    expect(gaveta()).toHaveAttribute('aria-hidden', 'true')
+  })
+
   it('caída com a tela no ar, avisa que a tela volta junto — o navegador continua dizendo que compartilha', () => {
     falso.queda = { tentativa: 1, comTela: true }
     montarSala()
