@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import type { Peca } from '../../sala/palco'
+import type { ConnectionState } from 'livekit-client'
+import { estadoDoQuadro, type EstadoDoQuadro, type Peca } from '../../sala/palco'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useCliqueOuDuplo } from '../../sala/useCliqueOuDuplo'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
@@ -31,6 +32,10 @@ interface Props {
   zoom: ControleDeZoom
   /** Rearma o cão de guarda daquela tela — o botão do quadro que desistiu de receber. */
   aoTentarDeNovo(identidade: string): void
+  /** A conexão desta pessoa com a Sala: caída, todo quadro diz isso antes de qualquer coisa. */
+  minhaConexao: ConnectionState
+  /** O Fechar do quadro cuja Tela terminou. */
+  aoFecharEncerrada(): void
 }
 
 /** A pílula em tela cheia some 2 s depois do último movimento, e o hover não a governa mais. */
@@ -60,6 +65,75 @@ function PilulasDaTelaCheia({ children }: { children: ReactNode }) {
   )
 }
 
+/** O que o cartão diz em cada estado, e a cor: atenção é o que não deveria estar acontecendo. */
+function textoDoEstado(estado: EstadoDoQuadro, peca: Peca): { texto: string; tom: 'neutro' | 'atencao' } | null {
+  const de = peca.proprio ? 'Sua tela' : `A tela de ${peca.nome}`
+  switch (estado) {
+    case 'aoVivo':
+      return null
+    case 'voceReconectando':
+      return { texto: 'Sua conexão caiu — voltando…', tom: 'atencao' }
+    case 'terminou':
+      return { texto: `${de} terminou.`, tom: 'neutro' }
+    case 'donoReconectando':
+      return { texto: `A conexão de ${peca.nome} caiu — esperando voltar…`, tom: 'atencao' }
+    case 'pausada':
+      return {
+        texto: `${de} está pausada — a janela compartilhada pode estar minimizada.`,
+        tom: 'neutro',
+      }
+    case 'chegando':
+      return { texto: `a tela de ${peca.nome} ainda não chegou aqui — tentando de novo…`, tom: 'atencao' }
+    case 'nuncaChegou':
+      return { texto: `a tela de ${peca.nome} nunca chegou aqui.`, tom: 'atencao' }
+    case 'congelada':
+      return { texto: `A imagem de ${peca.nome} parou de chegar aqui.`, tom: 'atencao' }
+  }
+}
+
+/**
+ * O cartão por cima do quadro: o que está acontecendo com aquela Tela, em uma frase, e a saída
+ * quando há uma. Quem decide o estado é `estadoDoQuadro`; aqui só se escreve.
+ */
+function CartaoDeEstado({
+  estado,
+  peca,
+  aoTentarDeNovo,
+  aoFechar,
+}: {
+  estado: EstadoDoQuadro
+  peca: Peca
+  aoTentarDeNovo(identidade: string): void
+  aoFechar(): void
+}) {
+  const conteudo = textoDoEstado(estado, peca)
+  if (!conteudo) return null
+  // Três reassinaturas sem resposta não viram uma quarta sozinhas — mas quem está olhando o
+  // retângulo parado tem de poder mandar tentar de novo sem depender de quem transmite.
+  const podeTentar = estado === 'nuncaChegou' || estado === 'congelada'
+  return (
+    <div className={estilos.cartaoDeEstado} data-estado={estado}>
+      <div className={estilos.caixaDoEstado} role="status" data-tom={conteudo.tom}>
+        <span>{conteudo.texto}</span>
+        {(podeTentar || estado === 'terminou') && (
+          <div className={estilos.acoesDoEstado}>
+            {podeTentar && (
+              <Botao aparencia="secundario" onClick={() => aoTentarDeNovo(peca.identidade)}>
+                Tentar de novo
+              </Botao>
+            )}
+            {estado === 'terminou' && (
+              <Botao aparencia="secundario" onClick={aoFechar}>
+                Fechar
+              </Botao>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /** A imagem leva o zoom daquela tela. */
 function estiloDaImagem(zoom: Zoom): CSSProperties {
   return { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.escala})` }
@@ -83,6 +157,8 @@ function Destaque({
   interfaceVisivel,
   zoom,
   aoTentarDeNovo,
+  minhaConexao,
+  aoFecharEncerrada,
 }: Omit<Props, 'emDestaque' | 'miniaturas' | 'aoFocar' | 'imersao'> & { peca: Peca }) {
   const quadro = useRef<HTMLDivElement>(null)
   const moldura = useRef<HTMLDivElement>(null)
@@ -156,25 +232,12 @@ function Destaque({
 
       {pip.emPiP && <span className={estilos.emPiP}>em PiP</span>}
 
-      {peca.recepcao === 'retomando' && (
-        <p className={estilos.avisoDaRecepcao} role="status">
-          <span className={estilos.textoDaRecepcao}>a tela de {peca.nome} ainda não chegou aqui — tentando de novo…</span>
-        </p>
-      )}
-      {/* Três reassinaturas sem resposta não viram uma quarta sozinhas — mas quem está olhando o
-          retângulo preto tem de poder mandar tentar de novo sem depender de quem transmite. */}
-      {peca.recepcao === 'desistiu' && (
-        <p className={estilos.avisoDaRecepcao} role="status">
-          <span className={estilos.textoDaRecepcao}>a tela de {peca.nome} nunca chegou aqui.</span>
-          <Botao
-            aparencia="fantasma"
-            className={estilos.tentarDeNovo}
-            onClick={() => aoTentarDeNovo(peca.identidade)}
-          >
-            Tentar de novo
-          </Botao>
-        </p>
-      )}
+      <CartaoDeEstado
+        estado={estadoDoQuadro(peca, minhaConexao)}
+        peca={peca}
+        aoTentarDeNovo={aoTentarDeNovo}
+        aoFechar={aoFecharEncerrada}
+      />
 
       {telaCheia.cheia ? (
         <PilulasDaTelaCheia>{pilulas}</PilulasDaTelaCheia>
@@ -204,6 +267,8 @@ export function Palco({
   imersao,
   zoom,
   aoTentarDeNovo,
+  minhaConexao,
+  aoFecharEncerrada,
 }: Props) {
   return (
     <div className={estilos.palco} data-modo={emDestaque ? 'destaque' : 'vazio'} data-imersao={imersao || undefined}>
@@ -216,6 +281,8 @@ export function Palco({
           interfaceVisivel={interfaceVisivel}
           zoom={zoom}
           aoTentarDeNovo={aoTentarDeNovo}
+          minhaConexao={minhaConexao}
+          aoFecharEncerrada={aoFecharEncerrada}
         />
       ) : (
         <div className={estilos.vazio}>

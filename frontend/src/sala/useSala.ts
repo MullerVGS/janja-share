@@ -48,6 +48,8 @@ const EVENTOS_DO_PALCO: RoomEvent[] = [
   RoomEvent.LocalTrackPublished,
   RoomEvent.LocalTrackUnpublished,
   RoomEvent.ActiveSpeakersChanged,
+  // A conexão de cada um aparece no quadro dele: caiu, fraca.
+  RoomEvent.ConnectionQualityChanged,
 ]
 
 export interface Queda {

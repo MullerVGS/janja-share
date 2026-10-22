@@ -314,7 +314,7 @@ describe('coletor de telemetria', () => {
       expect(atual().recepcao.get('bia-1a2b3c')).toBe('desistiu')
     })
 
-    it('tela que entregou bytes e depois fica com bitrate zerado não dispara reassinatura — está parada de verdade, não é o bug', async () => {
+    it('tela que entregou bytes e depois para de chegar congela, reassina sozinha e volta quando o byte volta', async () => {
       const sala = new SalaFalsa()
       const receiver = receiverFalso()
       const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', receiver)
@@ -323,8 +323,8 @@ describe('coletor de telemetria', () => {
       await passar(2)
       expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
 
-      // A mesma faixa (mesmo trackSid) passa a entregar bitrate zerado — os bytes acumulados
-      // congelam no valor que `statsQueAndam` já tinha alcançado na 2ª leitura (2 × 125 000).
+      // A mesma faixa (mesmo trackSid) para de entregar — os bytes acumulados ficam no valor
+      // que `statsQueAndam` já tinha alcançado na 2ª leitura (2 × 125 000).
       receiver.getStats.mockImplementation(async () => new Map([
         [
           's',
@@ -341,10 +341,80 @@ describe('coletor de telemetria', () => {
         ],
       ]))
 
+      await passar(5)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
+      await passar(2)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('congelada')
+      expect(publicacao?.setSubscribed).toHaveBeenCalledWith(false)
+
+      let bytes = 250_000
+      receiver.getStats.mockImplementation(async () => {
+        bytes += 50_000
+        return new Map([
+          [
+            's',
+            {
+              type: 'inbound-rtp' as const,
+              kind: 'video',
+              timestamp: Date.now(),
+              bytesReceived: bytes,
+              framesDecoded: 60,
+              framesReceived: 60,
+              frameWidth: 1920,
+              frameHeight: 1080,
+            },
+          ],
+        ])
+      })
+      await passar(3)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
+    })
+
+    it('tela muda (pausada por quem compartilha) não congela nem reassina', async () => {
+      const sala = new SalaFalsa()
+      const parado = receiverParado() as unknown as ReturnType<typeof receiverFalso>
+      const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', parado) as unknown as {
+        isMuted: boolean
+        setSubscribed: ReturnType<typeof vi.fn>
+      }
+      publicacao.isMuted = true
+      const { atual } = arrancar(sala)
+
       await passar(30)
 
-      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
-      expect(publicacao?.setSubscribed).not.toHaveBeenCalled()
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('parada')
+      expect(publicacao.setSubscribed).not.toHaveBeenCalled()
+    })
+
+    it('o "Tentar de novo" da tela congelada reassina na hora', async () => {
+      const sala = new SalaFalsa()
+      const receiver = receiverFalso()
+      const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', receiver)
+      const { atual, rearmar } = arrancar(sala)
+      await passar(2)
+      receiver.getStats.mockImplementation(async () => new Map([
+        [
+          's',
+          {
+            type: 'inbound-rtp' as const,
+            kind: 'video',
+            timestamp: Date.now(),
+            bytesReceived: 250_000,
+            framesDecoded: 60,
+            framesReceived: 60,
+            frameWidth: 1920,
+            frameHeight: 1080,
+          },
+        ],
+      ]))
+      await passar(60)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('congelada')
+      const antes = publicacao?.setSubscribed.mock.calls.length ?? 0
+
+      rearmar('bia-1a2b3c')
+
+      expect(publicacao?.setSubscribed.mock.calls.length).toBe(antes + 1)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('congelada')
     })
 
     /**

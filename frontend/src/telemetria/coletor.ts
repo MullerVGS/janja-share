@@ -16,7 +16,7 @@ import {
   type BaseDoEspectador,
 } from './amostra'
 import { anotar, ultima, type Historico } from './historico'
-import { avaliarRecepcao, VIGIA_NOVO, type EstadoDaRecepcao, type Vigia } from '../sala/recepcao'
+import { avaliarRecepcao, rearmarVigia, VIGIA_NOVO, type EstadoDaRecepcao, type Vigia } from '../sala/recepcao'
 import {
   desempacotarRelato,
   empacotarRelato,
@@ -53,10 +53,10 @@ export const TELEMETRIA_VAZIA: Telemetria = {
 export interface Coletor {
   parar(): void
   /**
-   * Põe o vigia daquela tela de volta em `VIGIA_NOVO` — é o "tentar de novo" do quadro que
-   * desistiu. `'desistiu'` é absorvente de propósito (três reassinaturas sem resposta não
-   * viram uma quarta sozinhas); sem esta porta, o produto final do cão de guarda seria uma
-   * mensagem mandando pedir para o outro reiniciar a transmissão.
+   * O "tentar de novo" do quadro: a tela que nunca chegou volta a `VIGIA_NOVO`, a congelada
+   * reassina na hora (`rearmarVigia`). `'desistiu'` é absorvente de propósito (três
+   * reassinaturas sem resposta não viram uma quarta sozinhas); sem esta porta, o produto final do
+   * cão de guarda seria uma mensagem mandando pedir para o outro reiniciar a transmissão.
    */
   rearmar(identidade: string): void
 }
@@ -102,10 +102,13 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     setTimeout(() => publicacao.setSubscribed(true), 250)
   }
 
-  /** Avalia a leitura mais recente daquela tela e dispara a reassinatura quando for a vez. */
-  function avaliarEAgir(identidade: string, amostra: AmostraDoEspectador) {
+  /**
+   * Avalia a leitura mais recente daquela tela e dispara a reassinatura quando for a vez. A tela
+   * muda é a pausada por quem compartilha: nada chegar é o combinado, não o defeito.
+   */
+  function avaliarEAgir(identidade: string, amostra: AmostraDoEspectador, pausada: boolean) {
     const vigia = vigias.get(identidade) ?? VIGIA_NOVO
-    const passo = avaliarRecepcao(vigia, { emMs: amostra.emMs, kbps: amostra.kbps }, amostra.emMs)
+    const passo = avaliarRecepcao(vigia, { emMs: amostra.emMs, kbps: amostra.kbps, pausada }, amostra.emMs)
     vigias.set(identidade, passo.vigia)
     if (passo.acao === 'reassinar') void reassinar(identidade)
   }
@@ -171,6 +174,7 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       }
 
       const historico = estado.recebidas.get(identidade) ?? []
+      const pausada = publicacao.isMuted
       const receiver = (publicacao.track as RemoteTrack | undefined)?.receiver
 
       if (!receiver) {
@@ -180,7 +184,7 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
         // undefined`, sem aviso e sem tentativa, para sempre.
         const amostra = amostraVaziaDoEspectador(Date.now())
         recebidas.set(identidade, anotar(historico, amostra))
-        avaliarEAgir(identidade, amostra)
+        avaliarEAgir(identidade, amostra, pausada)
         continue
       }
 
@@ -191,13 +195,13 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
             const leitura = lerAmostraDoEspectador(relatorio, basesRecebidas.get(identidade) ?? null)
             basesRecebidas.set(identidade, leitura.base)
             recebidas.set(identidade, anotar(historico, leitura.amostra))
-            avaliarEAgir(identidade, leitura.amostra)
+            avaliarEAgir(identidade, leitura.amostra, pausada)
           })
           .catch(() => {
             basesRecebidas.set(identidade, null)
             const amostra = amostraVaziaDoEspectador(Date.now())
             recebidas.set(identidade, anotar(historico, amostra))
-            avaliarEAgir(identidade, amostra)
+            avaliarEAgir(identidade, amostra, pausada)
           }),
       )
     }
@@ -294,8 +298,11 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
 
     rearmar(identidade: string) {
       // Só tela ainda assinada se rearma; quem já saiu não tem vigia a que voltar.
-      if (!vigias.has(identidade)) return
-      vigias.set(identidade, VIGIA_NOVO)
+      const vigia = vigias.get(identidade)
+      if (!vigia) return
+      const passo = rearmarVigia(vigia, Date.now())
+      vigias.set(identidade, passo.vigia)
+      if (passo.acao === 'reassinar') void reassinar(identidade)
       // Publicar na hora, sem esperar a batida: quem clicou tem de ver o aviso sair.
       publicar({ ...estado, recepcao: recepcaoAtual() })
     },

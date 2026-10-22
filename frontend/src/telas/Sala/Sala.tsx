@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
-import { chavesDasTelasPublicadas, montarPalco } from '../../sala/palco'
+import { chavesDasTelasPublicadas, montarPalco, pecaEncerrada, type Peca } from '../../sala/palco'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useFocoDeTeclado } from '../../sala/useFocoDeTeclado'
 import { useChat } from '../../sala/useChat'
@@ -94,10 +94,40 @@ export function Sala() {
   // entra à parte: o cão de guarda anda no relógio da telemetria, não no dos eventos do `Room`.
   const palco = useMemo(() => montarPalco(sala, telemetria.recepcao), [sala, versao, telemetria.recepcao])
   const telasPublicadas = useMemo(() => chavesDasTelasPublicadas(sala), [sala, versao])
+  // A Tela alheia que sai do ar em destaque deixa o quadro dizendo que terminou, até alguém
+  // fechar, olhar outra tela ou a mesma pessoa voltar a compartilhar. `visto` é a última Tela
+  // alheia viva em destaque; a peça encerrada leva a mesma chave, e por isso a Tela que volta
+  // reassume o mesmo destaque sem ninguém precisar escolher.
+  const [visto, setVisto] = useState<Peca | null>(null)
+  const [encerrada, setEncerrada] = useState<Peca | null>(null)
+  const voltou = (peca: Peca) => palco.telas.some((tela) => tela.identidade === peca.identidade)
+  if (encerrada && voltou(encerrada)) setEncerrada(null)
+  if (!encerrada && visto && !palco.telas.some((tela) => tela.chave === visto.chave)) {
+    setEncerrada(pecaEncerrada(visto))
+    setVisto(null)
+    setFoco({ chave: visto.chave })
+  }
+  const palcoDoFoco = useMemo(() => {
+    const pendente = encerrada && !palco.telas.some((tela) => tela.identidade === encerrada.identidade)
+    return pendente ? { ...palco, telas: [...palco.telas, encerrada] } : palco
+  }, [palco, encerrada])
+
   // Só a tela vira quadro. Presença é a faixa de avatares e a barra lateral: um retângulo do
   // tamanho de uma tela para mostrar duas iniciais tirava o espaço de quem tem o que mostrar.
-  const quadros = palco.telas
+  const quadros = palcoDoFoco.telas
   const zoom = useZoom(quadros)
+
+  // O destaque é a escolha da pessoa; sem escolha (ou com ela fora do ar), é o primeiro quadro
+  // que existir — o palco não tem estado "nada em destaque com imagem no ar".
+  const emDestaque = quadros.find((quadro) => quadro.chave === foco.chave) ?? quadros[0] ?? null
+  // Olhar outra tela dispensa o cartão de quem terminou: ele é do destaque, não da coluna.
+  if (encerrada && emDestaque?.chave !== encerrada.chave) setEncerrada(null)
+  const destaqueVivo = emDestaque && !emDestaque.encerrada && !emDestaque.proprio ? emDestaque : null
+  useEffect(() => {
+    setVisto(destaqueVivo)
+    // A chave basta: é ela que diz que o destaque vivo é outro.
+  }, [destaqueVivo?.chave])
+
   const amostraDoEmissor = ultima(telemetria.emissor)
 
   // Nunca some com a gaveta aberta ou com o teclado dentro do palco: sumir é para quem largou o
@@ -109,8 +139,8 @@ export function Sala() {
   useEffect(() => {
     const antes = telasAntes.current
     telasAntes.current = telasPublicadas
-    setFoco((atual) => decidirFoco(atual, palco, { tipo: 'palcoMudou', telasAntes: antes }))
-  }, [palco, telasPublicadas])
+    setFoco((atual) => decidirFoco(atual, palcoDoFoco, { tipo: 'palcoMudou', telasAntes: antes }))
+  }, [palcoDoFoco, telasPublicadas])
 
   useEffect(() => {
     if (!conviteCopiado) return
@@ -211,9 +241,6 @@ export function Sala() {
     )
   }
 
-  // O destaque é a escolha da pessoa; sem escolha (ou com ela fora do ar), é o primeiro quadro
-  // que existir — o palco não tem estado "nada em destaque com imagem no ar".
-  const emDestaque = quadros.find((quadro) => quadro.chave === foco.chave) ?? quadros[0] ?? null
   const miniaturas = imersao ? [] : quadros.filter((quadro) => quadro.chave !== emDestaque?.chave)
   const camadaAberta = (lateralEmCamada && lateralAberta) || (gavetaEmCamada && gaveta.aberta)
 
@@ -293,6 +320,8 @@ export function Sala() {
               imersao={imersao}
               zoom={zoom}
               aoTentarDeNovo={telemetria.rearmarRecepcao}
+              minhaConexao={conexao}
+              aoFecharEncerrada={() => setEncerrada(null)}
             />
 
             <div className={estilos.interface} data-interface={interfaceVisivel ? 'visivel' : 'oculta'}>

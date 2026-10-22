@@ -98,39 +98,48 @@
   object-fit: contain;
 }
 
-/* A faixa do cão de guarda: por cima do quadro, não dentro de uma pílula — o aviso de recepção
-   tem que caber sem disputar espaço com nome ou volume. */
-.avisoDaRecepcao {
+/* O cartão de estado: por cima da imagem, que escurece atrás dele. Só a caixa recebe o ponteiro
+   — o clique e o duplo clique fora dela continuam chegando à moldura (imersão, tela cheia). */
+.cartaoDeEstado {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
+  inset: 0;
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--e4);
+  background: color-mix(in srgb, var(--fundo) 70%, transparent);
+  pointer-events: none;
+}
+
+/* O cartão NÃO some em tela cheia — ao contrário das pílulas, que são moldura. Ele é status:
+   tela cheia é exatamente onde a pessoa está encarando o retângulo parado sem explicação. */
+.caixaDoEstado {
+  pointer-events: auto;
+  max-width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: var(--e2);
   margin: 0;
-  padding: var(--e2) var(--e4);
-  background: var(--atencao-fraca);
-  color: var(--atencao-texto);
-  font-size: var(--texto-sm);
+  padding: var(--e3) var(--e4);
+  border-radius: var(--raio-lg);
+  background: color-mix(in srgb, var(--superficie) 92%, transparent);
+  box-shadow: var(--sombra-md);
+  color: var(--texto);
+  font-size: var(--texto-md);
   text-align: center;
 }
 
-/* O aviso NÃO some em tela cheia — ao contrário das pílulas, que são moldura. Ele é status:
-   tela cheia é exatamente onde a pessoa está encarando o retângulo preto sem explicação. */
-
-.textoDaRecepcao {
-  min-width: 0;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
+.caixaDoEstado[data-tom='atencao'] {
+  color: var(--atencao-texto);
 }
 
-.tentarDeNovo {
-  flex: none;
-  color: var(--atencao-texto);
+.acoesDoEstado {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--e2);
 }
 
 /* As duas pílulas do rodapé do destaque: identidade à esquerda, como assistir à direita. Elas

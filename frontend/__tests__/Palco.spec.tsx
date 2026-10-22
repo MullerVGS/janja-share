@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within, type RenderResult } from '@testing-library/react'
+import { ConnectionQuality, ConnectionState } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Peca } from '../src/sala/palco'
 import { useZoom } from '../src/sala/useZoom'
@@ -18,6 +19,8 @@ interface Cenario {
   /** A sala começa fora da imersão; entrar nela é escolha explícita do teste. */
   imersao?: boolean
   aoTentarDeNovo?: (identidade: string) => void
+  minhaConexao?: ConnectionState
+  aoFecharEncerrada?: () => void
 }
 
 function Palquinho({
@@ -29,6 +32,8 @@ function Palquinho({
   interfaceVisivel = true,
   imersao = false,
   aoTentarDeNovo = vi.fn(),
+  minhaConexao = ConnectionState.Connected,
+  aoFecharEncerrada = vi.fn(),
 }: Cenario) {
   const zoom = useZoom(emDestaque ? [emDestaque, ...miniaturas] : miniaturas)
   return (
@@ -42,6 +47,8 @@ function Palquinho({
       imersao={imersao}
       zoom={zoom}
       aoTentarDeNovo={aoTentarDeNovo}
+      minhaConexao={minhaConexao}
+      aoFecharEncerrada={aoFecharEncerrada}
     />
   )
 }
@@ -307,5 +314,51 @@ describe('palco: o zoom no quadro em destaque', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Fazer a tela caber no quadro' }))
     expect(video.style.transform).toBe('translate(0px, 0px) scale(1)')
+  })
+})
+
+describe('palco: o cartão de estado do quadro', () => {
+  it('a imagem que parou de chegar diz isso e oferece tentar de novo — o congelamento depois de chegar', () => {
+    const aoTentarDeNovo = vi.fn()
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, recepcao: 'congelada' }), aoTentarDeNovo })
+
+    expect(screen.getByRole('status')).toHaveTextContent('A imagem de Sadia parou de chegar aqui.')
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+    expect(aoTentarDeNovo).toHaveBeenCalledExactlyOnceWith('sadia')
+  })
+
+  it('a tela pausada por quem compartilha diz que está pausada, sem botão — não há o que tentar daqui', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, pausada: true }) })
+
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Sadia está pausada')
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+  })
+
+  it('a própria tela pausada fala com quem compartilha', () => {
+    montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true, pausada: true }) })
+    expect(screen.getByRole('status')).toHaveTextContent('Sua tela está pausada')
+  })
+
+  it('a tela que terminou tem o Fechar', () => {
+    const aoFecharEncerrada = vi.fn()
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, publicacao: undefined, encerrada: true }), aoFecharEncerrada })
+
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Sadia terminou.')
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(aoFecharEncerrada).toHaveBeenCalledOnce()
+  })
+
+  it('a conexão de quem compartilha caída aparece no quadro dele', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, qualidade: ConnectionQuality.Lost }) })
+    expect(screen.getByRole('status')).toHaveTextContent('A conexão de Sadia caiu — esperando voltar…')
+  })
+
+  it('a minha conexão caída aparece em cima de qualquer outra coisa', () => {
+    montarPalco({
+      emDestaque: peca('Sadia', { ehTela: true, recepcao: 'congelada', pausada: true }),
+      minhaConexao: ConnectionState.Reconnecting,
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('Sua conexão caiu — voltando…')
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
   })
 })

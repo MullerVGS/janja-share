@@ -585,3 +585,60 @@ describe('sala: a fonte que acaba sozinha', () => {
     expect(falso.trocarDeTela).toHaveBeenCalledOnce()
   })
 })
+
+describe('sala: a tela que termina em destaque', () => {
+  function biaCompartilhando(outros: ReturnType<typeof participanteFalso>[] = []) {
+    const publicacoes = [publicacaoFalsa(Track.Source.ScreenShare)]
+    const bia = participanteFalso('bia-x1y2', 'Bia', publicacoes)
+    falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [bia, ...outros])
+    return {
+      parar: () => {
+        publicacoes.splice(0)
+        fireEvent.click(screen.getByRole('button', { name: 'mexer no palco' }))
+      },
+      voltar: () => {
+        publicacoes.push(publicacaoFalsa(Track.Source.ScreenShare))
+        fireEvent.click(screen.getByRole('button', { name: 'mexer no palco' }))
+      },
+    }
+  }
+
+  it('fica o cartão "terminou" com o Fechar, em vez de o quadro sumir sem explicação', async () => {
+    const usuario = userEvent.setup()
+    const bia = biaCompartilhando()
+    const { container } = montarSala()
+
+    bia.parar()
+
+    expect(palcoDe(container)).toHaveAttribute('data-modo', 'destaque')
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Bia terminou.')
+    await usuario.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(palcoDe(container)).toHaveAttribute('data-modo', 'vazio')
+  })
+
+  it('a mesma pessoa voltando a compartilhar retoma o destaque sozinha', () => {
+    const bia = biaCompartilhando()
+    const { container } = montarSala()
+    bia.parar()
+
+    bia.voltar()
+
+    expect(screen.queryByText(/terminou/)).not.toBeInTheDocument()
+    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
+    expect(container.querySelector('[data-imagem] video')).toBeInTheDocument()
+  })
+
+  it('com outra tela no ar, o cartão fica no destaque; escolher a outra o dispensa', async () => {
+    const usuario = userEvent.setup()
+    const carla = participanteFalso('carla-z9', 'Carla', [publicacaoFalsa(Track.Source.ScreenShare)])
+    const bia = biaCompartilhando([carla])
+    montarSala()
+
+    bia.parar()
+
+    expect(screen.getByRole('status')).toHaveTextContent('A tela de Bia terminou.')
+    await usuario.click(screen.getByRole('button', { name: 'Pôr a tela de Carla no palco' }))
+    expect(screen.queryByText(/terminou/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /tela de Bia/ })).not.toBeInTheDocument()
+  })
+})
