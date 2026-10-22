@@ -36,11 +36,20 @@ export function slugDaSala(nome: string): string {
  * É o sufixo que impede chegar na sala adivinhando o nome — ela não aparece no saguão e o link
  * é o único caminho até ela.
  */
-export function slugDaSalaPrivada(nome: string): string {
+export function slugDaSalaPrivada(nome: string, sufixo = randomBytes(TAMANHO_SUFIXO_PRIVADO).toString('hex')): string {
   // Segundo trim depois do corte, pela mesma razão do corte em 32 dentro de slugDaSala: a
   // fronteira pode cair em cima de um hífen e deixá-lo pendurado antes do sufixo.
   const base = slugDaSala(nome).slice(0, TAMANHO_MAXIMO_BASE_PRIVADA).replace(/-+$/, '')
-  return `${base}-${randomBytes(TAMANHO_SUFIXO_PRIVADO).toString('hex')}`
+  return `${base}-${sufixo}`
+}
+
+/**
+ * O sufixo sorteado de um slug privado, para a Sala que muda de nome continuar privada sem
+ * trocar de segredo. `null` quando o slug não termina num sufixo do formato de `slugDaSalaPrivada`.
+ */
+export function sufixoDoSlugPrivado(slug: string): string | null {
+  const achado = new RegExp(`-([0-9a-f]{${TAMANHO_SUFIXO_PRIVADO * 2}})$`).exec(slug)
+  return achado ? achado[1] : null
 }
 
 /**

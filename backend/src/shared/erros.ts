@@ -38,6 +38,30 @@ export class SalaNaoExiste extends ErroApi {
   }
 }
 
+/**
+ * O link trazia a assinatura de uma Sala fixa, mas o prazo dela passou: a Sala não volta por ele.
+ * Código próprio (não sala_nao_existe) para o app dizer "expirou" e oferecer criar de novo.
+ */
+export class SalaExpirada extends ErroApi {
+  constructor() {
+    super(HttpStatus.NOT_FOUND, 'sala_expirada')
+  }
+}
+
+/** O link trazia uma assinatura que não confere — adulterada, cortada ou de outro slug. */
+export class AssinaturaInvalida extends ErroApi {
+  constructor() {
+    super(HttpStatus.NOT_FOUND, 'assinatura_invalida')
+  }
+}
+
+/** Só quem está dentro da Sala muda nome e visibilidade: a Sala não tem dono (ADR 0013). */
+export class ForaDaSala extends ErroApi {
+  constructor() {
+    super(HttpStatus.FORBIDDEN, 'fora_da_sala')
+  }
+}
+
 export class SalaCheia extends ErroApi {
   constructor() {
     super(HttpStatus.CONFLICT, 'sala_cheia')
@@ -47,6 +71,16 @@ export class SalaCheia extends ErroApi {
 export class MuitasSalas extends ErroApi {
   constructor() {
     super(HttpStatus.TOO_MANY_REQUESTS, 'muitas_salas')
+  }
+}
+
+/**
+ * Teto das Salas adormecidas: uma Sala fixa nova (ou trazida de volta pelo link) não cabe.
+ * Código próprio porque a saída é outra — a efêmera continua podendo nascer.
+ */
+export class MuitasGuardadas extends ErroApi {
+  constructor() {
+    super(HttpStatus.TOO_MANY_REQUESTS, 'muitas_guardadas')
   }
 }
 

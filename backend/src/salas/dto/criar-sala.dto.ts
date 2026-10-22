@@ -9,5 +9,7 @@ import { IsBoolean, IsOptional } from 'class-validator'
 export class CriarSalaDto {
   @IsOptional() nome?: unknown
   @IsOptional() @IsBoolean() privada?: boolean
+  /** Ausente é fixa; `false` é a Sala efêmera, que some quando todos saem. */
+  @IsOptional() @IsBoolean() fixa?: boolean
   @IsOptional() seuNome?: unknown
 }
