@@ -127,6 +127,21 @@ describe('máscara do endereço da Sala privada', () => {
     expect(`${window.location.pathname}${window.location.search}`).toBe('/sala/eclipse-c0ffee?k=a.b')
   })
 
+  it('a aba saindo (F5) não apaga a máscara: o próximo carregamento precisa dela para voltar', () => {
+    restaurarEnderecoMascarado()
+    window.history.replaceState(null, '', '/sala/eclipse-c0ffee?k=a.b')
+    mascarar('eclipse-c0ffee', '/sala/eclipse-c0ffee?k=a.b')
+    window.dispatchEvent(new Event('beforeunload'))
+    desmascarar()
+    expect(window.location.pathname).toBe('/sala/eclipse-oculta')
+    expect(sessionStorage.getItem(CHAVE_DA_MASCARA)).not.toBeNull()
+
+    // O carregamento seguinte volta ao verdadeiro e limpa a máscara.
+    restaurarEnderecoMascarado()
+    expect(`${window.location.pathname}${window.location.search}`).toBe('/sala/eclipse-c0ffee?k=a.b')
+    expect(sessionStorage.getItem(CHAVE_DA_MASCARA)).toBeNull()
+  })
+
   it('desmascarar depois de navegar para outro lugar não puxa a pessoa de volta', () => {
     mascarar('eclipse-c0ffee', '/sala/eclipse-c0ffee?k=a.b')
     window.history.replaceState(null, '', '/')

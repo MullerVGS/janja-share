@@ -45,8 +45,16 @@ export function mascarar(slug: string, verdadeiro: string): void {
   window.history.replaceState(window.history.state, '', mascarado)
 }
 
+/**
+ * A aba está saindo (F5, fechar, navegar para fora). Nessa hora a Sala ainda desmonta e para a
+ * Tela, e o desmascarar que viria junto apagaria justamente o que o próximo carregamento precisa
+ * para voltar ao endereço verdadeiro.
+ */
+let saindo = false
+
 /** Devolve o endereço verdadeiro à barra, se ela ainda mostra o mascarado. */
 export function desmascarar(): void {
+  if (saindo) return
   const mascara = lerMascara()
   try {
     sessionStorage.removeItem(CHAVE_DA_MASCARA)
@@ -63,8 +71,23 @@ export function desmascarar(): void {
  * endereço verdadeiro da Sala.
  */
 export function restaurarEnderecoMascarado(): void {
+  saindo = false
+  // `beforeunload` vem antes: é nele que o SDK desliga a Sala, e a Tela cai junto.
+  const sair = () => {
+    saindo = true
+  }
+  window.addEventListener('beforeunload', sair)
+  window.addEventListener('pagehide', sair)
+  window.addEventListener('pageshow', () => {
+    saindo = false
+  })
   const mascara = lerMascara()
   if (mascara && window.location.pathname === mascara.mascarado) {
     window.history.replaceState(window.history.state, '', mascara.verdadeiro)
+  }
+  try {
+    sessionStorage.removeItem(CHAVE_DA_MASCARA)
+  } catch {
+    // nada a fazer
   }
 }
