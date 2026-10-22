@@ -22,3 +22,5 @@ Quem só ouve não some da sala; muda de lugar. Ganhar visibilidade agora custa 
 ## Revisão
 
 O ADR 0010 tira a câmera: o Quadro é sempre uma Tela e o Palco não tem quadro de Pessoa. Ganhar visibilidade custa compartilhar a tela.
+
+O ADR 0016 devolve a grade: Telas e Pessoas são quadros do mesmo tamanho, e o foco é uma escolha que inclui voltar à grade.
