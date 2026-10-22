@@ -15,6 +15,8 @@ interface Props {
 
 /** Folga entre o botão e o suspenso. */
 const FOLGA_PX = 8
+/** Metade da largura mínima da caixa mais a margem da janela. */
+const MEIA_LARGURA_MINIMA = 164
 
 /**
  * Uma caixa que abre por cima de um botão da barra.
@@ -35,7 +37,11 @@ export function Suspenso({ ancora, aberto, aoFechar, rotulo, papel, children }: 
     const medir = () => {
       const retangulo = ancora.current?.getBoundingClientRect()
       if (!retangulo) return
-      setPosicao({ centro: retangulo.left + retangulo.width / 2, base: window.innerHeight - retangulo.top + FOLGA_PX })
+      // Perto da borda (o painel da pessoa mora no canto), o centro anda para dentro: a caixa
+      // nunca sai da janela.
+      const meio = retangulo.left + retangulo.width / 2
+      const centro = Math.min(Math.max(meio, MEIA_LARGURA_MINIMA), window.innerWidth - MEIA_LARGURA_MINIMA)
+      setPosicao({ centro, base: window.innerHeight - retangulo.top + FOLGA_PX })
     }
     medir()
     window.addEventListener('resize', medir)

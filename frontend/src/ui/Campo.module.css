@@ -5,29 +5,30 @@
 }
 
 .rotulo {
-  font-size: 12px;
-  color: color-mix(in srgb, var(--texto) 70%, transparent);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  color: var(--texto);
 }
 
 .entrada {
   width: 100%;
-  min-height: 36px;
-  padding: 6px 10px;
-  font-size: 14px;
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 16px;
   color: var(--texto);
-  caret-color: var(--acao);
-  background: var(--superficie);
-  border: 1px solid var(--linha);
+  caret-color: var(--texto);
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--linha-forte);
   border-radius: var(--raio-md);
   transition: border-color 0.12s ease;
 }
 
 .entrada::placeholder {
-  color: var(--neutro-600);
+  color: #8f9097;
 }
 
 .entrada:hover {
-  border-color: color-mix(in srgb, var(--texto) 45%, transparent);
+  border-color: var(--linha-forte);
 }
 
 .entrada:focus-visible {

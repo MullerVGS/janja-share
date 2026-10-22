@@ -3,35 +3,19 @@
   flex: none;
   display: grid;
   place-items: center;
+  width: var(--tamanho);
+  height: var(--tamanho);
   border-radius: 50%;
-  background: var(--acento-900);
-  color: var(--acento-200);
+  color: #fff;
   font-weight: var(--peso-forte);
+  font-size: calc(var(--tamanho) * 0.38);
   line-height: 1;
+  letter-spacing: 0.01em;
+  user-select: none;
 }
 
-.avatar[data-proprio] {
-  background: var(--acento-700);
-}
-
-.mini {
-  width: 24px;
-  height: 24px;
-  font-size: 9px;
-}
-
-.pequeno {
-  width: 26px;
-  height: 26px;
-  font-size: 10px;
-}
-
-.medio {
-  width: 30px;
-  height: 30px;
-  font-size: var(--texto-xs);
-}
-
+/* Quem fala ganha o anel verde com uma folga do fundo, como em toda chamada de voz. */
 .avatar[data-falando] {
-  box-shadow: 0 0 0 2px var(--acao);
+  outline: 2px solid var(--falando);
+  outline-offset: 2px;
 }

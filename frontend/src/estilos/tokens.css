@@ -1,127 +1,155 @@
 /*
- * Tokens do janja-share — tema Nocturne. Escuro por padrão: a interface funciona como moldura e
- * deixa as telas compartilhadas serem a principal fonte de luz. Cores, espaços e elevação
- * nascem aqui para o saguão e a sala falarem a mesma língua. Valores de cor crus ficam somente
- * neste arquivo; os módulos consomem seus papéis sem conhecer a paleta.
+ * Tokens do janja-share — a casca de canal de voz (ADR 0016). Escuro por padrão, em degraus de
+ * cinza neutro: a barra de título, o trilho e a coluna de salas no degrau mais baixo; a página
+ * (saguão, chat) um degrau acima; os painéis flutuantes e os menus mais acima ainda; a chamada,
+ * preta, é onde a imagem acende. Valores de cor crus ficam somente neste arquivo; os módulos
+ * consomem os papéis sem conhecer a paleta.
  *
- * Duas regras do tema que valem para qualquer módulo novo:
- *   1. Preenchimento de acento é sempre *tinta* — `color-mix(in srgb, var(--acao) N%, transparent)`
- *      com N entre 7 e 14. Acento chapado é reservado a pontos, traços e anéis de 1–2px.
- *   2. Peso 600 é o teto da tipografia; título nenhum passa de 500.
+ * Regras que valem para qualquer módulo novo:
+ *   1. O estado de um item de lista é uma camada de cinza por cima do degrau: 12% no hover, 16%
+ *      apertado, 20% escolhido (`--interativo-*`). Nunca uma cor nova.
+ *   2. Cor cheia é para ação: o acento cheio no botão principal e no ícone escolhido do trilho,
+ *      o vermelho cheio no sair e no "AO VIVO", o verde no "voz conectada" e em quem fala.
+ *   3. Peso 600 é o teto da tipografia (a fonte embarcada não tem mais que isso).
  */
 :root {
   color-scheme: dark;
 
-  /* — rampas cruas —
-     Uma única escala de luminosidade em OKLCH, para o mesmo degrau de qualquer papel casar em
-     valor visual com os outros. */
-  --neutro-100: #f3f5fe;
-  --neutro-200: #e4e7f5;
-  --neutro-300: #cfd3e5;
-  --neutro-400: #b2b6ca;
-  --neutro-500: #9397ab;
-  --neutro-600: #75798c;
-  --neutro-700: #595d6c;
-  --neutro-800: #3f424d;
-  --neutro-900: #292b31;
+  /* — degraus de fundo — */
+  --base-mais-baixa: #121214;
+  --base: #1a1a1e;
+  --base-alta: #202024;
+  --superficie-alta: #242429;
+  --superficie-mais-alta: #2c2d32;
+  --chamada: #000;
 
-  --acento-100: #f5f4ff;
-  --acento-200: #e7e5fe;
-  --acento-300: #d2cefd;
-  --acento-400: #b5abfc;
-  --acento-500: #968ae0;
-  --acento-600: #796cbf;
-  --acento-700: #5d5294;
-  --acento-800: #423a6a;
-  --acento-900: #2b2741;
+  /* Os nomes que o resto do app já fala, apontando para os degraus. */
+  --fundo: var(--base);
+  --superficie: var(--superficie-alta);
+  --barra-lateral: var(--base-mais-baixa);
+  --barra-topo: var(--base-mais-baixa);
+  --veu: rgba(0, 0, 0, 0.72);
+  /* Uma tela ainda sem imagem: o mesmo cinza do quadro de pessoa, sem gradiente. */
+  --vidro-do-quadro: var(--base-alta);
 
-  /* — planos — */
-  --fundo: #161826;
-  --superficie: #232532;
-  --barra-lateral: color-mix(in srgb, var(--superficie) 40%, var(--fundo));
-  --barra-topo: var(--fundo);
-  /* O escuro por trás de um diálogo modal. */
-  --veu: color-mix(in srgb, var(--neutro-900) 55%, transparent);
-  /* O gradiente que representa uma tela ainda sem imagem — no palco, na miniatura e na prévia
-     do saguão. É a mesma receita nos três lugares, e só aqui. */
-  --vidro-do-quadro: radial-gradient(120% 100% at 75% 0%, color-mix(in srgb, var(--acao) 7%, transparent) 0%, transparent 55%),
-    linear-gradient(165deg, color-mix(in srgb, var(--superficie) 65%, var(--fundo)) 0%, color-mix(in srgb, var(--fundo) 82%, black) 100%);
+  /* — camadas de estado (cinza neutro por cima de qualquer degrau) — */
+  --interativo-sutil: rgba(151, 151, 159, 0.08);
+  --interativo-hover: rgba(151, 151, 159, 0.12);
+  --interativo-ativo: rgba(151, 151, 159, 0.16);
+  --interativo-escolhido: rgba(151, 151, 159, 0.2);
+
+  /* — rampas — usadas por gráficos e pelo que precisa de um degrau entre dois papéis. */
+  --neutro-100: #fbfbfb;
+  --neutro-200: #efeff1;
+  --neutro-300: #abacb2;
+  --neutro-400: #96979e;
+  --neutro-500: #81828a;
+  --neutro-600: #5f606a;
+  --neutro-700: #4a4b53;
+  --neutro-800: #2c2d32;
+  --neutro-900: #202024;
+
+  --acento-100: #f2f1ff;
+  --acento-200: #dcd9ff;
+  --acento-300: #bcb6fb;
+  --acento-400: #9d94f3;
+  --acento-500: #8b80ea;
+  --acento-600: #6c60dc;
+  --acento-700: #5a4fc2;
+  --acento-800: #3d367f;
+  --acento-900: #26234a;
 
   /* — texto — */
-  --texto: #e9e9ed;
-  --texto-fraco: var(--neutro-300);
-  --texto-fraquissimo: var(--neutro-500);
-  --texto-sobre-acento: var(--fundo);
+  --texto: #efeff1;
+  --texto-forte: #fbfbfb;
+  --texto-fraco: #abacb2;
+  --texto-fraquissimo: #96979e;
+  /* O nome de uma sala na coluna, parada: um degrau abaixo do texto apagado. */
+  --texto-da-coluna: #81828a;
+  --texto-sobre-acento: #fff;
 
-  /* — traços —
-     O divisor é um só: tinta do texto a 16%. Molduras de caixa e separadores dentro de controles
-     ficam sólidos; regra solta não existe neste produto. */
-  --linha: color-mix(in srgb, var(--texto) 16%, transparent);
-  --linha-forte: color-mix(in srgb, var(--texto) 26%, transparent);
+  /* — traços — */
+  --linha: rgba(151, 151, 159, 0.12);
+  --linha-forte: rgba(151, 151, 159, 0.2);
+  --linha-muda: rgba(151, 151, 159, 0.04);
 
-  /* — acentos —
-     Tinta de acento não vira token: cada módulo escreve o `color-mix` na porcentagem que o seu
-     estado pede (7% de fundo de resumo, 12% de hover, 14% de aba escolhida). Congelar três
-     apelidos para isso só empurrava a decisão de intensidade para longe de quem a toma. */
-  --acao: #9184d9;
-  --acao-texto: var(--acento-200);
-  /* "No ar" é acento, não verde: o produto tem um sinal só, e é o mesmo do foco e da marca. */
-  --conectado: var(--acao);
-  --atencao: #d9a441;
-  --atencao-fraca: color-mix(in srgb, #d9a441 14%, transparent);
-  --atencao-texto: #eccb87;
-  --perigo: oklch(0.62 0.14 25);
-  --perigo-forte: oklch(0.55 0.16 25);
-  --perigo-fraca: color-mix(in srgb, oklch(0.55 0.16 25) 14%, transparent);
-  --perigo-texto: oklch(0.72 0.12 25);
-  /* A segunda série dos gráficos (captura, banda disponível): presente sem competir com
-     o acento, que é sempre o que a pessoa está tentando ler. */
+  /* — acento — o do janja-share, não o de ninguém. */
+  --acao: #8b80ea;
+  --acao-texto: #a9a1f5;
+  --acao-cheia: #6c60dc;
+  --acao-cheia-hover: #5a4fc2;
+  --acao-cheia-ativa: #4b42a6;
+
+  /* — estados — */
+  --conectado: #53ad71;
+  --falando: #3d9e60;
+  --positivo: #23a55a;
+  --positivo-texto: #5eb479;
+  --atencao: #f0b232;
+  --atencao-fraca: rgba(240, 178, 50, 0.08);
+  --atencao-texto: #ea9800;
+  --perigo: #f23f43;
+  --perigo-forte: #d22d39;
+  --perigo-cheio: #d22d39;
+  --perigo-cheio-hover: #a9232e;
+  --perigo-cheio-ativo: #971d28;
+  --perigo-fraca: rgba(210, 45, 57, 0.12);
+  --perigo-texto: #f87e7a;
+  --microfone-fechado: #da3e44;
+  --ao-vivo: #d22d39;
+  /* A segunda série dos gráficos: presente sem competir com o acento. */
   --serie-de-apoio: var(--neutro-600);
 
   /* — tipografia — */
   --fonte: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fonte-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
-  /* Títulos param em 500. O 600 é para rótulos curtos — iniciais de avatar, badges, tags. */
-  --peso-titulo: 500;
+  --peso-titulo: 600;
   --peso-forte: 600;
+  --peso-medio: 500;
 
-  --texto-xs: 11px;
-  --texto-sm: 12.5px;
-  --texto-md: 13.5px;
-  --texto-base: 15px;
+  --texto-xs: 12px;
+  --texto-sm: 13px;
+  --texto-md: 14px;
+  --texto-base: 16px;
   --texto-lg: 18px;
-  --titulo-sm: 19px;
-  --titulo-md: 25px;
-  --titulo-lg: clamp(30px, 4.5vw, 44px);
+  --titulo-sm: 20px;
+  --titulo-md: 24px;
+  --titulo-lg: clamp(26px, 3.4vw, 32px);
 
   /* — espaço — */
   --e1: 4px;
   --e2: 8px;
   --e3: 12px;
   --e4: 16px;
-  --e5: 22px;
-  --e6: 28px;
-  --e8: 40px;
-  --e10: 56px;
+  --e5: 20px;
+  --e6: 24px;
+  --e8: 32px;
+  --e10: 48px;
 
   /* — raio — */
-  --raio-sm: 6px;
+  --raio-xs: 4px;
+  --raio-sm: 4px;
   --raio-md: 8px;
-  --raio-lg: 14px;
-  /* Os botões da barra flutuante: quadrados de 44px com o canto próprio do tema. */
-  --raio-botao-da-barra: 10px;
+  --raio-lg: 12px;
+  --raio-xl: 16px;
+  --raio-botao-da-barra: 12px;
+  --raio-do-quadro: 8px;
   --raio-pilula: 999px;
 
   /* — elevação — */
-  --sombra-md: 0 0 0 1px color-mix(in srgb, var(--texto) 8%, transparent), 0 6px 18px rgba(0, 0, 0, 0.55);
-  --sombra-lg: 0 0 0 1px color-mix(in srgb, var(--texto) 10%, transparent), 0 16px 40px rgba(0, 0, 0, 0.65);
-  --sombra-marca: 0 0 14px color-mix(in srgb, var(--acao) 25%, transparent);
-  /* O halo de "estou compartilhando", no botão da barra e na caixa da marca. */
-  --brilho-do-acento: 0 0 16px color-mix(in srgb, var(--acao) 28%, transparent);
+  --sombra-md: 0 0 0 1px var(--linha), 0 4px 12px rgba(0, 0, 0, 0.36);
+  --sombra-lg: 0 0 0 1px var(--linha), 0 12px 32px rgba(0, 0, 0, 0.48);
+  --sombra-marca: none;
+  --brilho-do-acento: none;
 
-  /* — medidas — */
-  --largura-da-gaveta-padrao: 320px;
-  --largura-da-navegacao: 264px;
-  --largura-das-miniaturas: 190px;
-  --altura-do-topo: 52px;
+  /* — medidas da casca — */
+  --altura-da-barra-de-titulo: 32px;
+  --largura-do-trilho: 72px;
+  --tamanho-do-icone-do-trilho: 40px;
+  --largura-da-coluna: 302px;
+  --altura-do-cabecalho: 48px;
+  --altura-do-painel-da-pessoa: 56px;
+  --folga-dos-paineis: 8px;
+  --largura-da-gaveta-padrao: 340px;
+  --altura-do-topo: var(--altura-do-cabecalho);
 }

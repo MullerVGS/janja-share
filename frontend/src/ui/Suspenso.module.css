@@ -8,11 +8,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 6px;
-  border-radius: var(--raio-lg);
+  padding: var(--e2);
+  border-radius: var(--raio-md);
   border: 1px solid var(--linha);
-  background: color-mix(in srgb, var(--superficie) 96%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--superficie-mais-alta);
   box-shadow: var(--sombra-lg);
   color: var(--texto);
   font-size: var(--texto-md);

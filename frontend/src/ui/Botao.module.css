@@ -1,62 +1,71 @@
+/* Botão de texto: 38 px de altura, canto de 8 px e um fio claro de 1 px que separa o
+   preenchimento do fundo em qualquer degrau. */
 .botao {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: var(--e2);
+  min-height: 38px;
   cursor: pointer;
-  font-weight: var(--peso-titulo);
-  font-size: 14px;
-  line-height: 1.2;
-  color: var(--texto);
+  font-weight: var(--peso-medio);
+  font-size: var(--texto-md);
+  line-height: 16px;
+  color: #fff;
   background: transparent;
-  border: 1px solid transparent;
-  padding: 9px var(--e4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 7px var(--e4);
   border-radius: var(--raio-md);
-  transition: background-color 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+  transition:
+    background-color 0.17s ease,
+    color 0.17s ease;
 }
 
 .botao:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* O primário é contorno de acento, nunca preenchido: o único bloco de cor cheia da interface é
-   o vídeo, e um botão chapado disputaria com ele. O peso vem da borda e do texto. */
 .primario {
-  color: var(--acao);
-  border-color: var(--acao);
+  background: var(--acao-cheia);
 }
 .primario:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--acao) 12%, transparent);
+  background: var(--acao-cheia-hover);
 }
 .primario:active:not(:disabled) {
-  background: color-mix(in srgb, var(--acao) 22%, transparent);
+  background: var(--acao-cheia-ativa);
 }
 
 .secundario {
-  border-color: var(--linha);
+  background: var(--interativo-hover);
+  border-color: var(--linha-muda);
 }
 .secundario:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--texto) 7%, transparent);
+  background: var(--interativo-ativo);
 }
 .secundario:active:not(:disabled) {
-  background: color-mix(in srgb, var(--texto) 14%, transparent);
+  background: var(--interativo-escolhido);
 }
 
+/* O botão que é quase link: sem caixa, só o texto no acento. */
 .fantasma {
-  color: var(--acao);
-  padding-inline: var(--e1);
+  border-color: transparent;
+  color: var(--acao-texto);
+  min-height: 0;
+  padding: var(--e1) var(--e2);
 }
 .fantasma:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--acao) 10%, transparent);
+  background: var(--interativo-hover);
 }
 
 .perigo {
-  border-color: color-mix(in srgb, var(--perigo) 45%, transparent);
-  color: var(--perigo-texto);
+  background: var(--perigo-cheio);
 }
 .perigo:hover:not(:disabled) {
-  background: var(--perigo-fraca);
+  background: var(--perigo-cheio-hover);
+}
+.perigo:active:not(:disabled) {
+  background: var(--perigo-cheio-ativo);
 }
 
 .blocoInteiro {

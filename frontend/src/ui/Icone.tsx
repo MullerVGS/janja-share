@@ -1,5 +1,13 @@
 import {
   ArrowClockwise,
+  CaretLeft,
+  CellSignalFull,
+  GearSix,
+  Headphones,
+  House,
+  LockSimple,
+  SpeakerSimpleHigh,
+  SquaresFour,
   ArrowsLeftRight,
   Broadcast,
   CaretDown,
@@ -94,3 +102,13 @@ export const IconeAssistindo = envolver(Eye)
 /** Deixar de ver a tela de alguém sem sair da sala: o olho riscado. */
 export const IconeDeixarDeVer = envolver(EyeSlash)
 export const IconeEditar = envolver(PencilSimple)
+/** A sala na coluna: o alto-falante de canal de voz. */
+export const IconeSalaDeVoz = envolver(SpeakerSimpleHigh)
+export const IconeCadeado = envolver(LockSimple, 12)
+export const IconeSaguao = envolver(House)
+export const IconeFones = envolver(Headphones)
+export const IconePreferencias = envolver(GearSix)
+/** O estado da conexão no painel de voz: as barrinhas de sinal. */
+export const IconeSinal = envolver(CellSignalFull, 16)
+export const IconeGrade = envolver(SquaresFour)
+export const IconeVoltar = envolver(CaretLeft)
