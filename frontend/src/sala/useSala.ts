@@ -160,7 +160,9 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
      * uma imagem que ninguém vê.
      */
     async function republicarOrfas() {
-      const fila = [...orfas]
+      // A ordem do SDK é a das publicações, e uma troca de codec põe a Tela atrás do som dela.
+      const primeiroATela = ([faixa]: [LocalTrack, unknown]) => (faixa.source === Track.Source.ScreenShare ? 0 : 1)
+      const fila = [...orfas].sort((a, b) => primeiroATela(a) - primeiroATela(b))
       orfas.clear()
       let telaFicouFora = false
       for (const [faixa, opcoes] of fila) {

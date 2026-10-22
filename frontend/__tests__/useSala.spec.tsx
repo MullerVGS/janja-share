@@ -273,6 +273,25 @@ describe('useSala', () => {
       expect(result.current.queda).toBeNull()
     })
 
+    it('a Tela sobe antes do som mesmo quando o SDK despublicou o som primeiro (depois de uma troca de codec)', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
+      const credenciais = credenciaisFalsas(Date.now() + 60_000)
+      renderHook(() => useSala(credenciais))
+      const tela = faixaLocal(Track.Source.ScreenShare)
+      const som = faixaLocal(Track.Source.ScreenShareAudio)
+      cair([
+        [som, OPCOES_DO_SOM],
+        [tela, OPCOES_DA_TELA],
+      ])
+      ultima.sala?.localParticipant.publishTrack.mockRejectedValueOnce(new Error('recusada'))
+
+      await religar()
+
+      // A Tela foi a primeira a tentar; recusada, o som não sobe sozinho.
+      expect(ultima.sala?.localParticipant.publishTrack.mock.calls).toEqual([[tela, OPCOES_DA_TELA]])
+      expect(som.stop).toHaveBeenCalled()
+    })
+
     it('a captura que acabou durante a queda não volta — e o som dela também não, sem a imagem', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
       const credenciais = credenciaisFalsas(Date.now() + 60_000)
