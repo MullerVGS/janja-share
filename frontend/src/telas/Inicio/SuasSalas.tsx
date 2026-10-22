@@ -4,6 +4,7 @@ import type { SalaNaLista } from '../../api/salas'
 import { enderecoDaSala } from '../../salas/link'
 import { esquecerSala, lerSuasSalas, type SalaLembrada } from '../../salas/suasSalas'
 import { Botao } from '../../ui/Botao'
+import { iniciaisDoNome } from '../../ui/avatares'
 import { IconeFechar } from '../../ui/Icone'
 import estilos from './SuasSalas.module.css'
 
@@ -47,14 +48,17 @@ export function SuasSalas({ noAr }: Props) {
   }
 
   return (
-    <section className={estilos.secao} aria-labelledby="titulo-suas-salas">
-      <h2 id="titulo-suas-salas" className={estilos.titulo}>
-        Suas salas
+    <section className={estilos.secao} aria-label="Suas salas">
+      <h2 className={estilos.titulo}>
+        Suas salas — {salas.length}
       </h2>
       <p className={estilos.subtitulo}>As salas que você abriu neste navegador. Voltam pelo mesmo link.</p>
       <ul className={estilos.lista}>
         {salas.map((sala) => (
           <li key={sala.slug} className={estilos.item}>
+            <span className={estilos.icone} aria-hidden="true">
+              {iniciaisDoNome(sala.nome)}
+            </span>
             <span className={estilos.info}>
               <span className={estilos.nome}>{sala.nome}</span>
               <span className={estilos.estado}>{estadoDa(sala, noAr)}</span>

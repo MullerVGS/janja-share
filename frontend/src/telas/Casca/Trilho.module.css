@@ -1,0 +1,98 @@
+/* 72 px: o ícone de 40 px com 16 px de cada lado. */
+.trilho {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e2);
+  width: var(--largura-do-trilho);
+  padding: var(--e1) 0 var(--e3);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.trilho::-webkit-scrollbar {
+  display: none;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* A pílula: 8 px de largura, presa na borda esquerda, metade para fora. */
+.pilula {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--texto-forte);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition:
+    height 0.2s ease-out,
+    opacity 0.2s ease-out;
+}
+
+.pilula[data-estado='comGente'] {
+  opacity: 1;
+}
+
+.item:hover .pilula {
+  opacity: 1;
+  height: 20px;
+}
+
+.pilula[data-estado='escolhido'],
+.item:hover .pilula[data-estado='escolhido'] {
+  opacity: 1;
+  height: 40px;
+}
+
+/* O ícone: quadrado de cantos de 12 px. Sob o ponteiro e escolhido, o acento cheio. */
+.icone {
+  width: var(--tamanho-do-icone-do-trilho);
+  height: var(--tamanho-do-icone-do-trilho);
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--raio-lg);
+  background: var(--interativo-sutil);
+  color: var(--texto);
+  font-size: 14px;
+  font-weight: var(--peso-medio);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
+}
+
+.icone:hover,
+.icone[aria-current='page'] {
+  background: var(--acao-cheia);
+  color: #fff;
+}
+
+/* Criar sala: o "+" no acento, e só sob o ponteiro ele se enche. */
+.icone[data-criar] {
+  color: var(--acao-texto);
+}
+
+.icone[data-criar]:hover {
+  color: #fff;
+}
+
+.separador {
+  width: 32px;
+  height: 1px;
+  flex: none;
+  border-radius: 1px;
+  background: var(--linha);
+}

@@ -1,7 +1,7 @@
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes, useParams } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SalaNaLista } from '../src/api/salas'
 import { gravarPreferencias, lerPreferencias } from '../src/preferencias'
 import { useSessao } from '../src/sessao/sessao'
@@ -32,8 +32,18 @@ function montarInicio() {
 }
 
 const SALAS: SalaNaLista[] = [
-  { slug: 'jogatina', nome: 'Jogatina', pessoas: ['Bia', 'Caio'], telasNoAr: 2, cheia: false },
-  { slug: 'reuniao', nome: 'Reunião', pessoas: [], telasNoAr: 0, cheia: false },
+  {
+    slug: 'jogatina',
+    nome: 'Jogatina',
+    pessoas: ['Bia', 'Caio'],
+    presentes: [
+      { nome: 'Bia', aoVivo: true, microfoneAberto: true },
+      { nome: 'Caio', aoVivo: false, microfoneAberto: false },
+    ],
+    telasNoAr: 1,
+    cheia: false,
+  },
+  { slug: 'reuniao', nome: 'Reunião', pessoas: [], presentes: [], telasNoAr: 0, cheia: false },
   {
     slug: 'lotada',
     nome: 'Lotada',
@@ -47,9 +57,11 @@ const ROTA_DE_SUGESTAO = {
   'GET /api/salas/nome-sugerido': { corpo: { nome: 'Varanda Tranquila' } },
 }
 
-function cartaoDe(nome: string): HTMLElement {
-  const item = screen.getByText(nome).closest('li')
-  if (!item) throw new Error(`cartão "${nome}" não é um <li>`)
+/** A linha de uma Sala na coluna: o canal de voz e quem está dentro. */
+function linhaDe(nome: string): HTMLElement {
+  const lista = screen.getByRole('list', { name: 'Salas no ar' })
+  const item = within(lista).getByText(nome).closest('li')
+  if (!item) throw new Error(`linha "${nome}" não é um <li>`)
   return item as HTMLElement
 }
 
@@ -61,53 +73,68 @@ function prepararNome(nome = 'Ana') {
 // isto, o nome digitado num teste vazaria para o próximo (que espera partir de nome vazio).
 afterEach(() => localStorage.clear())
 
-describe('início: lista de salas', () => {
-  it('renderiza as salas da API', async () => {
+describe('início: a coluna das salas no ar', () => {
+  it('mostra cada Sala como canal de voz, com quem está dentro', async () => {
     servir({ 'GET /api/salas': { corpo: SALAS } })
     montarInicio()
 
     expect(await screen.findByText('Jogatina')).toBeInTheDocument()
     expect(screen.getByText('Reunião')).toBeInTheDocument()
-    expect(screen.getByText('Lotada')).toBeInTheDocument()
+    const jogatina = within(linhaDe('Jogatina')).getByRole('list', { name: 'Quem está em Jogatina' })
+    expect(within(jogatina).getByText('Bia')).toBeInTheDocument()
+    expect(within(jogatina).getByText('Caio')).toBeInTheDocument()
   })
 
-  it('mostra o badge de telas no ar só quando há telas', async () => {
+  it('o selo "Ao vivo" vai em quem compartilha, e o microfone fechado em quem está mudo', async () => {
     servir({ 'GET /api/salas': { corpo: SALAS } })
     montarInicio()
 
     await screen.findByText('Jogatina')
-    expect(within(cartaoDe('Jogatina')).getByText(/2 telas no ar/)).toBeInTheDocument()
-    expect(within(cartaoDe('Reunião')).queryByText(/telas no ar/)).not.toBeInTheDocument()
+    const bia = screen.getByText('Bia').closest('li') as HTMLElement
+    const caio = screen.getByText('Caio').closest('li') as HTMLElement
+    expect(within(bia).getByText('Ao vivo')).toBeInTheDocument()
+    expect(within(bia).queryByRole('img', { name: 'microfone fechado' })).not.toBeInTheDocument()
+    expect(within(caio).queryByText('Ao vivo')).not.toBeInTheDocument()
+    expect(within(caio).getByRole('img', { name: 'microfone fechado' })).toBeInTheDocument()
   })
 
-  it('sala vazia em carência fica apagada, com "ninguém agora"', async () => {
+  it('um servidor que só manda os nomes ainda desenha as pessoas, sem selo e mudas', async () => {
+    servir({ 'GET /api/salas': { corpo: SALAS } })
+    montarInicio()
+
+    await screen.findByText('Lotada')
+    expect(within(linhaDe('Lotada')).getAllByRole('img', { name: 'microfone fechado' })).toHaveLength(12)
+  })
+
+  it('sala cheia fica desabilitada com "cheia"', async () => {
     servir({ 'GET /api/salas': { corpo: SALAS } })
     montarInicio()
 
     await screen.findByText('Jogatina')
-    const linha = cartaoDe('Reunião')
-    expect(within(linha).getByText('ninguém agora')).toBeInTheDocument()
-    expect(linha).toHaveAttribute('data-vazia')
-  })
-
-  it('sala cheia desabilita o Entrar com "cheia"', async () => {
-    servir({ 'GET /api/salas': { corpo: SALAS } })
-    montarInicio()
-
-    await screen.findByText('Jogatina')
-    const botao = within(cartaoDe('Lotada')).getByRole('button', { name: /cheia/i })
+    const botao = within(linhaDe('Lotada')).getByRole('button', { name: /Lotada/ })
     expect(botao).toBeDisabled()
+    expect(botao).toHaveTextContent('cheia')
   })
 
-  it('sem sala nenhuma, o estado vazio põe o criar em destaque', async () => {
+  it('clicar na Sala vai para o link dela', async () => {
+    servir({ 'GET /api/salas': { corpo: SALAS } })
+    const usuario = userEvent.setup()
+    montarInicio()
+
+    await usuario.click(await screen.findByRole('button', { name: /Jogatina/ }))
+
+    expect(await screen.findByText(/entrou em jogatina/)).toBeInTheDocument()
+  })
+
+  it('sem sala nenhuma, a coluna diz isso e a página oferece criar', async () => {
     servir({ 'GET /api/salas': { corpo: [] } })
     montarInicio()
 
-    expect(await screen.findByRole('button', { name: 'Criar sala' })).toBeInTheDocument()
-    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
+    expect(await screen.findByText(/Nenhuma sala no ar agora/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar sala' })).toBeInTheDocument()
   })
 
-  it('erro do GET vira Aviso — nunca "nenhuma sala"', async () => {
+  it('erro do GET vira aviso — nunca "nenhuma sala"', async () => {
     servir({ 'GET /api/salas': { status: 503, corpo: { erro: 'sfu_indisponivel' } } })
     montarInicio()
 
@@ -123,16 +150,31 @@ describe('início: lista de salas', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Tentando de novo')
   })
+
+  it('nomes repetidos na mesma sala não colidem de chave — sem aviso do React no console', async () => {
+    const consoleErro = vi.spyOn(console, 'error').mockImplementation(() => {})
+    servir({
+      'GET /api/salas': {
+        corpo: [{ slug: 'duplicada', nome: 'Duplicada', pessoas: ['Bia', 'Bia'], telasNoAr: 0, cheia: false }],
+      },
+    })
+    montarInicio()
+
+    await screen.findByText('Duplicada')
+    expect(within(linhaDe('Duplicada')).getAllByText('Bia')).toHaveLength(2)
+    const avisosDeChave = consoleErro.mock.calls.filter((chamada) => String(chamada[0]).includes('key'))
+    expect(avisosDeChave).toEqual([])
+    consoleErro.mockRestore()
+  })
 })
 
-describe('início: poll de fundo (5s) que falha não apaga a lista nem o que a pessoa digitou', () => {
+describe('início: poll de fundo (5s) que falha não apaga a lista', () => {
   // Faz nos dois lados do mount: o `useQuery` registra o `setInterval` do refetch já na
-  // montagem — fake timers ligados só depois não pegam esse intervalo (ele fica preso ao
-  // `setInterval` real), e o segundo poll nunca dispara dentro do tempo falso do teste.
+  // montagem — fake timers ligados só depois não pegam esse intervalo.
   beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] }))
   afterEach(() => vi.useRealTimers())
 
-  it('religa em 5s (refetchInterval); um 503 no poll vira aviso por cima da lista, sem desmontar a linha', async () => {
+  it('religa em 5s (refetchInterval); um 503 no poll vira aviso por cima da lista, sem desmontá-la', async () => {
     let chamadasGet = 0
     servir({
       'GET /api/salas': () => {
@@ -140,20 +182,11 @@ describe('início: poll de fundo (5s) que falha não apaga a lista nem o que a p
         return chamadasGet === 1 ? { corpo: SALAS } : { status: 503, corpo: { erro: 'sfu_indisponivel' } }
       },
     })
-    // `delay: null`: sem isso, o `userEvent` conta com `setTimeout` real entre teclas, e só o
-    // `setInterval` está fake aqui — misturar os dois regimes de tempo trava o teste.
-    const usuario = userEvent.setup({ delay: null })
     montarInicio()
 
     await screen.findByText('Reunião')
-    await usuario.click(within(cartaoDe('Reunião')).getByRole('button', { name: 'Entrar' }))
-    await usuario.type(within(cartaoDe('Reunião')).getByLabelText('Seu nome'), 'meio-digitada')
     expect(chamadasGet).toBe(1)
 
-    // `Async`, e não `advanceTimersByTime`: precisa dar vez ao microtask do `fetch` mockado
-    // para o segundo `GET` sair. Depois, volta para timers reais — o resto da cadeia (`.json()`,
-    // o processamento interno do react-query, o re-render) é assíncrono demais para garantir em
-    // quantos ticks falsos termina, e `findByRole` com timer real resolve isso sem chute.
     await act(async () => vi.advanceTimersByTimeAsync(5000))
     expect(chamadasGet).toBe(2)
     vi.useRealTimers()
@@ -161,107 +194,56 @@ describe('início: poll de fundo (5s) que falha não apaga a lista nem o que a p
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'O servidor de mídia não respondeu. Tente de novo em instantes.',
     )
-    // A lista continua — a linha não desmontou, e o nome meio-digitado não sumiu.
     expect(screen.getByText('Reunião')).toBeInTheDocument()
-    expect(within(cartaoDe('Reunião')).getByLabelText('Seu nome')).toHaveValue('meio-digitada')
   })
 })
 
-describe('início: linha de sala — robustez', () => {
-  it('nomes repetidos na mesma sala não colidem de chave — sem aviso do React no console', async () => {
-    const consoleErro = vi.spyOn(console, 'error').mockImplementation(() => {})
-    servir({
-      'GET /api/salas': {
-        corpo: [
-          { slug: 'duplicada', nome: 'Duplicada', pessoas: ['Bia', 'Bia'], telasNoAr: 0, cheia: false },
-        ],
-      },
-    })
+describe('início: a página do saguão', () => {
+  it('tem o disclaimer no rodapé, sem citar ninguém', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
     montarInicio()
 
-    await screen.findByText('Duplicada')
-    expect(within(cartaoDe('Duplicada')).getAllByTitle('Bia')).toHaveLength(2)
-    const avisosDeChave = consoleErro.mock.calls.filter((chamada) => String(chamada[0]).includes('key'))
-    expect(avisosDeChave).toEqual([])
-    consoleErro.mockRestore()
+    expect((await screen.findAllByText('Qualquer semelhança é mera coincidência.')).length).toBeGreaterThan(0)
   })
 
-  it('mais de 6 pessoas mostra os 6 primeiros avatares e um "+N" para o resto', async () => {
-    servir({ 'GET /api/salas': { corpo: SALAS } })
+  it('o trilho tem o saguão aceso e o + de criar', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
     montarInicio()
 
-    const linha = await screen.findByText('Lotada').then(() => cartaoDe('Lotada'))
-    expect(within(linha).getAllByTitle(/^P\d+$/)).toHaveLength(6)
-    expect(within(linha).getByText('+6')).toBeInTheDocument()
-  })
-
-  it('Cancelar fecha o formulário expandido e esquece o que foi digitado', async () => {
-    servir({ 'GET /api/salas': { corpo: SALAS } })
-    const usuario = userEvent.setup()
-    montarInicio()
-
-    await screen.findByText('Reunião')
-    const linha = cartaoDe('Reunião')
-    await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
-    await usuario.type(within(linha).getByLabelText('Seu nome'), 'alguma coisa')
-
-    await usuario.click(within(linha).getByRole('button', { name: 'Cancelar' }))
-
-    expect(within(linha).queryByLabelText('Seu nome')).not.toBeInTheDocument()
-    expect(within(linha).getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
-
-    // Reabrir prova que o campo esqueceu o que tinha antes.
-    await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
-    expect(within(linha).getByLabelText('Seu nome')).toHaveValue('')
-  })
-
-  it('erro no caminho direto (nome já sabido) expande a linha em vez de só mostrar a frase', async () => {
-    prepararNome('Ana')
-    servir({
-      'GET /api/salas': { corpo: SALAS },
-      'POST /api/salas/jogatina/entrar': { status: 400, corpo: { erro: 'nome_invalido' } },
-    })
-    const usuario = userEvent.setup()
-    montarInicio()
-
-    await screen.findByText('Jogatina')
-    const linha = cartaoDe('Jogatina')
-    await usuario.click(within(linha).getByRole('button', { name: 'Entrar' }))
-
-    expect(await within(linha).findByRole('alert')).toHaveTextContent('Escolha um nome com 1 a 40 caracteres.')
-    // Expandiu: agora há um jeito de agir, não só a frase — aqui, cancelar.
-    expect(within(linha).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
+    const trilho = await screen.findByRole('navigation', { name: 'Suas salas' })
+    expect(within(trilho).getByRole('button', { name: 'Saguão' })).toHaveAttribute('aria-current', 'page')
+    expect(within(trilho).getByRole('button', { name: 'Criar uma sala' })).toBeInTheDocument()
   })
 })
 
 describe('início: seu nome', () => {
-  it('edita e persiste em preferências', async () => {
+  it('edita nas preferências do painel da pessoa e persiste', async () => {
     servir({ 'GET /api/salas': { corpo: [] } })
     const usuario = userEvent.setup()
     montarInicio()
 
+    await usuario.click(screen.getByRole('button', { name: 'Preferências' }))
     await usuario.type(screen.getByLabelText('Seu nome'), 'Ana')
     expect(lerPreferencias().nome).toBe('Ana')
+    expect(screen.getByRole('button', { name: 'Seu perfil e preferências' })).toHaveTextContent('Ana')
   })
 
-  it('vazio bloqueia o Entrar até preencher — pede o nome no próprio formulário da linha', async () => {
-    servir({
-      'GET /api/salas': { corpo: SALAS },
-      'POST /api/salas/jogatina/entrar': { corpo: credenciais('jogatina', 'Duda') },
-    })
+  it('os sons da sala ligam e desligam nas preferências', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
     const usuario = userEvent.setup()
     montarInicio()
 
-    await screen.findByText('Jogatina')
-    await usuario.click(within(cartaoDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
+    await usuario.click(screen.getByRole('button', { name: 'Preferências' }))
+    await usuario.click(screen.getByRole('checkbox', { name: 'Sons da sala' }))
+    expect(lerPreferencias().sons).toBe(false)
+  })
 
-    expect(chamadas.some((c) => c.caminho === '/api/salas/jogatina/entrar')).toBe(false)
-    const campoNome = within(cartaoDe('Jogatina')).getByLabelText('Seu nome')
-    await usuario.type(campoNome, 'Duda')
-    await usuario.click(within(cartaoDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
+  it('fora de uma sala, microfone e ensurdecer ficam apagados', async () => {
+    servir({ 'GET /api/salas': { corpo: [] } })
+    montarInicio()
 
-    expect(await screen.findByText(/entrou em jogatina como Duda/)).toBeInTheDocument()
-    expect(lerPreferencias().nome).toBe('Duda')
+    expect(screen.getByRole('button', { name: 'Microfone' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Ensurdecer' })).toBeDisabled()
   })
 })
 
@@ -275,26 +257,6 @@ function credenciais(slug: string, nome: string) {
     nome,
   }
 }
-
-describe('início: entrar', () => {
-  it('com o nome já sabido, o Entrar vai direto — sem tela intermediária', async () => {
-    prepararNome('Ana')
-    servir({
-      'GET /api/salas': { corpo: SALAS },
-      'POST /api/salas/jogatina/entrar': { corpo: credenciais('jogatina', 'Ana') },
-    })
-    const usuario = userEvent.setup()
-    montarInicio()
-
-    await screen.findByText('Jogatina')
-    await usuario.click(within(cartaoDe('Jogatina')).getByRole('button', { name: 'Entrar' }))
-
-    expect(await screen.findByText(/entrou em jogatina como Ana/)).toBeInTheDocument()
-    const entrada = chamadas.find((c) => c.caminho === '/api/salas/jogatina/entrar')
-    expect(entrada?.corpo).toEqual({ seuNome: 'Ana' })
-  })
-
-})
 
 describe('início: criar sala', () => {
   it('permite editar o nome sugerido e marcar sala privada nas opções avançadas', async () => {

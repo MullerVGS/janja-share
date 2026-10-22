@@ -31,7 +31,7 @@ describe('saguão: suas salas', () => {
     servir({ 'GET /api/salas': { corpo: [] } })
     montarInicio()
 
-    expect(await screen.findByText('Nenhuma sala no ar agora.')).toBeInTheDocument()
+    expect(await screen.findByText(/Nenhuma sala no ar agora/)).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Suas salas' })).not.toBeInTheDocument()
   })
 

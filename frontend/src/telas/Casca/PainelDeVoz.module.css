@@ -1,0 +1,188 @@
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  padding: var(--e3);
+  border-bottom: 1px solid var(--linha);
+}
+
+.linha {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+}
+
+.estadoENome {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.estado {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: var(--texto-md);
+  font-weight: var(--peso-forte);
+  cursor: pointer;
+}
+
+.estado:hover {
+  text-decoration: underline;
+}
+
+.estado[data-tom='bom'] {
+  color: var(--positivo-texto);
+}
+.estado[data-tom='medio'] {
+  color: var(--atencao-texto);
+}
+.estado[data-tom='ruim'] {
+  color: var(--perigo-texto);
+}
+
+.sinal {
+  display: flex;
+}
+.sinal[data-tom='bom'] {
+  color: var(--positivo-texto);
+}
+.sinal[data-tom='medio'] {
+  color: var(--atencao-texto);
+}
+.sinal[data-tom='ruim'] {
+  color: var(--perigo-texto);
+}
+
+.nomeDaSala {
+  align-self: flex-start;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--texto-fraco);
+  font-size: var(--texto-xs);
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nomeDaSala:hover {
+  text-decoration: underline;
+  color: var(--texto);
+}
+
+.desligar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--raio-md);
+  background: none;
+  color: var(--texto-fraco);
+  cursor: pointer;
+}
+
+.desligar:hover {
+  background: var(--interativo-hover);
+  color: var(--texto-forte);
+}
+
+/* A fileira de ações: botões iguais de 32 px de altura dividindo a largura. */
+.acoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: var(--e2);
+}
+
+.acao {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--linha-muda);
+  border-radius: var(--raio-md);
+  background: var(--interativo-hover);
+  color: var(--texto-forte);
+  cursor: pointer;
+  transition: background-color 0.1s ease-in-out;
+}
+
+.acao:hover:not(:disabled) {
+  background: var(--interativo-ativo);
+}
+
+.acao:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.acao[data-ligada] {
+  background: rgba(35, 165, 90, 0.12);
+  border-color: rgba(35, 165, 90, 0.12);
+  color: var(--positivo-texto);
+}
+
+.explicacao {
+  width: 272px;
+  padding: var(--e1);
+  color: var(--texto);
+  font-size: var(--texto-md);
+}
+
+.explicacao p {
+  margin: var(--e2) 0 0;
+  line-height: 1.4;
+}
+
+.tituloDaExplicacao[data-tom='bom'] {
+  color: var(--positivo-texto);
+}
+.tituloDaExplicacao[data-tom='medio'] {
+  color: var(--atencao-texto);
+}
+.tituloDaExplicacao[data-tom='ruim'] {
+  color: var(--perigo-texto);
+}
+
+.limiares {
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-xs);
+}
+
+.botoesDaExplicacao {
+  display: flex;
+  gap: var(--e3);
+  margin-top: var(--e3);
+}
+
+.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--acao-texto);
+  font-size: var(--texto-md);
+  cursor: pointer;
+}
+
+.link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

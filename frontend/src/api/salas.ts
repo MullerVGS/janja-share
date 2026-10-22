@@ -31,11 +31,20 @@ export interface SalaAjustada {
   assinatura: string | null
 }
 
+/** Quem está numa Sala da lista: o nome, a Tela no ar e o microfone aberto. */
+export interface PresenteNaLista {
+  nome: string
+  aoVivo: boolean
+  microfoneAberto: boolean
+}
+
 /** Item de `GET /api/salas`. Sala vazia em carência aparece aqui — é o que explica o nome ocupado. */
 export interface SalaNaLista {
   slug: string
   nome: string
   pessoas: string[]
+  /** Ausente num servidor anterior à coluna de salas: aí cada nome de `pessoas` vale sem Tela nem microfone. */
+  presentes?: PresenteNaLista[]
   telasNoAr: number
   cheia: boolean
 }
@@ -84,4 +93,9 @@ export function ajustarSala(
   return enviarJson<SalaAjustada>(`/api/salas/${encodeURIComponent(slug)}`, 'PATCH', ajuste, {
     authorization: `Bearer ${token}`,
   })
+}
+
+/** Os presentes de uma Sala da lista, mesmo vindos de um servidor que ainda só mandava os nomes. */
+export function presentesDa(sala: SalaNaLista): PresenteNaLista[] {
+  return sala.presentes ?? sala.pessoas.map((nome) => ({ nome, aoVivo: false, microfoneAberto: false }))
 }

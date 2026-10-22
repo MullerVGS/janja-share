@@ -1,0 +1,204 @@
+/* 56 px: o avatar de 32 px com o nome ao lado e os três botões de 32 px à direita. */
+.painel {
+  height: var(--altura-do-painel-da-pessoa);
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  padding: var(--e2);
+}
+
+.quem {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  margin: 0;
+  padding: 4px;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quem:hover {
+  background: var(--interativo-ativo);
+}
+
+.avatar {
+  position: relative;
+  flex: none;
+}
+
+/* O ponto de estado no canto do avatar: cinza no saguão, verde dentro de uma sala. */
+.pontoDeEstado {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid var(--base-alta);
+  background: var(--neutro-500);
+}
+
+.pontoDeEstado[data-em-sala] {
+  background: var(--positivo);
+}
+
+.textos {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.nome,
+.estado {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nome {
+  color: var(--texto-forte);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-forte);
+  line-height: 18px;
+}
+
+.estado {
+  color: var(--texto-fraco);
+  font-size: var(--texto-xs);
+  line-height: 16px;
+}
+
+.botoes {
+  flex: none;
+  display: flex;
+  gap: 2px;
+}
+
+.botao {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--raio-md);
+  background: none;
+  color: var(--texto-fraco);
+  cursor: pointer;
+}
+
+.botao:hover:not(:disabled) {
+  background: var(--interativo-hover);
+  color: var(--texto-forte);
+}
+
+.botao:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Microfone fechado e ensurdecido: o ícone em vermelho sobre uma tinta vermelha. */
+.botao[data-fechado] {
+  background: var(--perigo-fraca);
+  color: var(--microfone-fechado);
+}
+
+.botao[data-fechado]:hover:not(:disabled) {
+  background: rgba(210, 45, 57, 0.2);
+  color: var(--microfone-fechado);
+}
+
+/* Fones riscados: o traço é desenhado aqui, o ícone é o mesmo. */
+.botao[data-riscado]::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: currentColor;
+  box-shadow: 0 0 0 2px var(--base-alta);
+  transform: rotate(-45deg);
+}
+
+.ancoraDoAviso {
+  position: relative;
+  display: flex;
+}
+
+/* "Você está silenciado(a)": um balão por cima do botão do microfone. */
+.aviso {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: var(--raio-md);
+  background: var(--superficie-mais-alta);
+  box-shadow: var(--sombra-md);
+  color: var(--texto-forte);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.preferencias {
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  padding: var(--e1);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rotulo {
+  color: var(--texto-fraco);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-forte);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.entrada {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio-md);
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--texto);
+  font-size: var(--texto-md);
+}
+
+.alternar {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  color: var(--texto);
+  font-size: var(--texto-md);
+  cursor: pointer;
+}
+
+.alternar input {
+  accent-color: var(--acao-cheia);
+  width: 16px;
+  height: 16px;
+}
+
+.nota {
+  margin: 0;
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-xs);
+}

@@ -1,0 +1,79 @@
+.saguao {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecalho {
+  height: calc(var(--altura-do-cabecalho) + 1px);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  padding: 0 var(--e4);
+  border-bottom: 1px solid var(--linha);
+}
+
+.icone {
+  display: flex;
+  color: var(--texto-da-coluna);
+}
+
+.titulo {
+  margin: 0;
+  color: var(--texto-forte);
+  font-size: var(--texto-base);
+  font-weight: var(--peso-forte);
+  letter-spacing: 0;
+}
+
+.rolagem {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--e10) var(--e4) var(--e8);
+}
+
+.boasVindas {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.marca {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  margin-bottom: var(--e4);
+  border-radius: 50%;
+  background: var(--acao-cheia);
+  color: #fff;
+}
+
+.ola {
+  margin: 0 0 var(--e2);
+  color: var(--texto-forte);
+  font-size: var(--titulo-lg);
+  font-weight: var(--peso-forte);
+}
+
+.descricao {
+  margin: 0 0 var(--e5);
+  color: var(--texto-fraco);
+  font-size: var(--texto-base);
+  line-height: 1.375;
+}
+
+.rodape {
+  flex: none;
+  padding: var(--e3) var(--e4);
+  border-top: 1px solid var(--linha);
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-xs);
+  text-align: center;
+}

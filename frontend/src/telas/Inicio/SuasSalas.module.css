@@ -1,17 +1,22 @@
 .secao {
-  max-width: 1060px;
-  margin: 0 auto;
-  padding: 36px var(--e5) 0;
+  max-width: 720px;
+  margin: var(--e10) auto 0;
 }
 
+/* O título de seção da lista: caixa alta pequena, com a contagem. */
 .titulo {
   margin: 0 0 var(--e1);
-  font-size: var(--titulo-sm);
-  font-weight: var(--peso-titulo);
+  padding: 0 var(--e3);
+  color: var(--texto-fraco);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-forte);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .subtitulo {
-  margin: 0 0 var(--e4);
+  margin: 0 0 var(--e2);
+  padding: 0 var(--e3);
   color: var(--texto-fraquissimo);
   font-size: var(--texto-md);
 }
@@ -20,20 +25,42 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 10px;
 }
 
+/* Uma linha de 62 px com um fio por cima, que some no hover — a lista de pessoas de toda
+   ferramenta de conversa. */
 .item {
+  position: relative;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--e2);
-  padding: 10px 10px 10px 14px;
-  border: 1px solid var(--linha);
-  border-radius: var(--raio-lg);
-  background: var(--superficie);
+  gap: var(--e3);
+  height: 62px;
+  padding: 0 var(--e3);
+  border-top: 1px solid var(--linha);
+  border-radius: var(--raio-md);
+}
+
+.item:hover {
+  border-top-color: transparent;
+  background: var(--interativo-hover);
+}
+
+.item:hover + .item {
+  border-top-color: transparent;
+}
+
+.icone {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--raio-md);
+  background: var(--interativo-hover);
+  color: var(--texto);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-forte);
 }
 
 .info {
@@ -41,48 +68,40 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .nome {
   overflow: hidden;
-  color: var(--texto);
-  font-size: var(--texto-md);
-  font-weight: var(--peso-titulo);
+  color: var(--texto-forte);
+  font-size: var(--texto-base);
+  font-weight: var(--peso-forte);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .estado {
   overflow: hidden;
-  color: var(--texto-fraquissimo);
-  font-size: var(--texto-xs);
+  color: var(--texto-fraco);
+  font-size: var(--texto-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .tirar {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   flex: none;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--raio-md);
-  background: transparent;
-  color: var(--texto-fraquissimo);
+  border-radius: 50%;
+  background: var(--base-alta);
+  color: var(--texto-fraco);
   cursor: pointer;
 }
 
 .tirar:hover,
 .tirar:focus-visible {
-  background: color-mix(in srgb, var(--texto) 8%, transparent);
-  color: var(--texto);
-}
-
-@media (max-width: 720px) {
-  .secao {
-    padding: var(--e6) var(--e4) 0;
-  }
+  color: var(--perigo-texto);
 }

@@ -34,8 +34,12 @@ export interface Preferencias {
   codecAprendido: Codec | null
   /** Volume local de cada pessoa e de cada tela, por nome. */
   volumes: Volumes
-  /** Como os outros te veem. Editável no topo do Início. */
+  /** Como os outros te veem. Editável no painel da pessoa, no rodapé da coluna. */
   nome: string
+  /** Os sons curtos da sala (alguém entrou, saiu, começou ou parou uma Tela). */
+  sons: boolean
+  /** O volume desses sons, de 0 a 100. */
+  volumeDosSons: number
 }
 
 export const PREFERENCIAS_PADRAO: Preferencias = {
@@ -47,6 +51,8 @@ export const PREFERENCIAS_PADRAO: Preferencias = {
   codecAprendido: null,
   volumes: {},
   nome: '',
+  sons: true,
+  volumeDosSons: 60,
 }
 
 type Leitor<T> = (valor: unknown) => T | undefined
@@ -61,6 +67,9 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   codecAprendido: (valor) => (ehCodec(valor) ? valor : valor === null ? null : undefined),
   volumes: lerVolumes,
   nome: (valor) => (typeof valor === 'string' ? valor : undefined),
+  sons: (valor) => (typeof valor === 'boolean' ? valor : undefined),
+  volumeDosSons: (valor) =>
+    typeof valor === 'number' && Number.isFinite(valor) && valor >= 0 && valor <= 100 ? valor : undefined,
 }
 
 const CAMPOS = Object.keys(LEITORES) as (keyof Preferencias)[]

@@ -1,0 +1,260 @@
+.coluna {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 48 px e um fio por baixo — a mesma altura do cabeçalho da página ao lado. */
+.cabecalho {
+  height: calc(var(--altura-do-cabecalho) + 1px);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+  padding: 0 var(--e4);
+  border-bottom: 1px solid var(--linha);
+  color: var(--texto-forte);
+}
+
+.titulo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--texto-base);
+  font-weight: var(--peso-forte);
+}
+
+.rolagem {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--e2) 0 calc(var(--paineis-altura, 120px) + var(--e4));
+  scrollbar-width: thin;
+  scrollbar-color: #5f606a transparent;
+}
+
+.categoria {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: var(--e4) var(--e2) var(--e1);
+  padding: 0 var(--e1);
+  height: 24px;
+  color: var(--texto-da-coluna);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-forte);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.categoria:first-child {
+  margin-top: var(--e1);
+}
+
+.nota {
+  margin: var(--e1) var(--e4);
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-md);
+}
+
+.nota[data-tom='erro'] {
+  color: var(--perigo-texto);
+}
+
+.lista,
+.pessoas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sala {
+  margin-left: var(--e2);
+  margin-right: var(--e2);
+  padding: 1px 0;
+}
+
+/* A linha da sala: 32 px, canto de 8 px, ícone de 20 px e o nome em 16 px. */
+.linhaDaSala {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--raio-md);
+  color: var(--texto-da-coluna);
+}
+
+.linhaDaSala:hover {
+  background: var(--interativo-hover);
+  color: var(--texto-forte);
+}
+
+.sala[data-escolhida] > .linhaDaSala {
+  background: var(--interativo-escolhido);
+  color: var(--texto-forte);
+}
+
+.sala[data-atual] > .linhaDaSala {
+  color: var(--texto-forte);
+}
+
+.entrar {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  padding: var(--e1) var(--e2);
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: var(--texto-base);
+  font-weight: var(--peso-medio);
+  line-height: 24px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entrar:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.iconeDaSala {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* O cadeado da privada: um selo no canto do alto-falante, recortado do fundo. */
+.cadeado {
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--base-mais-baixa);
+}
+
+.nomeDaSala {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cheia {
+  flex: none;
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-xs);
+}
+
+.ajustar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: var(--e1);
+  padding: 0;
+  border: none;
+  border-radius: var(--raio-sm);
+  background: none;
+  color: var(--texto-fraco);
+  cursor: pointer;
+}
+
+.ajustar:hover {
+  color: var(--texto-forte);
+}
+
+/* Quem está dentro: recuado até alinhar o avatar com o nome da sala. */
+.pessoas {
+  padding: 2px 0 var(--e1) 28px;
+}
+
+.pessoa {
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.conteudoDaPessoa {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  padding: var(--e1) var(--e2);
+  border-radius: var(--raio-md);
+}
+
+.conteudoDaPessoa:hover {
+  background: var(--interativo-hover);
+}
+
+.nomeDaPessoa {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--texto-da-coluna);
+  font-size: var(--texto-md);
+  font-weight: var(--peso-medio);
+}
+
+.nomeDaPessoa[data-falando],
+.conteudoDaPessoa:hover .nomeDaPessoa {
+  color: var(--texto-forte);
+}
+
+.icones {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+  color: var(--texto-da-coluna);
+}
+
+.mudo {
+  display: flex;
+}
+
+/* O selo de quem compartilha: vermelho cheio, letra branca em caixa alta. */
+.aoVivo {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--ao-vivo);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--peso-forte);
+  letter-spacing: 0.02em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.alerta {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--atencao);
+  color: #000;
+  font-size: 11px;
+  font-weight: var(--peso-forte);
+}
