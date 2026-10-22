@@ -11,7 +11,7 @@ Do lado de quem assiste, as duas paradas são idênticas: nenhum byte chegando. 
 
 ## Decisão
 
-1. **Quem compartilha pulsa.** A cada 2 s, quem tem Tela no ar manda à Sala inteira, pelo data channel e sem garantia de entrega (tópico `pulso-da-tela`), se o encoder mandou bytes nas últimas amostras. Um pulso vale 5 s.
+1. **Quem compartilha pulsa.** A cada 2 s, quem tem Tela no ar manda à Sala inteira, pelo data channel e sem garantia de entrega (tópico `pulso-da-tela`), se o encoder mandou bytes nas últimas amostras e se a medida que o SFU lhe dá sobre a própria conexão é fraca. Um pulso vale 5 s. A rede fraca vai no pulso porque a medida que o SFU anuncia aos outros sobre quem compartilha não mede a rede dele: numa bancada em loopback, sem perda, quem assistia via a dona da Tela como `poor` o tempo todo enquanto ela se via `excellent`. Daquela medida só `Lost` (queda) é usada.
 2. **O vigia ganha a fase "congelada".** Uma Tela que já entregou e fica `ESPERA_PARA_CONGELAR_MS` (6 s) sem byte nenhum **enquanto o dono pulsa que está mandando** congela: o vigia reassina em ciclos, como na fase "nunca chegou", e depois de três tentativas espera o "Tentar de novo", que reassina na hora. Qualquer byte devolve a Tela a `ok`; o dono calado (ou sem pulso válido) devolve a congelada a parada.
 3. **Pausada não é defeito.** A Tela muda continua no Palco, marcada como pausada; a leitura pausada não conta para o vigia.
 4. **Um estado por quadro, em ordem de explicação** (`estadoDoQuadro`): a minha conexão caída; a Tela que terminou; a conexão de quem compartilha caída (`ConnectionQuality.Lost` medida pelo SFU); pausada; e o que o cão de guarda viu (chegando, nunca chegou, congelada). Cada estado tem um cartão com texto próprio por cima da imagem.
