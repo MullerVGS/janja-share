@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import type { ConnectionState } from 'livekit-client'
+import type { ConnectionQuality, ConnectionState } from 'livekit-client'
+import { AQUECIMENTO_MS, avisoParaQuemAssiste } from '../../sala/avisoDeQualidade'
+import { useAquecido } from '../../sala/useAquecido'
 import { estadoDoQuadro, type EstadoDoQuadro, type Peca } from '../../sala/palco'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useCliqueOuDuplo } from '../../sala/useCliqueOuDuplo'
@@ -34,6 +36,8 @@ interface Props {
   aoTentarDeNovo(identidade: string): void
   /** A conexão desta pessoa com a Sala: caída, todo quadro diz isso antes de qualquer coisa. */
   minhaConexao: ConnectionState
+  /** A qualidade da conexão desta pessoa, como o SFU a mede — para o aviso que diz de quem é a rede. */
+  minhaQualidade?: ConnectionQuality
   /** O Fechar do quadro cuja Tela terminou. */
   aoFecharEncerrada(): void
   /** Desassina a Tela daquela Pessoa sem sair da Sala; `aoVerDeNovo` assina de volta. */
@@ -170,6 +174,7 @@ function Destaque({
   zoom,
   aoTentarDeNovo,
   minhaConexao,
+  minhaQualidade,
   aoFecharEncerrada,
   aoDeixarDeVer,
   aoVerDeNovo,
@@ -188,6 +193,15 @@ function Destaque({
   const gestos = useGestosDoZoom({ moldura, video, aoGesto })
 
   const clique = useCliqueOuDuplo(aoAlternarImersao, telaCheia.alternar)
+
+  const estado = estadoDoQuadro(peca, minhaConexao)
+  // O aviso de qualidade é da Tela alheia ao vivo: com cartão de estado, o cartão já explica.
+  // O aquecimento conta por publicação — a Tela que volta de uma troca de codec aquece de novo.
+  const aquecido = useAquecido(peca.proprio ? null : (peca.publicacao?.trackSid ?? null), AQUECIMENTO_MS)
+  const avisoDeQualidade =
+    estado === 'aoVivo' && !peca.proprio
+      ? avisoParaQuemAssiste({ minha: minhaQualidade, doDono: peca.qualidade, nomeDoDono: peca.nome, aquecido })
+      : null
 
   const pilulas = (
     <>
@@ -247,8 +261,14 @@ function Destaque({
 
       {pip.emPiP && <span className={estilos.emPiP}>em PiP</span>}
 
+      {avisoDeQualidade && (
+        <p className={estilos.seloDeQualidade} role="status">
+          {avisoDeQualidade}
+        </p>
+      )}
+
       <CartaoDeEstado
-        estado={estadoDoQuadro(peca, minhaConexao)}
+        estado={estado}
         peca={peca}
         aoTentarDeNovo={aoTentarDeNovo}
         aoFechar={aoFecharEncerrada}
@@ -284,6 +304,7 @@ export function Palco({
   zoom,
   aoTentarDeNovo,
   minhaConexao,
+  minhaQualidade,
   aoFecharEncerrada,
   aoDeixarDeVer,
   aoVerDeNovo,
@@ -300,6 +321,7 @@ export function Palco({
           zoom={zoom}
           aoTentarDeNovo={aoTentarDeNovo}
           minhaConexao={minhaConexao}
+          minhaQualidade={minhaQualidade}
           aoFecharEncerrada={aoFecharEncerrada}
           aoDeixarDeVer={aoDeixarDeVer}
           aoVerDeNovo={aoVerDeNovo}

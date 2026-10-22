@@ -20,6 +20,7 @@ interface Cenario {
   imersao?: boolean
   aoTentarDeNovo?: (identidade: string) => void
   minhaConexao?: ConnectionState
+  minhaQualidade?: ConnectionQuality
   aoFecharEncerrada?: () => void
   aoDeixarDeVer?: (identidade: string) => void
   aoVerDeNovo?: (identidade: string) => void
@@ -35,6 +36,7 @@ function Palquinho({
   imersao = false,
   aoTentarDeNovo = vi.fn(),
   minhaConexao = ConnectionState.Connected,
+  minhaQualidade,
   aoFecharEncerrada = vi.fn(),
   aoDeixarDeVer = vi.fn(),
   aoVerDeNovo = vi.fn(),
@@ -52,6 +54,7 @@ function Palquinho({
       zoom={zoom}
       aoTentarDeNovo={aoTentarDeNovo}
       minhaConexao={minhaConexao}
+      minhaQualidade={minhaQualidade}
       aoFecharEncerrada={aoFecharEncerrada}
       aoDeixarDeVer={aoDeixarDeVer}
       aoVerDeNovo={aoVerDeNovo}
@@ -387,5 +390,37 @@ describe('palco: deixar de ver a tela de alguém', () => {
   it('a própria tela não tem "deixar de ver"', () => {
     montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true }) })
     expect(screen.queryByRole('button', { name: /Deixar de ver/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('palco: o aviso de qualidade diz de quem é a rede', () => {
+  it('a minha rede fraca aparece só depois do aquecimento, sem cobrir a imagem com cartão', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true }), minhaQualidade: ConnectionQuality.Poor })
+    expect(screen.queryByText(/conexão está fraca/)).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(10_000))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Sua conexão está fraca — a imagem pode travar aqui.')
+  })
+
+  it('a rede fraca de quem compartilha leva o nome dela', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, qualidade: ConnectionQuality.Poor }) })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.getByRole('status')).toHaveTextContent('A conexão de Sadia está fraca')
+  })
+
+  it('com cartão de estado, o cartão explica sozinho', () => {
+    montarPalco({
+      emDestaque: peca('Sadia', { ehTela: true, pausada: true }),
+      minhaQualidade: ConnectionQuality.Poor,
+    })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/conexão está fraca/)).not.toBeInTheDocument()
+  })
+
+  it('na própria tela não há aviso de quem assiste', () => {
+    montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true }), minhaQualidade: ConnectionQuality.Poor })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/conexão está fraca/)).not.toBeInTheDocument()
   })
 })

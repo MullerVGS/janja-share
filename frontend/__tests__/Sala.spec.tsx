@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { RoomEvent, Track, type Room } from 'livekit-client'
+import { ConnectionQuality, RoomEvent, Track, type Room } from 'livekit-client'
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,6 +9,8 @@ import { Sala } from '../src/telas/Sala/Sala'
 import { empacotar } from '../src/sala/chat'
 import { TOPICO_DO_CHAT } from '../src/sala/useChat'
 import { CHAVE_DA_SESSAO } from '../src/sessao/sessao'
+import { amostraVaziaDoEspectador } from '../src/telemetria/amostra'
+import type { Espectador } from '../src/telemetria/relato'
 import { montar } from './apoio/montar'
 import { emitirNaSala, participanteFalso, publicacaoFalsa, salaFalsa } from './apoio/salaFalsa'
 import { credenciaisFalsas, guardarSessao } from './apoio/sessaoFalsa'
@@ -20,6 +22,7 @@ const falso = vi.hoisted(() => ({
   fimDaFonte: null as 'tela' | 'som' | null,
   alternar: null as null | (() => Promise<void>),
   trocarDeTela: null as null | (() => Promise<void>),
+  espectadores: new Map() as ReadonlyMap<string, unknown>,
   sala: null as Room | null,
   versao: 0,
   queda: null as { tentativa: number; comTela: boolean } | null,
@@ -43,7 +46,14 @@ vi.mock('../src/sala/useSala', async () => {
 // A telemetria tem relógio próprio a 1 Hz; nestes testes ela não tem nada a dizer.
 vi.mock('../src/telemetria/useTelemetria', async () => {
   const { TELEMETRIA_VAZIA } = await import('../src/telemetria/coletor')
-  return { useTelemetria: () => ({ ...TELEMETRIA_VAZIA, rearmarRecepcao: vi.fn(), recarregarMidia: vi.fn() }) }
+  return {
+    useTelemetria: () => ({
+      ...TELEMETRIA_VAZIA,
+      espectadores: falso.espectadores,
+      rearmarRecepcao: vi.fn(),
+      recarregarMidia: vi.fn(),
+    }),
+  }
 })
 
 vi.mock('../src/sala/useCompartilhamento', async () => {
@@ -122,6 +132,7 @@ afterEach(() => {
   falso.fimDaFonte = null
   falso.alternar = null
   falso.trocarDeTela = null
+  falso.espectadores = new Map()
   falso.sala = null
   falso.versao = 0
   falso.queda = null
@@ -640,5 +651,40 @@ describe('sala: a tela que termina em destaque', () => {
     await usuario.click(screen.getByRole('button', { name: 'Pôr a tela de Carla no palco' }))
     expect(screen.queryByText(/terminou/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /tela de Bia/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('sala: o aviso de qualidade de quem compartilha', () => {
+  afterEach(() => vi.useRealTimers())
+
+  function noArComPlateia(quantos: number) {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    falso.compartilhando = true
+    falso.sala = salaFalsa({
+      ...participanteFalso('ana-a1b2c3', 'Ana'),
+      connectionQuality: ConnectionQuality.Poor,
+    } as ReturnType<typeof participanteFalso>)
+    const espectadores = new Map<string, Espectador>()
+    for (let i = 0; i < quantos; i += 1) {
+      espectadores.set(`p${i}`, { identidade: `p${i}`, nome: `P${i}`, relato: amostraVaziaDoEspectador(0), vistoEm: Date.now() })
+    }
+    falso.espectadores = espectadores
+  }
+
+  it('rede fraca com alguém assistindo vira aviso, depois do aquecimento', () => {
+    noArComPlateia(1)
+    montarSala()
+    expect(screen.queryByText(/quem assiste pode ver sua tela travando/)).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(10_000))
+
+    expect(screen.getByText(/quem assiste pode ver sua tela travando/)).toBeInTheDocument()
+  })
+
+  it('sem ninguém assistindo, nenhum aviso — não há o que travar para ninguém', () => {
+    noArComPlateia(0)
+    montarSala()
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/quem assiste pode ver sua tela travando/)).not.toBeInTheDocument()
   })
 })

@@ -9,6 +9,8 @@ import { useFocoDeTeclado } from '../../sala/useFocoDeTeclado'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
 import { useDeixarDeVer } from '../../sala/useDeixarDeVer'
+import { AQUECIMENTO_MS, avisoParaQuemCompartilha } from '../../sala/avisoDeQualidade'
+import { useAquecido } from '../../sala/useAquecido'
 import { useMedia } from '../../sala/useMedia'
 import { useSala } from '../../sala/useSala'
 import { useVolumes } from '../../sala/useVolumes'
@@ -140,6 +142,12 @@ export function Sala() {
   const quemAssiste = [...telemetria.espectadores.values()]
     .filter((espectador) => !sumiu(espectador))
     .map((espectador) => espectador.nome)
+  // A medida do SFU sobre a minha conexão; o palco re-renderiza a cada mudança dela.
+  const minhaQualidade = sala?.localParticipant.connectionQuality
+  const noArAquecido = useAquecido(compartilhamento.ativo ? 'no-ar' : null, AQUECIMENTO_MS)
+  const avisoDaMinhaTela = compartilhamento.ativo
+    ? avisoParaQuemCompartilha({ minha: minhaQualidade, assistindo: quemAssiste.length, aquecido: noArAquecido })
+    : null
 
   // Nunca some com a gaveta aberta ou com o teclado dentro do palco: sumir é para quem largou o
   // mouse parado, não para quem está no meio de alguma coisa.
@@ -333,6 +341,7 @@ export function Sala() {
               zoom={zoom}
               aoTentarDeNovo={telemetria.rearmarRecepcao}
               minhaConexao={conexao}
+              minhaQualidade={minhaQualidade}
               aoFecharEncerrada={() => setEncerrada(null)}
               aoDeixarDeVer={deixarDeVer}
               aoVerDeNovo={verDeNovo}
@@ -415,6 +424,7 @@ export function Sala() {
         )}
 
         {compartilhamento.erro && <Aviso tom="erro">{compartilhamento.erro}</Aviso>}
+        {avisoDaMinhaTela && <Aviso tom="neutro">{avisoDaMinhaTela}</Aviso>}
         {compartilhamento.fimDaFonte === 'tela' && (
           <Aviso tom="neutro">
             Sua tela saiu do ar: a janela foi fechada ou o navegador parou o compartilhamento.{' '}

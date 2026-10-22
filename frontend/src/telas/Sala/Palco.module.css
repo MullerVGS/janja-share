@@ -112,6 +112,24 @@
   pointer-events: none;
 }
 
+/* O selo de qualidade: pequeno, no alto, sem escurecer a imagem — ela continua chegando. */
+.seloDeQualidade {
+  position: absolute;
+  top: var(--e3);
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  max-width: calc(100% - 2 * var(--e3));
+  margin: 0;
+  padding: var(--e1) var(--e3);
+  border-radius: var(--raio-pilula);
+  background: color-mix(in srgb, var(--superficie) 88%, transparent);
+  box-shadow: var(--sombra-md);
+  color: var(--atencao-texto);
+  font-size: var(--texto-sm);
+  text-align: center;
+}
+
 /* O cartão NÃO some em tela cheia — ao contrário das pílulas, que são moldura. Ele é status:
    tela cheia é exatamente onde a pessoa está encarando o retângulo parado sem explicação. */
 .caixaDoEstado {
