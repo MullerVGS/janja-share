@@ -1,6 +1,6 @@
 # 0011 — Sala privada sem senha
 
-Status: aceito
+Status: aceito, estendido pelo [0013](0013-sala-fixa.md)
 Registro: 2026-09-07
 
 Supera a parte de senha do [0005](0005-acesso-sem-conta.md) e do

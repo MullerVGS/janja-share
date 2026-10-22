@@ -1,6 +1,6 @@
 # 0002 — Criação e encarnação das salas
 
-Status: aceito
+Status: aceito, estendido pelo [0013](0013-sala-fixa.md)
 Registro: 2026-08-25, retrospectivo
 
 ## Contexto
