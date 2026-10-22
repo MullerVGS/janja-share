@@ -48,3 +48,14 @@
   outline: 2px solid var(--acao);
   outline-offset: -2px;
 }
+
+.detalhe {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--texto-xs);
+  color: var(--texto-fraquissimo);
+}
+
+.opcao[aria-checked='true'] .detalhe {
+  color: var(--acento-300);
+}

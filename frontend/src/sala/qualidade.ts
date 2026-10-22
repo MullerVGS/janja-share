@@ -53,7 +53,7 @@ export const RESOLUCOES: readonly OpcaoDeResolucao[] = [
 export const OPCOES_DE_FPS: readonly number[] = [5, 15, 30, 60]
 
 export const CONTEUDOS: Record<Conteudo, { rotulo: string; contentHint: 'text' | 'motion'; descricao: string }> = {
-  texto: { rotulo: 'Texto', contentHint: 'text', descricao: 'código, terminal, documentos — borda nítida vale mais que quadro' },
+  texto: { rotulo: 'Texto nítido', contentHint: 'text', descricao: 'código, terminal, documentos — borda nítida vale mais que quadro' },
   jogo: { rotulo: 'Jogo', contentHint: 'motion', descricao: 'jogo, vídeo, filme — continuidade vale mais que borda' },
 }
 
@@ -160,6 +160,17 @@ export const PERFIL_PADRAO: PerfilDeQualidade = PRESET_DO_CONTEUDO.jogo
  */
 export function trocarConteudo(atual: PerfilDeQualidade, conteudo: Conteudo): PerfilDeQualidade {
   return { ...PRESET_DO_CONTEUDO[conteudo], resolucao: atual.resolucao, codec: atual.codec }
+}
+
+/**
+ * O que um preset põe no ar, em números, a partir do perfil de agora: o rótulo do botão diz a
+ * intenção, e isto diz o efeito. A resolução é a de agora porque trocar de conteúdo a preserva
+ * (`trocarConteudo`); prometer a do preset seria mentir para quem desceu a resolução de propósito.
+ */
+export function efeitoDoPreset(atual: PerfilDeQualidade, conteudo: Conteudo): string {
+  const destino = trocarConteudo(atual, conteudo)
+  const resolucao = destino.resolucao === 'nativa' ? 'resolução original' : destino.resolucao
+  return `${resolucao}, ${destino.fps} fps`
 }
 
 export function alturaDaResolucao(resolucao: Resolucao): number | null {

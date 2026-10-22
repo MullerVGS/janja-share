@@ -3,6 +3,7 @@ import {
   aplicarPerfil,
   CEDER,
   CONTEUDOS,
+  efeitoDoPreset,
   lerPerfil,
   tetoDaSala,
   parametrosDoPerfil,
@@ -300,5 +301,16 @@ describe('perfil vindo de fora (preferências)', () => {
     expect(lerPerfil({ ...PRESET_DO_CONTEUDO.texto, fps: 45 })).toBeUndefined()
     expect(lerPerfil(null)).toBeUndefined()
     expect(lerPerfil('texto')).toBeUndefined()
+  })
+})
+
+describe('efeitoDoPreset', () => {
+  it('diz o que o preset põe no ar, com a resolução de agora', () => {
+    expect(efeitoDoPreset(PRESET_DO_CONTEUDO.jogo, 'texto')).toBe('1080p, 15 fps')
+    expect(efeitoDoPreset({ ...PRESET_DO_CONTEUDO.texto, resolucao: '720p' }, 'jogo')).toBe('720p, 60 fps')
+  })
+
+  it('a resolução nativa vira "resolução original"', () => {
+    expect(efeitoDoPreset({ ...PRESET_DO_CONTEUDO.jogo, resolucao: 'nativa' }, 'texto')).toBe('resolução original, 15 fps')
   })
 })
