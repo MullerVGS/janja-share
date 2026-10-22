@@ -11,16 +11,16 @@
  * tratá-lo como inofensivo deixaria o vigia dormindo exatamente no caso que ele existe para pegar.
  *
  * **Congelou** (`ok` → `congelada`): a tela que já entregou e parou de entregar por
- * `ESPERA_PARA_CONGELAR_MS`. Antes isto era tratado como parada legítima — o documento parado,
- * a pessoa que não mexe em nada. Não é: o Chrome reenvia o último quadro de uma tela parada pelo
- * menos uma vez por segundo, e o Firefox captura em taxa constante, então uma tela viva nunca
- * fica segundos sem um byte. Silêncio longo é a assinatura que travou (ADR 0015). O vigia tenta
- * reassinar em ciclos como na outra fase e, esgotadas as tentativas, fica em `congelada` à
- * espera do "Tentar de novo"; qualquer byte que chegue devolve a tela a `ok`.
+ * `ESPERA_PARA_CONGELAR_MS` **enquanto o dono diz que está mandando** (o pulso, `relato.ts`).
+ * Sem o pulso, silêncio não quer dizer nada: uma fonte sem quadro novo — o documento parado —
+ * também não manda byte, e do lado de quem recebe isso é idêntico à assinatura travada (ADR
+ * 0015). O vigia tenta reassinar em ciclos como na outra fase e, esgotadas as tentativas, fica
+ * em `congelada` à espera do "Tentar de novo"; qualquer byte que chegue devolve a tela a `ok`.
  *
  * **Pausada** não é nenhuma das duas: quem compartilha parou de mandar de propósito (o
  * navegador pausou a captura, o LiveKit sinaliza como mudo). Leitura pausada zera o relógio e
- * não age — o quadro diz "pausada", não "parou de chegar".
+ * não age — o quadro diz "pausada", não "parou de chegar". O dono calado (`donoEnviando:
+ * false`) vale o mesmo para a fase do congelamento: a tela está parada, não travada.
  *
  * Puro sobre estado serializável: o relógio é o das amostras, e quem age é o coletor.
  */
@@ -54,6 +54,11 @@ export interface LeituraDaRecepcao {
   kbps: number | null
   /** Quem compartilha pausou a tela (a publicação está muda): não chegar nada é o esperado. */
   pausada?: boolean
+  /**
+   * O pulso do dono: ele está mandando bytes. `false` é a tela parada (não chegar nada é o
+   * esperado depois de já ter chegado); ausente conta como mandando.
+   */
+  donoEnviando?: boolean
 }
 
 /**
@@ -90,10 +95,16 @@ export function avaliarRecepcao(vigia: Vigia, leitura: LeituraDaRecepcao, agora:
     return { vigia: { ...vigia, estado, paradaDesdeMs: null, tentativas: 0, ultimaTentativaEmMs: null }, acao: 'nada' }
   }
 
+  // A tela que já chegou e cujo dono não está mandando nada está parada, não congelada.
+  const jaChegou = vigia.estado === 'ok' || vigia.estado === 'congelada'
+  if (jaChegou && leitura.donoEnviando === false) {
+    return { vigia: { ...vigia, estado: 'ok', paradaDesdeMs: null, tentativas: 0, ultimaTentativaEmMs: null }, acao: 'nada' }
+  }
+
   // Daqui em diante, kbps é 0 ou `null`. A parada começou um intervalo antes desta leitura.
   const base: Vigia = { ...vigia, paradaDesdeMs: vigia.paradaDesdeMs ?? agora - INTERVALO_DA_AMOSTRA_MS }
 
-  if (vigia.estado === 'ok' || vigia.estado === 'congelada') {
+  if (jaChegou) {
     if (!vezDeTentar(base, agora, ESPERA_PARA_CONGELAR_MS)) return { vigia: base, acao: 'nada' }
     if (base.tentativas >= TENTATIVAS_MAXIMAS) return { vigia: { ...base, estado: 'congelada' }, acao: 'nada' }
     return tentar(base, 'congelada', agora)

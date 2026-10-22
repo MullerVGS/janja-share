@@ -113,6 +113,34 @@ describe('recepção: a tela que congela depois de chegar', () => {
   })
 })
 
+describe('recepção: o dono que não manda nada', () => {
+  it('tela que já chegou e cujo dono diz que não manda nada está parada, não congelada', () => {
+    const entregou = correr(VIGIA_NOVO, 1, 900).vigia
+    let vigia = entregou
+    const acoes: string[] = []
+    for (let i = 1; i <= 60; i += 1) {
+      const agora = 1000 + i * 1000
+      const passo = avaliarRecepcao(vigia, { emMs: agora, kbps: 0, donoEnviando: false }, agora)
+      vigia = passo.vigia
+      acoes.push(passo.acao)
+    }
+    expect(vigia.estado).toBe('ok')
+    expect(acoes.every((acao) => acao === 'nada')).toBe(true)
+  })
+
+  it('a congelada cujo dono parou de mandar volta a ser só parada', () => {
+    const congelada = correr(correr(VIGIA_NOVO, 1, 900).vigia, 10, 0, 1000).vigia
+    expect(congelada.estado).toBe('congelada')
+    expect(avaliarRecepcao(congelada, { emMs: 12000, kbps: 0, donoEnviando: false }, 12000).vigia.estado).toBe('ok')
+  })
+
+  it('o dono calado não muda a fase do "nunca chegou" — a imagem de fato não chegou', () => {
+    let vigia = VIGIA_NOVO
+    for (let i = 1; i <= 6; i += 1) vigia = avaliarRecepcao(vigia, { emMs: i * 1000, kbps: 0, donoEnviando: false }, i * 1000).vigia
+    expect(vigia.estado).toBe('retomando')
+  })
+})
+
 describe('recepção: a tela pausada por quem compartilha', () => {
   it('pausada não congela: nada chegar é o combinado', () => {
     const entregou = correr(VIGIA_NOVO, 1, 900).vigia

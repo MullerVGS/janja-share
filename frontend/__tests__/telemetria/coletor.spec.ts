@@ -2,7 +2,7 @@ import { RoomEvent, type Room } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { amostraVaziaDoEspectador } from '../../src/telemetria/amostra'
 import { criarColetor, TELEMETRIA_VAZIA, type Telemetria } from '../../src/telemetria/coletor'
-import { empacotarRelato, TOPICO_DA_TELEMETRIA } from '../../src/telemetria/relato'
+import { desempacotarPulso, empacotarPulso, empacotarRelato, TOPICO_DA_TELEMETRIA, TOPICO_DO_PULSO } from '../../src/telemetria/relato'
 
 type Ouvinte = (...argumentos: unknown[]) => void
 
@@ -126,6 +126,13 @@ class SalaFalsa {
   quantosOuvintes() {
     return this.ouvintes.get(RoomEvent.DataReceived)?.size ?? 0
   }
+}
+
+/** O dono da tela pulsando "estou mandando" a cada 2 s, como o coletor dele faria. */
+function pulsando(sala: SalaFalsa, identidade: string, enviando = true) {
+  const pulsar = () => sala.receber(empacotarPulso(enviando), identidade, identidade, TOPICO_DO_PULSO)
+  pulsar()
+  return setInterval(pulsar, 2000)
 }
 
 function arrancar(sala: SalaFalsa) {
@@ -333,6 +340,8 @@ describe('coletor de telemetria', () => {
       const receiver = receiverFalso()
       const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', receiver)
       const { atual } = arrancar(sala)
+      // A Bia diz que está mandando: o silêncio é da assinatura, não da tela parada.
+      pulsando(sala, 'bia-1a2b3c')
 
       await passar(2)
       expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
@@ -384,6 +393,51 @@ describe('coletor de telemetria', () => {
       expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
     })
 
+    it.each([
+      ['sem pulso nenhum', null],
+      ['com o dono dizendo que não manda nada', false],
+    ] as const)('tela parada %s não congela — o documento parado não manda byte, e não é defeito', async (_caso, enviando) => {
+      const sala = new SalaFalsa()
+      const receiver = receiverFalso()
+      const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', receiver)
+      const { atual } = arrancar(sala)
+      if (enviando !== null) pulsando(sala, 'bia-1a2b3c', enviando)
+      await passar(2)
+      receiver.getStats.mockImplementation(async () => new Map([
+        [
+          's',
+          {
+            type: 'inbound-rtp' as const,
+            kind: 'video',
+            timestamp: Date.now(),
+            bytesReceived: 250_000,
+            framesDecoded: 60,
+            framesReceived: 60,
+            frameWidth: 1920,
+            frameHeight: 1080,
+          },
+        ],
+      ]))
+
+      await passar(30)
+
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
+      expect(publicacao?.setSubscribed).not.toHaveBeenCalled()
+    })
+
+    it('quem compartilha pulsa para a sala inteira se o encoder está mandando bytes', async () => {
+      const sala = new SalaFalsa()
+      sala.publicarTela()
+      arrancar(sala)
+
+      await passar(2)
+
+      const pulsos = sala.publicados.filter((p) => p.opcoes.topic === TOPICO_DO_PULSO)
+      expect(pulsos).toHaveLength(1)
+      expect(pulsos[0]?.opcoes).toEqual({ topic: TOPICO_DO_PULSO, reliable: false })
+      expect(desempacotarPulso(pulsos[0]!.dados)).toEqual({ enviando: true })
+    })
+
     it('tela muda (pausada por quem compartilha) não congela nem reassina', async () => {
       const sala = new SalaFalsa()
       const parado = receiverParado() as unknown as ReturnType<typeof receiverFalso>
@@ -405,6 +459,7 @@ describe('coletor de telemetria', () => {
       const receiver = receiverFalso()
       const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', receiver)
       const { atual, rearmar } = arrancar(sala)
+      pulsando(sala, 'bia-1a2b3c')
       await passar(2)
       receiver.getStats.mockImplementation(async () => new Map([
         [

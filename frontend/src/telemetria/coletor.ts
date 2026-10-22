@@ -19,10 +19,14 @@ import {
 import { anotar, ultima, type Historico } from './historico'
 import { avaliarRecepcao, rearmarVigia, VIGIA_NOVO, type EstadoDaRecepcao, type Vigia } from '../sala/recepcao'
 import {
+  desempacotarPulso,
   desempacotarRelato,
+  empacotarPulso,
   empacotarRelato,
   INTERVALO_DO_RELATO_MS,
   TOPICO_DA_TELEMETRIA,
+  TOPICO_DO_PULSO,
+  VALIDADE_DO_PULSO_MS,
   type Espectador,
 } from './relato'
 
@@ -92,6 +96,8 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   // "a tela sumiu" e apagaria o vigia junto, resetando as tentativas a cada ciclo (nunca desiste)
   // e reabrindo a vigilância de uma tela já confirmada em `'ok'` (o falso positivo de volta).
   const sidsRecebidos = new Map<string, string>()
+  // O último pulso de cada dono de Tela: quando chegou dizendo que mandava bytes.
+  const enviandoEm = new Map<string, number>()
 
   const publicar = (proximo: Telemetria) => {
     estado = proximo
@@ -128,7 +134,12 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
    */
   function avaliarEAgir(identidade: string, amostra: AmostraDoEspectador, pausada: boolean) {
     const vigia = vigias.get(identidade) ?? VIGIA_NOVO
-    const passo = avaliarRecepcao(vigia, { emMs: amostra.emMs, kbps: amostra.kbps, pausada }, amostra.emMs)
+    const donoEnviando = Date.now() - (enviandoEm.get(identidade) ?? -Infinity) <= VALIDADE_DO_PULSO_MS
+    const passo = avaliarRecepcao(
+      vigia,
+      { emMs: amostra.emMs, kbps: amostra.kbps, pausada, donoEnviando },
+      amostra.emMs,
+    )
     vigias.set(identidade, passo.vigia)
     if (passo.acao === 'reassinar') void reassinar(identidade)
   }
@@ -265,6 +276,20 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     }
   }
 
+  /**
+   * O pulso de quem compartilha, para a Sala inteira: o encoder mandou bytes nas últimas
+   * amostras? É o que deixa quem assiste separar a Tela parada da congelada.
+   */
+  function pulsar(emissor: Historico<AmostraDoEmissor>) {
+    if (emissor.length === 0) return
+    const enviando = emissor.slice(-2).some((amostra) => (amostra.kbps ?? 0) > 0)
+    sala.localParticipant
+      .publishData(empacotarPulso(enviando), { topic: TOPICO_DO_PULSO, reliable: false })
+      .catch(() => {
+        // Sem garantia de entrega: o pulso vale por dois intervalos.
+      })
+  }
+
   /** Quem saiu da sala não está mais assistindo; sem tela no ar, ninguém está. */
   function espectadoresAinda(publicando: boolean): ReadonlyMap<string, Espectador> {
     const vivos = new Map<string, Espectador>()
@@ -282,7 +307,10 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     try {
       const [emissor, recebidas] = await Promise.all([lerEmissor(), lerRecebidas()])
       if (!vivo) return
-      if (batidas % (INTERVALO_DO_RELATO_MS / INTERVALO_MS) === 0) relatar(recebidas)
+      if (batidas % (INTERVALO_DO_RELATO_MS / INTERVALO_MS) === 0) {
+        relatar(recebidas)
+        pulsar(emissor)
+      }
       // Sem tela no ar de ninguém não há o que dizer — e não há por que redesenhar a sala a 1 Hz.
       const ocioso = emissor.length === 0 && recebidas.size === 0
       if (ocioso && estado === TELEMETRIA_VAZIA) return
@@ -297,7 +325,14 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   }
 
   const receber = (dados: Uint8Array, remetente?: { identity: string; name?: string }, _tipo?: unknown, topico?: string) => {
-    if (topico !== TOPICO_DA_TELEMETRIA || !remetente) return
+    if (!remetente) return
+    if (topico === TOPICO_DO_PULSO) {
+      const pulso = desempacotarPulso(dados)
+      if (pulso?.enviando) enviandoEm.set(remetente.identity, Date.now())
+      else if (pulso) enviandoEm.delete(remetente.identity)
+      return
+    }
+    if (topico !== TOPICO_DA_TELEMETRIA) return
     const relato = desempacotarRelato(dados)
     if (!relato) return
     const espectadores = new Map(estado.espectadores)
