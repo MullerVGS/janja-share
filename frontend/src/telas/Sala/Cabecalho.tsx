@@ -1,10 +1,15 @@
 import { ConnectionState } from 'livekit-client'
 import type { Aba } from '../../sala/lateral'
-import { IconeCerto, IconeConvite, IconeMetricas, IconePessoas } from '../../ui/Icone'
+import { fraseDaGuarda } from '../../salas/link'
+import { IconeCerto, IconeConvite, IconeEditar, IconeMetricas, IconePessoas } from '../../ui/Icone'
 import estilos from './Cabecalho.module.css'
 
 interface Props {
   nomeDaSala: string
+  /** Fixa fica guardada depois que todos saem; a efêmera some. Ausente é efêmera. */
+  fixa?: boolean
+  /** Abre o ajuste de nome e visibilidade. Sem ele, o botão não aparece. */
+  aoAjustar?(): void
   conexao: ConnectionState
   pessoas: number
   /** Abre e fecha a barra lateral de pessoas e telas. */
@@ -33,6 +38,8 @@ const FRASE_DA_CONEXAO: Partial<Record<ConnectionState, string>> = {
  */
 export function Cabecalho({
   nomeDaSala,
+  fixa = false,
+  aoAjustar,
   conexao,
   pessoas,
   aoAlternarLateral,
@@ -62,7 +69,20 @@ export function Cabecalho({
       <span className={estilos.separador} aria-hidden="true" />
 
       <span className={estilos.nomeDaSala}>{nomeDaSala}</span>
-      <span className={estilos.efemera}>efêmera</span>
+      {aoAjustar && (
+        <button
+          type="button"
+          className={estilos.ajustar}
+          aria-label="Mudar nome ou visibilidade"
+          title="Mudar nome ou visibilidade"
+          onClick={aoAjustar}
+        >
+          <IconeEditar tamanho={15} />
+        </button>
+      )}
+      <span className={estilos.efemera} title={fraseDaGuarda(fixa)}>
+        {fixa ? 'fixa' : 'efêmera'}
+      </span>
 
       <span className={estilos.espacador} />
 

@@ -17,6 +17,7 @@ import {
   MonitorArrowUp,
   MonitorPlay,
   PaperPlaneRight,
+  PencilSimple,
   PhoneDisconnect,
   PictureInPicture,
   Plus,
@@ -83,3 +84,4 @@ export const IconeMarca = envolver(Broadcast)
 export const IconeEnviar = envolver(PaperPlaneRight)
 export const IconeFechar = envolver(X)
 export const IconeSetaBaixo = envolver(CaretDown)
+export const IconeEditar = envolver(PencilSimple)

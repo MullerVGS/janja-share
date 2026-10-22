@@ -77,6 +77,13 @@
   padding: 0 14px 12px;
 }
 
+.guarda {
+  margin: 6px 2px 0;
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-xs);
+  line-height: 1.35;
+}
+
 .rolagem {
   min-height: 0;
   flex: 1;

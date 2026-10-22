@@ -60,6 +60,27 @@
   white-space: nowrap;
 }
 
+.ajustar {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-md);
+  background: transparent;
+  color: var(--texto-fraquissimo);
+  cursor: pointer;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.ajustar:hover,
+.ajustar:focus-visible {
+  background: color-mix(in srgb, var(--texto) 8%, transparent);
+  color: var(--texto);
+}
+
 .efemera {
   flex: none;
   padding: 2px 9px;

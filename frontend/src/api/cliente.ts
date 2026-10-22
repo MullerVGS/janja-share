@@ -35,6 +35,10 @@ const FRASES: Record<string, string> = {
   nome_da_sala_invalido: 'Esse nome de sala não é válido — use letras ou números, até 40 caracteres.',
   sala_existe: 'Já existe uma sala com esse nome — entre nela ou escolha outro.',
   sala_nao_existe: 'Essa sala não existe mais.',
+  sala_expirada: 'Esta sala expirou.',
+  assinatura_invalida: 'Este link chegou alterado ou incompleto. Peça o convite de novo.',
+  fora_da_sala: 'Só quem está na sala pode mudar o nome dela.',
+  muitas_guardadas: 'Tem sala guardada demais agora. Marque "Apagar quando todos saírem" ou tente mais tarde.',
   sala_cheia: 'A sala está cheia.',
   muitas_salas: 'Tem sala demais no ar agora. Tente daqui a pouco.',
   espere: 'Muitas tentativas. Espere alguns segundos.',
@@ -89,10 +93,15 @@ export async function pedir<T>(caminho: string, init?: RequestInit): Promise<T> 
   return corpo as T
 }
 
-export function enviarJson<T>(caminho: string, metodo: 'POST' | 'DELETE', corpo?: unknown): Promise<T> {
+export function enviarJson<T>(
+  caminho: string,
+  metodo: 'POST' | 'PATCH' | 'DELETE',
+  corpo?: unknown,
+  cabecalhos: Record<string, string> = {},
+): Promise<T> {
   return pedir<T>(caminho, {
     method: metodo,
-    headers: corpo === undefined ? undefined : { 'content-type': 'application/json' },
+    headers: corpo === undefined ? cabecalhos : { 'content-type': 'application/json', ...cabecalhos },
     body: corpo === undefined ? undefined : JSON.stringify(corpo),
   })
 }

@@ -1,0 +1,54 @@
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
+
+.opcao {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e3);
+  cursor: pointer;
+}
+
+.opcao input {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin: 2px 0 0;
+  accent-color: var(--acao);
+}
+
+.opcao span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.opcao strong {
+  color: var(--texto);
+  font-size: var(--texto-md);
+}
+
+.opcao small,
+.nota {
+  color: var(--texto-fraquissimo);
+  font-size: var(--texto-sm);
+  line-height: 1.35;
+}
+
+.nota {
+  margin: 0;
+}
+
+.acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--e2);
+}
+
+@media (max-width: 480px) {
+  .acoes {
+    flex-direction: column-reverse;
+  }
+}
