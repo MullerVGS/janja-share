@@ -268,6 +268,7 @@ export function Sala() {
       aoAlternarAba={alternarPainel}
       conviteCopiado={conviteCopiado}
       aoCopiarConvite={() => void copiarConvite()}
+      aoRecarregarMidia={telemetria.recarregarMidia}
     />
   )
 

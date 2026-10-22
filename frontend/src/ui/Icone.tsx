@@ -1,4 +1,5 @@
 import {
+  ArrowClockwise,
   ArrowsLeftRight,
   Broadcast,
   CaretDown,
@@ -83,3 +84,5 @@ export const IconeMarca = envolver(Broadcast)
 export const IconeEnviar = envolver(PaperPlaneRight)
 export const IconeFechar = envolver(X)
 export const IconeSetaBaixo = envolver(CaretDown)
+/** Recarregar a mídia é o recarregar de todo navegador — sem recarregar a página. */
+export const IconeRecarregar = envolver(ArrowClockwise)

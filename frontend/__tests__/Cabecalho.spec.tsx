@@ -17,6 +17,7 @@ function montarCabecalho(parcial: Partial<Props> = {}) {
     aoAlternarAba: vi.fn(),
     conviteCopiado: false,
     aoCopiarConvite: vi.fn(),
+    aoRecarregarMidia: vi.fn(),
     ...parcial,
   }
   return { ...props, ...render(<Cabecalho {...props} />) }
@@ -85,5 +86,19 @@ describe('cabeçalho da sala', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Métricas da transmissão' }))
     expect(aoAlternarAba).toHaveBeenCalledExactlyOnceWith('metricas')
+  })
+
+  it('recarregar mídia mora ao lado do estado da conexão e pede a reassinatura à sala', async () => {
+    const usuario = userEvent.setup()
+    const { aoRecarregarMidia } = montarCabecalho()
+
+    await usuario.click(screen.getByRole('button', { name: 'Recarregar mídia' }))
+
+    expect(aoRecarregarMidia).toHaveBeenCalledOnce()
+  })
+
+  it('caída, a sala é quem religa: recarregar não está disponível', () => {
+    montarCabecalho({ conexao: ConnectionState.Reconnecting })
+    expect(screen.getByRole('button', { name: 'Recarregar mídia' })).toBeDisabled()
   })
 })

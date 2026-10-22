@@ -64,7 +64,12 @@ class SalaFalsa {
   ouvintes = new Map<string, Set<Ouvinte>>()
   publicados: { dados: Uint8Array; opcoes: Record<string, unknown> }[] = []
   minhaTela: { trackSid: string; track: { sender: ReturnType<typeof senderFalso> } } | undefined
-  remoteParticipants = new Map<string, { identity: string; name: string; getTrackPublication(): unknown }>()
+  /** As outras publicações de quem entra assistindo — o som da tela, a voz. */
+  outrasPublicacoes: { isDesired?: boolean; setSubscribed: ReturnType<typeof vi.fn> }[] = []
+  remoteParticipants = new Map<
+    string,
+    { identity: string; name: string; getTrackPublication(): unknown; getTrackPublications?(): unknown[] }
+  >()
 
   localParticipant = {
     identity: 'eu',
@@ -92,7 +97,12 @@ class SalaFalsa {
   /** `receiver: null` é "não publica tela nenhuma" — a publicação nem existe para o coletor. */
   entraAssistindo(identidade: string, nome: string, receiver: ReturnType<typeof receiverFalso> | null = receiverFalso()) {
     const publicacao = receiver === null ? undefined : publicacaoRemotaFalsa(receiver)
-    this.remoteParticipants.set(identidade, { identity: identidade, name: nome, getTrackPublication: () => publicacao })
+    this.remoteParticipants.set(identidade, {
+      identity: identidade,
+      name: nome,
+      getTrackPublication: () => publicacao,
+      getTrackPublications: () => (publicacao ? [publicacao, ...this.outrasPublicacoes] : this.outrasPublicacoes),
+    })
     return publicacao
   }
 
@@ -461,6 +471,42 @@ describe('coletor de telemetria', () => {
       sala.remoteParticipants.delete('bia-1a2b3c')
       await passar(1)
       expect(atual().recepcao.has('bia-1a2b3c')).toBe(false)
+    })
+  })
+
+  describe('recarregar mídia', () => {
+    it('reassina tudo o que chega — tela, som e voz — e põe cada vigia no começo', async () => {
+      const sala = new SalaFalsa()
+      const voz = { setSubscribed: vi.fn() }
+      sala.outrasPublicacoes = [voz]
+      const tela = sala.entraAssistindo('bia-1a2b3c', 'Bia')
+      const { atual, recarregar } = arrancar(sala)
+      await passar(2)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
+
+      recarregar()
+
+      expect(tela?.setSubscribed).toHaveBeenCalledWith(false)
+      expect(voz.setSubscribed).toHaveBeenCalledWith(false)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('parada')
+      await passar(1)
+      expect(tela?.setSubscribed).toHaveBeenLastCalledWith(true)
+      expect(voz.setSubscribed).toHaveBeenLastCalledWith(true)
+      await passar(2)
+      expect(atual().recepcao.get('bia-1a2b3c')).toBe('ok')
+    })
+
+    it('o que a pessoa escolheu não ver continua sem assinar', async () => {
+      const sala = new SalaFalsa()
+      const deixada = { isDesired: false, setSubscribed: vi.fn() }
+      sala.outrasPublicacoes = [deixada]
+      sala.entraAssistindo('bia-1a2b3c', 'Bia')
+      const { recarregar } = arrancar(sala)
+
+      recarregar()
+      await passar(1)
+
+      expect(deixada.setSubscribed).not.toHaveBeenCalled()
     })
   })
 })

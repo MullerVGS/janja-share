@@ -9,6 +9,8 @@ export interface TelemetriaDaSala extends Telemetria {
    * o oferece vive num quadro que se redesenha a cada amostra, uma vez por segundo.
    */
   rearmarRecepcao(identidade: string): void
+  /** O "Recarregar mídia": reassina tudo o que a pessoa recebe, sem sair da Sala. */
+  recarregarMidia(): void
 }
 
 /** A telemetria da sala, atualizada a 1 Hz enquanto houver tela no ar — própria ou assinada. */
@@ -28,6 +30,10 @@ export function useTelemetria(sala: Room | null): TelemetriaDaSala {
   }, [sala])
 
   const rearmarRecepcao = useCallback((identidade: string) => coletor.current?.rearmar(identidade), [])
+  const recarregarMidia = useCallback(() => coletor.current?.recarregar(), [])
 
-  return useMemo(() => ({ ...telemetria, rearmarRecepcao }), [telemetria, rearmarRecepcao])
+  return useMemo(
+    () => ({ ...telemetria, rearmarRecepcao, recarregarMidia }),
+    [telemetria, rearmarRecepcao, recarregarMidia],
+  )
 }

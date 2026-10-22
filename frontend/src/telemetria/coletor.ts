@@ -3,6 +3,7 @@ import {
   Track,
   type LocalTrackPublication,
   type RemoteTrack,
+  type RemoteTrackPublication,
   type Room,
 } from 'livekit-client'
 import {
@@ -59,6 +60,13 @@ export interface Coletor {
    * cão de guarda seria uma mensagem mandando pedir para o outro reiniciar a transmissão.
    */
   rearmar(identidade: string): void
+  /**
+   * "Recarregar mídia": reassina tudo o que esta pessoa recebe — Telas, som das Telas e vozes —
+   * sem sair da Sala, e põe cada vigia de volta no começo, porque toda assinatura é nova. É o
+   * conserto que o F5 fazia, sem custar a Pessoa nem a Tela de quem recarrega. O que a pessoa
+   * escolheu não ver continua sem assinar.
+   */
+  recarregar(): void
 }
 
 /**
@@ -90,6 +98,11 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     if (vivo) aoMudar(estado)
   }
 
+  function refazerAssinatura(publicacao: RemoteTrackPublication) {
+    publicacao.setSubscribed(false)
+    setTimeout(() => publicacao.setSubscribed(true), 250)
+  }
+
   /**
    * Força o SDK a montar a assinatura de novo — o que republicar faz do lado de quem transmite,
    * mas sem depender dele. É o remédio do cão de guarda: um respiro antes de voltar, porque
@@ -98,8 +111,7 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   async function reassinar(identidade: string) {
     const publicacao = sala.remoteParticipants.get(identidade)?.getTrackPublication(Track.Source.ScreenShare)
     if (!publicacao || !('setSubscribed' in publicacao)) return
-    publicacao.setSubscribed(false)
-    setTimeout(() => publicacao.setSubscribed(true), 250)
+    refazerAssinatura(publicacao as RemoteTrackPublication)
   }
 
   /**
@@ -294,6 +306,19 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       vivo = false
       clearInterval(relogio)
       sala.off(RoomEvent.DataReceived, receber)
+    },
+
+    recarregar() {
+      for (const participante of sala.remoteParticipants.values()) {
+        for (const publicacao of participante.getTrackPublications()) {
+          const remota = publicacao as RemoteTrackPublication
+          // Desassinada de propósito ("deixar de ver") continua desassinada.
+          if (!('setSubscribed' in remota) || remota.isDesired === false) continue
+          refazerAssinatura(remota)
+        }
+      }
+      for (const identidade of vigias.keys()) vigias.set(identidade, VIGIA_NOVO)
+      publicar({ ...estado, recepcao: recepcaoAtual() })
     },
 
     rearmar(identidade: string) {
