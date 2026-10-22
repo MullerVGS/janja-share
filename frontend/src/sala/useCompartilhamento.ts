@@ -127,6 +127,21 @@ function pararOQueNaoFoiAoAr(sala: Room, capturadas: LocalTrack[]): void {
   for (const faixa of capturadas) if (!noAr.includes(faixa)) faixa.stop()
 }
 
+/**
+ * Parar de compartilhar: a Tela e o som dela saem do ar **e** a captura morre.
+ *
+ * O "e" é explícito porque a sala não para faixa ao despublicar (`stopLocalTrackOnUnpublish:
+ * false`, ADR 0014): é o que deixa a queda guardar a Tela para devolvê-la. O
+ * `setScreenShareEnabled(false)` do SDK despublica com o padrão da sala — e deixaria o navegador
+ * dizendo que a pessoa ainda compartilha uma janela que ninguém mais recebe.
+ */
+async function pararTela(sala: Room): Promise<void> {
+  const faixas = [Track.Source.ScreenShare, Track.Source.ScreenShareAudio]
+    .map((fonte) => publicacaoDe(sala, fonte)?.track)
+    .filter((faixa): faixa is LocalTrack => Boolean(faixa))
+  await Promise.all(faixas.map((faixa) => sala.localParticipant.unpublishTrack(faixa, true)))
+}
+
 /** Telas dos outros no ar: cada uma disputa o mesmo downlink de quem assiste. */
 function telasDosOutros(sala: Room): number {
   let total = 0
@@ -434,7 +449,7 @@ export function useCompartilhamento(
       setMudando(true)
       let capturadas: LocalTrack[] = []
       try {
-        if (desligarAntes) await participante.setScreenShareEnabled(false)
+        if (desligarAntes) await pararTela(sala)
         setCodecPendente(null)
         // Começa pelo pedido: parar zerou o governador, e um degrau antigo não tem mais motivo.
         capturadas = await capturarTela(perfil)
@@ -465,7 +480,7 @@ export function useCompartilhamento(
     setErro(null)
     setMudando(true)
     try {
-      await sala.localParticipant.setScreenShareEnabled(false)
+      await pararTela(sala)
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'não foi possível parar de compartilhar a tela')
     } finally {

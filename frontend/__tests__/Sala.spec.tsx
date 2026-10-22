@@ -19,7 +19,7 @@ const falso = vi.hoisted(() => ({
   compartilhando: false,
   sala: null as Room | null,
   versao: 0,
-  queda: null as { tentativa: number } | null,
+  queda: null as { tentativa: number; comTela: boolean } | null,
 }))
 
 vi.mock('../src/sala/useSala', async () => {
@@ -533,8 +533,15 @@ describe('sala: a validade da credencial decide só a entrada', () => {
   })
 
   it('a sala caída avisa que está voltando sozinha, e em que tentativa vai', () => {
-    falso.queda = { tentativa: 3 }
+    falso.queda = { tentativa: 3, comTela: false }
     montarSala()
     expect(screen.getByText(/conexão perdida/i)).toHaveTextContent('tentativa 3')
+    expect(screen.getByText(/conexão perdida/i)).not.toHaveTextContent(/sua tela/)
+  })
+
+  it('caída com a tela no ar, avisa que a tela volta junto — o navegador continua dizendo que compartilha', () => {
+    falso.queda = { tentativa: 1, comTela: true }
+    montarSala()
+    expect(screen.getByText(/conexão perdida/i)).toHaveTextContent('sua tela volta ao ar sozinha')
   })
 })

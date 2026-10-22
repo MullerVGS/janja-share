@@ -110,18 +110,6 @@ class SalaFalsa {
   localParticipant = {
     getTrackPublication: (fonte: Track.Source) => this.publicacoes.get(fonte),
 
-    // Só o desligar (`ligar()` captura e publica faixa a faixa via `capturarTela` +
-    // `publishTrack` — é o próprio bug desta suíte: `setScreenShareEnabled(true, ...)` aplicaria
-    // a mesma opção, moldada para vídeo, a toda faixa que o SDK capturasse).
-    setScreenShareEnabled: vi.fn(async (ligar: boolean) => {
-      await this.proximaBatida()
-      if (!ligar) {
-        this.publicacoes.delete(Track.Source.ScreenShare)
-        this.publicacoes.delete(Track.Source.ScreenShareAudio)
-      }
-      return undefined
-    }),
-
     unpublishTrack: vi.fn(async (faixa: Faixa, parar?: boolean) => {
       await this.proximaBatida()
       const entrada = [...this.publicacoes].find(([, publicacao]) => publicacao.track === faixa)
@@ -297,11 +285,27 @@ describe('useCompartilhamento: pedido e preferências', () => {
     expect(result.current.ativo).toBe(false)
   })
 
+  it('parar tira a Tela e o som do ar e mata a captura — a sala não para faixa ao despublicar (ADR 0014)', async () => {
+    const sala = new SalaFalsa()
+    const { result, ligar, agir } = montar(sala)
+    await ligar()
+    const imagem = sala.video()?.track
+    const som = sala.audio()?.track
+
+    await agir(() => result.current.alternar())
+
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(imagem, true)
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(som, true)
+    expect(imagem?.mediaStreamTrack.readyState).toBe('ended')
+    expect(som?.mediaStreamTrack.readyState).toBe('ended')
+    expect(result.current.ativo).toBe(false)
+  })
+
   it('se parar de compartilhar falhar, o erro chega à pessoa em vez de virar rejeição solta', async () => {
     const sala = new SalaFalsa()
     const { result, ligar, agir } = montar(sala)
     await ligar()
-    sala.localParticipant.setScreenShareEnabled.mockRejectedValueOnce(new Error('engine fechada'))
+    sala.localParticipant.unpublishTrack.mockRejectedValueOnce(new Error('engine fechada'))
 
     await agir(() => result.current.alternar())
 
@@ -541,15 +545,16 @@ describe('useCompartilhamento: trocar codec no ar', () => {
     sala.localParticipant.publishTrack.mockRejectedValueOnce(new Error('nope'))
     await agir(() => result.current.definirCodecPreferido('av1'))
     expect(result.current.codecPendente).toBe('av1')
-    sala.localParticipant.setScreenShareEnabled.mockClear()
+    const capturaAntiga = sala.video()?.track
+    sala.localParticipant.unpublishTrack.mockClear()
     seletor.abrir.mockClear()
     sala.localParticipant.publishTrack.mockClear()
 
     await agir(() => result.current.reiniciar())
 
-    // Reiniciar para (desligarAntes) e captura+publica de novo — não delega mais ao
-    // `setScreenShareEnabled(true, ...)`, que aplicaria a mesma opção de vídeo ao áudio.
-    expect(sala.localParticipant.setScreenShareEnabled).toHaveBeenCalledExactlyOnceWith(false)
+    // Reiniciar para (desligarAntes) — parando a captura de antes — e captura+publica de novo.
+    expect(sala.localParticipant.unpublishTrack).toHaveBeenCalledWith(capturaAntiga, true)
+    expect(capturaAntiga?.mediaStreamTrack.readyState).toBe('ended')
     expect(seletor.abrir).toHaveBeenCalledOnce()
     expect(sala.localParticipant.publishTrack.mock.calls[0]?.[1]).toMatchObject({ videoCodec: 'av1' })
     expect(result.current.codecPendente).toBeNull()
@@ -648,7 +653,6 @@ describe('useCompartilhamento: trocar de tela', () => {
     // Quem assiste não vê nada sair: nem a imagem nem o som foram despublicados.
     expect(sala.localParticipant.unpublishTrack).not.toHaveBeenCalled()
     expect(sala.localParticipant.publishTrack).not.toHaveBeenCalled()
-    expect(sala.localParticipant.setScreenShareEnabled).not.toHaveBeenCalled()
     expect(sala.video()).toBe(video)
     expect(sala.video()?.trackSid).toBe(video?.trackSid)
     expect(sala.video()?.track.codec).toBe('vp9')

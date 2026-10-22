@@ -354,7 +354,12 @@ export function Sala() {
       {/* Os avisos não se escondem com o resto: erro não é moldura, é alarme. */}
       <div className={estilos.avisos}>
         {erro && <Aviso tom="erro">Não foi possível conectar à sala: {erro}</Aviso>}
-        {queda && <Aviso tom="erro">Conexão perdida. Voltando para a sala… (tentativa {queda.tentativa})</Aviso>}
+        {queda && (
+          <Aviso tom="erro">
+            Conexão perdida. Voltando para a sala… (tentativa {queda.tentativa})
+            {queda.comTela && ' · sua tela volta ao ar sozinha'}
+          </Aviso>
+        )}
 
         {!audioLiberado && (
           <Aviso tom="neutro">

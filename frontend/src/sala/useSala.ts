@@ -8,6 +8,10 @@ import {
   DisconnectReason,
   Room,
   RoomEvent,
+  Track,
+  type LocalTrack,
+  type LocalTrackPublication,
+  type TrackPublishOptions,
 } from 'livekit-client'
 import type { Credenciais } from '../api/salas'
 
@@ -46,13 +50,21 @@ const EVENTOS_DO_PALCO: RoomEvent[] = [
   RoomEvent.ActiveSpeakersChanged,
 ]
 
+export interface Queda {
+  tentativa: number
+  comTela: boolean
+}
+
 export interface EstadoDaSala {
   sala: Room | null
   conexao: ConnectionState
   /** Falha fatal de conexão — o `connect` que nunca completou, ou uma queda de que não dá para voltar. */
   erro: string | null
-  /** A sala caiu e está tentando voltar sozinha; `null` quando não está caída. */
-  queda: { tentativa: number } | null
+  /**
+   * A sala caiu e está tentando voltar sozinha; `null` quando não está caída. `comTela` diz que
+   * a Tela desta pessoa ficou guardada e volta ao ar junto com a sala.
+   */
+  queda: Queda | null
   /** Muda a cada evento do palco; existe para forçar a releitura do `Room`. */
   versao: number
   /** O Chrome bloqueia áudio antes de um gesto do usuário; quando bloqueia, isto fica falso. */
@@ -75,7 +87,7 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
   const [sala, setSala] = useState<Room | null>(null)
   const [conexao, setConexao] = useState<ConnectionState>(ConnectionState.Disconnected)
   const [erro, setErro] = useState<string | null>(null)
-  const [queda, setQueda] = useState<{ tentativa: number } | null>(null)
+  const [queda, setQueda] = useState<Queda | null>(null)
   const [versao, setVersao] = useState(0)
   const [audioLiberado, setAudioLiberado] = useState(true)
 
@@ -92,6 +104,10 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
       // banda quando ninguém assistia, e é justamente aí que ninguém se importa.
       dynacast: false,
       reconnectPolicy: new DefaultReconnectPolicy(ATRASOS_DA_RECONEXAO_MS),
+      // Quem para uma faixa é o app, não a despublicação. Com o padrão do SDK, a queda que ele
+      // não consegue resumir parava a captura da tela junto — e voltar exigia o seletor de novo.
+      // Sair da sala (`disconnect()`) continua parando tudo.
+      stopLocalTrackOnUnpublish: false,
     })
 
     const marcar = () => setVersao((v) => v + 1)
@@ -120,17 +136,60 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
     // e cada anúncio abriria outra fila em paralelo.
     let religando = false
 
+    // O que a queda tirou do ar sem parar — a Tela, o som dela, o microfone — volta ao ar na
+    // conexão nova, com as mesmas opções. O SDK despublica tudo de uma vez, numa passada
+    // síncrona que termina no `Disconnected`; as despublicações dessa passada são as que ficam
+    // em `saindoAgora` até a próxima microtarefa.
+    let saindoAgora: [LocalTrack, TrackPublishOptions | undefined][] = []
+    const orfas = new Map<LocalTrack, TrackPublishOptions | undefined>()
+    const pararOrfas = () => {
+      for (const faixa of orfas.keys()) faixa.stop()
+      orfas.clear()
+    }
+    nova.on(RoomEvent.LocalTrackUnpublished, (publicacao: LocalTrackPublication) => {
+      if (!publicacao.track) return
+      if (saindoAgora.length === 0) queueMicrotask(() => (saindoAgora = []))
+      saindoAgora.push([publicacao.track, publicacao.options])
+    })
+
+    /**
+     * Devolve ao ar o que a queda deixou vivo, na ordem em que estava (a Tela antes do som
+     * dela); o que não voltar, para. Som de tela sem a Tela não volta sozinho: seria o som de
+     * uma imagem que ninguém vê.
+     */
+    async function republicarOrfas() {
+      const fila = [...orfas]
+      orfas.clear()
+      let telaFicouFora = false
+      for (const [faixa, opcoes] of fila) {
+        const somSemTela = faixa.source === Track.Source.ScreenShareAudio && telaFicouFora
+        if (faixa.mediaStreamTrack.readyState === 'ended' || somSemTela) {
+          faixa.stop()
+          if (faixa.source === Track.Source.ScreenShare) telaFicouFora = true
+          continue
+        }
+        try {
+          await nova.localParticipant.publishTrack(faixa, opcoes)
+        } catch {
+          faixa.stop()
+          if (faixa.source === Track.Source.ScreenShare) telaFicouFora = true
+        }
+      }
+    }
+
     // O SDK desistiu. A pessoa não pediu para sair, então a sala volta sozinha — a não ser que
     // voltar não faça sentido (ver `motivoParaDesistir`).
     function religar(tentativa: number) {
       religando = true
-      setQueda({ tentativa })
+      const comTela = [...orfas.keys()].some((faixa) => faixa.source === Track.Source.ScreenShare)
+      setQueda({ tentativa, comTela })
       const atraso = ESPERAS_DO_RELIGAR_MS[tentativa - 1] ?? ESPERAS_DO_RELIGAR_MS.at(-1)
       // No relógio do worker: a queda costuma acontecer justamente com a aba em segundo plano.
       espera = CriticalTimers.setTimeout(() => {
         nova
           .connect(urlSfu, token)
-          .then(() => {
+          .then(async () => {
+            if (vivo) await republicarOrfas()
             religando = false
             if (vivo) setQueda(null)
           })
@@ -142,6 +201,7 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
               return
             }
             religando = false
+            pararOrfas()
             setQueda(null)
             setErro(desistir)
           })
@@ -149,9 +209,18 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
     }
 
     nova.on(RoomEvent.Disconnected, (motivo?: DisconnectReason) => {
-      if (!vivo || religando || motivo === DisconnectReason.CLIENT_INITIATED) return
+      for (const [faixa, opcoes] of saindoAgora) {
+        if (faixa.mediaStreamTrack.readyState !== 'ended') orfas.set(faixa, opcoes)
+      }
+      saindoAgora = []
+      if (!vivo || motivo === DisconnectReason.CLIENT_INITIATED) {
+        pararOrfas()
+        return
+      }
+      if (religando) return
       // Outra aba tomou a identidade: religar viraria cabo de guerra entre as duas.
       if (motivo === DisconnectReason.DUPLICATE_IDENTITY) {
+        pararOrfas()
         setErro('Você entrou nesta sala em outra aba; esta ficou de fora.')
         return
       }
@@ -169,6 +238,8 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
 
     return () => {
       vivo = false
+      // Caída, a sala não tem o que despublicar, e `disconnect()` não para o que a queda guardou.
+      pararOrfas()
       if (espera !== undefined) CriticalTimers.clearTimeout(espera)
       nova.removeAllListeners()
       void nova.disconnect()
