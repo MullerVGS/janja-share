@@ -403,8 +403,14 @@ describe('palco: o aviso de qualidade diz de quem é a rede', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Sua conexão está fraca — a imagem pode travar aqui.')
   })
 
-  it('a rede fraca de quem compartilha leva o nome dela', () => {
+  it('a qualidade que o SFU anuncia sobre o dono não vira aviso — ela não mede a rede dele', () => {
     montarPalco({ emDestaque: peca('Sadia', { ehTela: true, qualidade: ConnectionQuality.Poor }) })
+    act(() => vi.advanceTimersByTime(10_000))
+    expect(screen.queryByText(/conexão de Sadia está fraca/)).not.toBeInTheDocument()
+  })
+
+  it('a rede fraca de quem compartilha (pelo pulso dela) leva o nome dela', () => {
+    montarPalco({ emDestaque: peca('Sadia', { ehTela: true, redeFraca: true }) })
     act(() => vi.advanceTimersByTime(10_000))
     expect(screen.getByRole('status')).toHaveTextContent('A conexão de Sadia está fraca')
   })

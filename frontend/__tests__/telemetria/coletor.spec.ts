@@ -129,8 +129,8 @@ class SalaFalsa {
 }
 
 /** O dono da tela pulsando "estou mandando" a cada 2 s, como o coletor dele faria. */
-function pulsando(sala: SalaFalsa, identidade: string, enviando = true) {
-  const pulsar = () => sala.receber(empacotarPulso(enviando), identidade, identidade, TOPICO_DO_PULSO)
+function pulsando(sala: SalaFalsa, identidade: string, enviando = true, redeFraca = false) {
+  const pulsar = () => sala.receber(empacotarPulso({ enviando, redeFraca }), identidade, identidade, TOPICO_DO_PULSO)
   pulsar()
   return setInterval(pulsar, 2000)
 }
@@ -435,7 +435,30 @@ describe('coletor de telemetria', () => {
       const pulsos = sala.publicados.filter((p) => p.opcoes.topic === TOPICO_DO_PULSO)
       expect(pulsos).toHaveLength(1)
       expect(pulsos[0]?.opcoes).toEqual({ topic: TOPICO_DO_PULSO, reliable: false })
-      expect(desempacotarPulso(pulsos[0]!.dados)).toEqual({ enviando: true })
+      expect(desempacotarPulso(pulsos[0]!.dados)).toEqual({ enviando: true, redeFraca: false })
+    })
+
+    it('o pulso leva a medida que o SFU deu a quem compartilha sobre a própria rede', async () => {
+      const sala = new SalaFalsa()
+      sala.publicarTela()
+      Object.assign(sala.localParticipant, { connectionQuality: 'poor' })
+      arrancar(sala)
+      await passar(2)
+      const pulso = sala.publicados.find((p) => p.opcoes.topic === TOPICO_DO_PULSO)
+      expect(desempacotarPulso(pulso!.dados)).toEqual({ enviando: true, redeFraca: true })
+    })
+
+    it('quem assiste guarda quem pulsou rede fraca — e esquece quando o pulso vence', async () => {
+      const sala = new SalaFalsa()
+      sala.entraAssistindo('bia-1a2b3c', 'Bia')
+      const { atual } = arrancar(sala)
+      const relogio = pulsando(sala, 'bia-1a2b3c', true, true)
+      await passar(2)
+      expect(atual().redesFracas.has('bia-1a2b3c')).toBe(true)
+
+      clearInterval(relogio)
+      await passar(7)
+      expect(atual().redesFracas.has('bia-1a2b3c')).toBe(false)
     })
 
     it('tela muda (pausada por quem compartilha) não congela nem reassina', async () => {

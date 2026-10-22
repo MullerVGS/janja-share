@@ -39,8 +39,13 @@ export interface Peca {
   recepcao?: EstadoDaRecepcao
   /** A Tela está publicada, mas muda: quem compartilha parou de mandar quadros (o navegador pausou a captura). */
   pausada?: boolean
-  /** A conexão do dono da peça, como o SFU a mede. */
+  /**
+   * A conexão do dono como o SFU a anuncia aos outros. Só `Lost` (queda) vale daqui: o resto da
+   * escala, visto de fora, não mede a rede do dono (ver `redeFraca`).
+   */
   qualidade?: ConnectionQuality
+  /** O dono disse, no pulso, que a própria conexão está fraca. */
+  redeFraca?: boolean
   /** Esta pessoa escolheu não ver esta Tela: está desassinada, e volta com um clique. */
   naoVejo?: boolean
   /**
@@ -87,6 +92,7 @@ export function montarPalco(
   sala: Room | null,
   recepcao?: ReadonlyMap<string, EstadoDaRecepcao>,
   naoVejo?: ReadonlySet<string>,
+  redesFracas?: ReadonlySet<string>,
 ): Palco {
   if (!sala) return PALCO_VAZIO
 
@@ -131,6 +137,7 @@ export function montarPalco(
         pausada: tela.isMuted,
         qualidade: participante.connectionQuality,
         naoVejo: !proprio && Boolean(naoVejo?.has(participante.identity)),
+        redeFraca: !proprio && Boolean(redesFracas?.has(participante.identity)),
       })
     }
   }

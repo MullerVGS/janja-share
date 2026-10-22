@@ -98,8 +98,8 @@ export function Sala() {
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou. `telemetria.recepcao`
   // entra à parte: o cão de guarda anda no relógio da telemetria, não no dos eventos do `Room`.
   const palco = useMemo(
-    () => montarPalco(sala, telemetria.recepcao, naoVejo),
-    [sala, versao, telemetria.recepcao, naoVejo],
+    () => montarPalco(sala, telemetria.recepcao, naoVejo, telemetria.redesFracas),
+    [sala, versao, telemetria.recepcao, naoVejo, telemetria.redesFracas],
   )
   const telasPublicadas = useMemo(() => chavesDasTelasPublicadas(sala), [sala, versao])
   // A Tela alheia que sai do ar em destaque deixa o quadro dizendo que terminou, até alguém

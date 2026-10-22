@@ -200,7 +200,12 @@ function Destaque({
   const aquecido = useAquecido(peca.proprio ? null : (peca.publicacao?.trackSid ?? null), AQUECIMENTO_MS)
   const avisoDeQualidade =
     estado === 'aoVivo' && !peca.proprio
-      ? avisoParaQuemAssiste({ minha: minhaQualidade, doDono: peca.qualidade, nomeDoDono: peca.nome, aquecido })
+      ? avisoParaQuemAssiste({
+          minha: minhaQualidade,
+          donoComRedeFraca: Boolean(peca.redeFraca),
+          nomeDoDono: peca.nome,
+          aquecido,
+        })
       : null
 
   const pilulas = (

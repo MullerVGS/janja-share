@@ -107,15 +107,26 @@ export const TOPICO_DO_PULSO = 'pulso-da-tela'
 /** Um pulso vale por este tempo: dois pulsos perdidos seguidos e o dono conta como calado. */
 export const VALIDADE_DO_PULSO_MS = 5000
 
-export function empacotarPulso(enviando: boolean): Uint8Array<ArrayBuffer> {
-  return new Uint8Array(codificador.encode(JSON.stringify({ v: VERSAO, enviando })))
+/**
+ * `redeFraca` é a medida que o SFU dá a quem compartilha sobre a própria conexão. Vai no pulso
+ * porque a medida que chega aos outros sobre essa mesma pessoa não serve para isso: numa bancada
+ * em loopback, sem perda nenhuma, quem assistia via a dona da Tela como `poor` o tempo todo,
+ * enquanto ela se via `excellent`.
+ */
+export interface Pulso {
+  enviando: boolean
+  redeFraca: boolean
 }
 
-export function desempacotarPulso(dados: Uint8Array): { enviando: boolean } | null {
+export function empacotarPulso(pulso: Pulso): Uint8Array<ArrayBuffer> {
+  return new Uint8Array(codificador.encode(JSON.stringify({ v: VERSAO, ...pulso })))
+}
+
+export function desempacotarPulso(dados: Uint8Array): Pulso | null {
   try {
     const cru = JSON.parse(decodificador.decode(dados)) as Record<string, unknown> | null
     if (!cru || cru.v !== VERSAO || typeof cru.enviando !== 'boolean') return null
-    return { enviando: cru.enviando }
+    return { enviando: cru.enviando, redeFraca: cru.redeFraca === true }
   } catch {
     return null
   }

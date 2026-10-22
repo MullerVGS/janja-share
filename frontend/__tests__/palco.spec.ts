@@ -71,7 +71,14 @@ describe('montarPalco: a tela pausada continua sendo quadro', () => {
     expect(palco.telas.map((tela) => [tela.chave, tela.pausada])).toEqual([['tela:bia-x1y2', true]])
   })
 
-  it('a peça leva a conexão do dono, como o SFU a mede', () => {
+  it('a peça leva a rede fraca que o dono pulsou', () => {
+    const eu = participanteFalso('ana-a1b2', 'Ana', [])
+    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
+    const palco = montarPalco(salaFalsa(eu, [bia]), undefined, undefined, new Set(['bia-x1y2']))
+    expect(palco.telas[0]?.redeFraca).toBe(true)
+  })
+
+  it('a peça leva a conexão do dono, como o SFU a anuncia', () => {
     const eu = participanteFalso('ana-a1b2', 'Ana', [])
     const bia = { ...participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)]), connectionQuality: ConnectionQuality.Poor }
     expect(montarPalco(salaFalsa(eu, [bia])).telas[0]?.qualidade).toBe(ConnectionQuality.Poor)

@@ -1,4 +1,5 @@
 import {
+  ConnectionQuality,
   RoomEvent,
   Track,
   type LocalTrackPublication,
@@ -41,6 +42,8 @@ export interface Telemetria {
   recebidas: ReadonlyMap<string, Historico<AmostraDoEspectador>>
   /** O veredito do cão de guarda para cada tela assinada, pela identidade de quem a publica. */
   recepcao: ReadonlyMap<string, EstadoDaRecepcao>
+  /** Quem compartilha e disse, no pulso, que a própria conexão está fraca. */
+  redesFracas: ReadonlySet<string>
 }
 
 export const TELEMETRIA_VAZIA: Telemetria = {
@@ -48,6 +51,7 @@ export const TELEMETRIA_VAZIA: Telemetria = {
   espectadores: new Map(),
   recebidas: new Map(),
   recepcao: new Map(),
+  redesFracas: new Set(),
 }
 
 /**
@@ -96,8 +100,14 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   // "a tela sumiu" e apagaria o vigia junto, resetando as tentativas a cada ciclo (nunca desiste)
   // e reabrindo a vigilância de uma tela já confirmada em `'ok'` (o falso positivo de volta).
   const sidsRecebidos = new Map<string, string>()
-  // O último pulso de cada dono de Tela: quando chegou dizendo que mandava bytes.
+  // O último pulso de cada dono de Tela: quando chegou dizendo que mandava bytes, e quando
+  // chegou dizendo que a rede dele estava fraca.
   const enviandoEm = new Map<string, number>()
+  const redeFracaEm = new Map<string, number>()
+  const valendo = (desde: number | undefined) => Date.now() - (desde ?? -Infinity) <= VALIDADE_DO_PULSO_MS
+  function redesFracasAgora(): ReadonlySet<string> {
+    return new Set([...redeFracaEm].filter(([, em]) => valendo(em)).map(([identidade]) => identidade))
+  }
 
   const publicar = (proximo: Telemetria) => {
     estado = proximo
@@ -134,7 +144,7 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
    */
   function avaliarEAgir(identidade: string, amostra: AmostraDoEspectador, pausada: boolean) {
     const vigia = vigias.get(identidade) ?? VIGIA_NOVO
-    const donoEnviando = Date.now() - (enviandoEm.get(identidade) ?? -Infinity) <= VALIDADE_DO_PULSO_MS
+    const donoEnviando = valendo(enviandoEm.get(identidade))
     const passo = avaliarRecepcao(
       vigia,
       { emMs: amostra.emMs, kbps: amostra.kbps, pausada, donoEnviando },
@@ -283,8 +293,9 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
   function pulsar(emissor: Historico<AmostraDoEmissor>) {
     if (emissor.length === 0) return
     const enviando = emissor.slice(-2).some((amostra) => (amostra.kbps ?? 0) > 0)
+    const redeFraca = sala.localParticipant.connectionQuality === ConnectionQuality.Poor
     sala.localParticipant
-      .publishData(empacotarPulso(enviando), { topic: TOPICO_DO_PULSO, reliable: false })
+      .publishData(empacotarPulso({ enviando, redeFraca }), { topic: TOPICO_DO_PULSO, reliable: false })
       .catch(() => {
         // Sem garantia de entrega: o pulso vale por dois intervalos.
       })
@@ -317,7 +328,13 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       publicar(
         ocioso
           ? TELEMETRIA_VAZIA
-          : { emissor, recebidas, espectadores: espectadoresAinda(emissor.length > 0), recepcao: recepcaoAtual() },
+          : {
+              emissor,
+              recebidas,
+              espectadores: espectadoresAinda(emissor.length > 0),
+              recepcao: recepcaoAtual(),
+              redesFracas: redesFracasAgora(),
+            },
       )
     } finally {
       lendo = false
@@ -328,8 +345,12 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     if (!remetente) return
     if (topico === TOPICO_DO_PULSO) {
       const pulso = desempacotarPulso(dados)
-      if (pulso?.enviando) enviandoEm.set(remetente.identity, Date.now())
-      else if (pulso) enviandoEm.delete(remetente.identity)
+      if (!pulso) return
+      const quem = remetente.identity
+      if (pulso.enviando) enviandoEm.set(quem, Date.now())
+      else enviandoEm.delete(quem)
+      if (pulso.redeFraca) redeFracaEm.set(quem, Date.now())
+      else redeFracaEm.delete(quem)
       return
     }
     if (topico !== TOPICO_DA_TELEMETRIA) return
