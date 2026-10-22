@@ -47,13 +47,17 @@ function publicacaoRemotaFalsa(receiver: ReturnType<typeof receiverFalso> | null
   const publicacao: {
     trackSid: string
     track?: { receiver: ReturnType<typeof receiverFalso> }
+    isDesired: boolean
     setSubscribed: ReturnType<typeof vi.fn>
   } = {
     trackSid: `tela-${Math.random().toString(36).slice(2)}`,
     track: receiver ? { receiver } : undefined,
+    isDesired: true,
     setSubscribed: vi.fn(),
   }
+  // Como no SDK: a assinatura desejada muda na hora, a faixa vem e vai com ela.
   publicacao.setSubscribed.mockImplementation((assinado: boolean) => {
+    publicacao.isDesired = assinado
     publicacao.track = assinado && receiver ? { receiver } : undefined
   })
   return publicacao
@@ -508,5 +512,22 @@ describe('coletor de telemetria', () => {
 
       expect(deixada.setSubscribed).not.toHaveBeenCalled()
     })
+  })
+
+  it('a tela que a pessoa deixou de ver não é medida, vigiada nem relatada — para quem compartilha, ela não está assistindo', async () => {
+    const sala = new SalaFalsa()
+    const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', null)
+    const deixada = publicacaoRemotaFalsa(null)
+    deixada.isDesired = false
+    sala.remoteParticipants.set('bia-1a2b3c', { identity: 'bia-1a2b3c', name: 'Bia', getTrackPublication: () => deixada })
+    expect(publicacao).toBeUndefined()
+    const { atual } = arrancar(sala)
+
+    await passar(30)
+
+    expect(atual().recebidas.has('bia-1a2b3c')).toBe(false)
+    expect(atual().recepcao.has('bia-1a2b3c')).toBe(false)
+    expect(deixada.setSubscribed).not.toHaveBeenCalled()
+    expect(sala.publicados).toHaveLength(0)
   })
 })

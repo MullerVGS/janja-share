@@ -29,6 +29,7 @@ function montarBarra(parcial: Partial<Props> = {}) {
   const props: Props = {
     sala: null,
     compartilhamento: compartilhamentoFalso(),
+    quemAssiste: [],
     chatAberto: false,
     naoLidasNoChat: 0,
     aoAlternarChat: vi.fn(),
@@ -53,7 +54,13 @@ describe('a barra flutuante', () => {
     const usuario = userEvent.setup()
     montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) })
 
-    expect(rotulos()).toEqual(['Abrir microfone', 'Sua tela está no ar — opções', 'Chat', 'Sair da sala'])
+    expect(rotulos()).toEqual([
+      'Abrir microfone',
+      'Sua tela está no ar — opções',
+      'Ninguém assistindo ainda',
+      'Chat',
+      'Sair da sala',
+    ])
     const botao = screen.getByRole('button', { name: 'Sua tela está no ar — opções' })
     expect(botao).toHaveAttribute('aria-haspopup', 'menu')
     expect(botao).toHaveAttribute('aria-expanded', 'false')
@@ -81,7 +88,7 @@ describe('a barra flutuante', () => {
     expect(legendas()).toEqual(['Microfone', 'Compartilhar', 'Chat', 'Sair'])
 
     montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) as Compartilhamento })
-    expect(legendas().slice(4)).toEqual(['Microfone', 'No ar', 'Chat', 'Sair'])
+    expect(legendas().slice(4)).toEqual(['Microfone', 'No ar', 'Assistindo', 'Chat', 'Sair'])
   })
 
   it('clicar em compartilhar chama compartilhamento.alternar', async () => {
@@ -229,5 +236,33 @@ describe('a barra flutuante', () => {
     // Chat e saída não dependem da sala: os dois funcionam desconectado.
     expect(screen.getByRole('button', { name: 'Chat' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Sair da sala' })).toBeEnabled()
+  })
+
+  describe('quem está assistindo', () => {
+    it('no ar, a barra conta quem assiste e diz os nomes no rótulo — que é a dica do mouse', () => {
+      montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }), quemAssiste: ['Bia', 'Carla'] })
+      const botao = screen.getByRole('button', { name: '2 assistindo: Bia, Carla' })
+      expect(botao).toHaveAttribute('title', '2 assistindo: Bia, Carla')
+      expect(botao).toHaveTextContent('2')
+    })
+
+    it('tocar abre a lista com os nomes — no celular não há mouse para passar', async () => {
+      const usuario = userEvent.setup()
+      montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }), quemAssiste: ['Bia'] })
+
+      await usuario.click(screen.getByRole('button', { name: '1 assistindo: Bia' }))
+
+      expect(screen.getByRole('group', { name: 'Quem está assistindo' })).toHaveTextContent('Bia')
+    })
+
+    it('sem ninguém, diz isso em vez de mostrar zero', () => {
+      montarBarra({ compartilhamento: compartilhamentoFalso({ ativo: true }) })
+      expect(screen.getByRole('button', { name: 'Ninguém assistindo ainda' })).not.toHaveTextContent('0')
+    })
+
+    it('sem compartilhar não há contador', () => {
+      montarBarra({ quemAssiste: ['Bia'] })
+      expect(screen.queryByRole('button', { name: /assistindo/ })).not.toBeInTheDocument()
+    })
   })
 })

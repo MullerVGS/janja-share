@@ -36,6 +36,9 @@ interface Props {
   minhaConexao: ConnectionState
   /** O Fechar do quadro cuja Tela terminou. */
   aoFecharEncerrada(): void
+  /** Desassina a Tela daquela Pessoa sem sair da Sala; `aoVerDeNovo` assina de volta. */
+  aoDeixarDeVer(identidade: string): void
+  aoVerDeNovo(identidade: string): void
 }
 
 /** A pílula em tela cheia some 2 s depois do último movimento, e o hover não a governa mais. */
@@ -75,6 +78,8 @@ function textoDoEstado(estado: EstadoDoQuadro, peca: Peca): { texto: string; tom
       return { texto: 'Sua conexão caiu — voltando…', tom: 'atencao' }
     case 'terminou':
       return { texto: `${de} terminou.`, tom: 'neutro' }
+    case 'naoVejo':
+      return { texto: `Você deixou de ver a tela de ${peca.nome}.`, tom: 'neutro' }
     case 'donoReconectando':
       return { texto: `A conexão de ${peca.nome} caiu — esperando voltar…`, tom: 'atencao' }
     case 'pausada':
@@ -100,11 +105,13 @@ function CartaoDeEstado({
   peca,
   aoTentarDeNovo,
   aoFechar,
+  aoVerDeNovo,
 }: {
   estado: EstadoDoQuadro
   peca: Peca
   aoTentarDeNovo(identidade: string): void
   aoFechar(): void
+  aoVerDeNovo(identidade: string): void
 }) {
   const conteudo = textoDoEstado(estado, peca)
   if (!conteudo) return null
@@ -115,7 +122,7 @@ function CartaoDeEstado({
     <div className={estilos.cartaoDeEstado} data-estado={estado}>
       <div className={estilos.caixaDoEstado} role="status" data-tom={conteudo.tom}>
         <span>{conteudo.texto}</span>
-        {(podeTentar || estado === 'terminou') && (
+        {(podeTentar || estado === 'terminou' || estado === 'naoVejo') && (
           <div className={estilos.acoesDoEstado}>
             {podeTentar && (
               <Botao aparencia="secundario" onClick={() => aoTentarDeNovo(peca.identidade)}>
@@ -125,6 +132,11 @@ function CartaoDeEstado({
             {estado === 'terminou' && (
               <Botao aparencia="secundario" onClick={aoFechar}>
                 Fechar
+              </Botao>
+            )}
+            {estado === 'naoVejo' && (
+              <Botao aparencia="secundario" onClick={() => aoVerDeNovo(peca.identidade)}>
+                Ver de novo
               </Botao>
             )}
           </div>
@@ -159,6 +171,8 @@ function Destaque({
   aoTentarDeNovo,
   minhaConexao,
   aoFecharEncerrada,
+  aoDeixarDeVer,
+  aoVerDeNovo,
 }: Omit<Props, 'emDestaque' | 'miniaturas' | 'aoFocar' | 'imersao'> & { peca: Peca }) {
   const quadro = useRef<HTMLDivElement>(null)
   const moldura = useRef<HTMLDivElement>(null)
@@ -191,6 +205,7 @@ function Destaque({
         zoom={{ caber: () => gestos.disparar({ tipo: 'caber' }), umPorUm: () => gestos.disparar({ tipo: 'umPorUm' }) }}
         telaCheia={telaCheia}
         pip={pip}
+        aoAlternarVer={() => (peca.naoVejo ? aoVerDeNovo(peca.identidade) : aoDeixarDeVer(peca.identidade))}
       />
     </>
   )
@@ -237,6 +252,7 @@ function Destaque({
         peca={peca}
         aoTentarDeNovo={aoTentarDeNovo}
         aoFechar={aoFecharEncerrada}
+        aoVerDeNovo={aoVerDeNovo}
       />
 
       {telaCheia.cheia ? (
@@ -269,6 +285,8 @@ export function Palco({
   aoTentarDeNovo,
   minhaConexao,
   aoFecharEncerrada,
+  aoDeixarDeVer,
+  aoVerDeNovo,
 }: Props) {
   return (
     <div className={estilos.palco} data-modo={emDestaque ? 'destaque' : 'vazio'} data-imersao={imersao || undefined}>
@@ -283,6 +301,8 @@ export function Palco({
           aoTentarDeNovo={aoTentarDeNovo}
           minhaConexao={minhaConexao}
           aoFecharEncerrada={aoFecharEncerrada}
+          aoDeixarDeVer={aoDeixarDeVer}
+          aoVerDeNovo={aoVerDeNovo}
         />
       ) : (
         <div className={estilos.vazio}>

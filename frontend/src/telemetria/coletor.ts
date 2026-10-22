@@ -98,9 +98,17 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
     if (vivo) aoMudar(estado)
   }
 
+  // As publicações no respiro do `refazerAssinatura`: desassinadas por um instante, de propósito.
+  // Elas continuam vigiadas — quem não é vigiado é só quem a pessoa escolheu não ver.
+  const emReassinatura = new Set<RemoteTrackPublication>()
+
   function refazerAssinatura(publicacao: RemoteTrackPublication) {
+    emReassinatura.add(publicacao)
     publicacao.setSubscribed(false)
-    setTimeout(() => publicacao.setSubscribed(true), 250)
+    setTimeout(() => {
+      emReassinatura.delete(publicacao)
+      publicacao.setSubscribed(true)
+    }, 250)
   }
 
   /**
@@ -172,6 +180,10 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       // bases sobreviverem a essa ausência em vez de serem apagados a cada batida sem faixa.
       const publicacao = participante.getTrackPublication(Track.Source.ScreenShare)
       if (!publicacao) continue
+      // Deixada de ver: não se mede, não se vigia e não se relata — para quem compartilha, quem
+      // não assiste não está assistindo.
+      const remota = publicacao as RemoteTrackPublication
+      if (remota.isDesired === false && !emReassinatura.has(remota)) continue
       const identidade = participante.identity
       vistos.add(identidade)
 

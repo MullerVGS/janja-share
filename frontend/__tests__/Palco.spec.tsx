@@ -21,6 +21,8 @@ interface Cenario {
   aoTentarDeNovo?: (identidade: string) => void
   minhaConexao?: ConnectionState
   aoFecharEncerrada?: () => void
+  aoDeixarDeVer?: (identidade: string) => void
+  aoVerDeNovo?: (identidade: string) => void
 }
 
 function Palquinho({
@@ -34,6 +36,8 @@ function Palquinho({
   aoTentarDeNovo = vi.fn(),
   minhaConexao = ConnectionState.Connected,
   aoFecharEncerrada = vi.fn(),
+  aoDeixarDeVer = vi.fn(),
+  aoVerDeNovo = vi.fn(),
 }: Cenario) {
   const zoom = useZoom(emDestaque ? [emDestaque, ...miniaturas] : miniaturas)
   return (
@@ -49,6 +53,8 @@ function Palquinho({
       aoTentarDeNovo={aoTentarDeNovo}
       minhaConexao={minhaConexao}
       aoFecharEncerrada={aoFecharEncerrada}
+      aoDeixarDeVer={aoDeixarDeVer}
+      aoVerDeNovo={aoVerDeNovo}
     />
   )
 }
@@ -360,5 +366,26 @@ describe('palco: o cartão de estado do quadro', () => {
     })
     expect(screen.getByRole('status')).toHaveTextContent('Sua conexão caiu — voltando…')
     expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+  })
+})
+
+describe('palco: deixar de ver a tela de alguém', () => {
+  it('a pílula da tela alheia oferece deixar de ver; o quadro deixado oferece ver de novo', () => {
+    const aoDeixarDeVer = vi.fn()
+    const aoVerDeNovo = vi.fn()
+    const { rerender } = render(<Palquinho emDestaque={peca('Sadia', { ehTela: true })} aoDeixarDeVer={aoDeixarDeVer} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deixar de ver a tela de Sadia' }))
+    expect(aoDeixarDeVer).toHaveBeenCalledExactlyOnceWith('sadia')
+
+    rerender(<Palquinho emDestaque={peca('Sadia', { ehTela: true, naoVejo: true })} aoVerDeNovo={aoVerDeNovo} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Você deixou de ver a tela de Sadia.')
+    fireEvent.click(screen.getByRole('button', { name: 'Ver de novo' }))
+    expect(aoVerDeNovo).toHaveBeenCalledExactlyOnceWith('sadia')
+  })
+
+  it('a própria tela não tem "deixar de ver"', () => {
+    montarPalco({ emDestaque: peca('Ana', { ehTela: true, proprio: true }) })
+    expect(screen.queryByRole('button', { name: /Deixar de ver/ })).not.toBeInTheDocument()
   })
 })

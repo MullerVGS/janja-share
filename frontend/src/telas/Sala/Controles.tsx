@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { Room } from 'livekit-client'
 import type { Compartilhamento } from '../../sala/useCompartilhamento'
 import {
+  IconeAssistindo,
   IconeChat,
   IconeMicrofone,
   IconeMicrofoneMudo,
@@ -9,6 +10,7 @@ import {
   IconeTela,
   IconeTelaNoAr,
 } from '../../ui/Icone'
+import { Suspenso } from '../../ui/Suspenso'
 import { MenuDaTela } from './MenuDaTela'
 import { SomSaindo } from './SomSaindo'
 import estilos from './Controles.module.css'
@@ -16,6 +18,8 @@ import estilos from './Controles.module.css'
 interface Props {
   sala: Room | null
   compartilhamento: Compartilhamento
+  /** Os nomes de quem está assistindo a minha Tela agora, pelos relatos da telemetria. */
+  quemAssiste: string[]
   chatAberto: boolean
   naoLidasNoChat: number
   /** Abre a gaveta no chat, ou a fecha se o chat já está à mostra. */
@@ -67,7 +71,8 @@ function Botao({
   tom = 'normal',
   ligado,
   desabilitado = false,
-  menuAberto,
+  expandido,
+  abreMenu = false,
   referencia,
   aoClicar,
   children,
@@ -77,22 +82,24 @@ function Botao({
   tom?: Tom
   ligado?: boolean
   desabilitado?: boolean
-  /** Presente quando o botão abre um menu: diz se ele está aberto, no lugar de `aria-pressed`. */
-  menuAberto?: boolean
+  /** Presente quando o botão abre um suspenso: diz se ele está aberto, no lugar de `aria-pressed`. */
+  expandido?: boolean
+  /** O suspenso é um menu de ações (e não uma lista para ler). */
+  abreMenu?: boolean
   referencia?: RefObject<HTMLButtonElement | null>
   aoClicar(): void
   children: ReactNode
 }) {
-  const abreMenu = menuAberto !== undefined
+  const abreSuspenso = expandido !== undefined
   return (
     <button
       ref={referencia}
       type="button"
       className={estilos.botao}
       data-tom={tom === 'normal' ? undefined : tom}
-      aria-pressed={abreMenu ? undefined : ligado}
+      aria-pressed={abreSuspenso ? undefined : ligado}
       aria-haspopup={abreMenu ? 'menu' : undefined}
-      aria-expanded={abreMenu ? menuAberto : undefined}
+      aria-expanded={expandido}
       aria-label={rotulo}
       title={rotulo}
       disabled={desabilitado}
@@ -119,6 +126,7 @@ function Botao({
 export function Controles({
   sala,
   compartilhamento,
+  quemAssiste,
   chatAberto,
   naoLidasNoChat,
   aoAlternarChat,
@@ -129,6 +137,8 @@ export function Controles({
   const [mudandoMicrofone, setMudandoMicrofone] = useState(false)
   const [menuAberto, setMenuAberto] = useState(false)
   const botaoDaTela = useRef<HTMLButtonElement>(null)
+  const [listaAberta, setListaAberta] = useState(false)
+  const botaoDeQuemAssiste = useRef<HTMLButtonElement>(null)
 
   const microfoneLigado = sala?.localParticipant.isMicrophoneEnabled ?? false
   // Sem sala não há a quem pedir microfone nem tela: botão que não faz nada tem de dizer isso.
@@ -136,6 +146,9 @@ export function Controles({
   // Quem compartilha não se ouve: o medidor é a única resposta a "está saindo som?".
   const faixaDoAudioDaTela = compartilhamento.audioDaTela?.track?.mediaStreamTrack
   const noAr = compartilhamento.ativo
+  const assistindo = quemAssiste.length
+  const fraseDeQuemAssiste =
+    assistindo === 0 ? 'Ninguém assistindo ainda' : `${assistindo} assistindo: ${quemAssiste.join(', ')}`
 
   async function alternarMicrofone() {
     if (!sala) return
@@ -170,7 +183,8 @@ export function Controles({
           rotulo="Sua tela está no ar — opções"
           legenda="No ar"
           tom="aceso"
-          menuAberto={menuAberto}
+          expandido={menuAberto}
+          abreMenu
           referencia={botaoDaTela}
           aoClicar={() => setMenuAberto((aberto) => !aberto)}
         >
@@ -190,6 +204,43 @@ export function Controles({
       )}
 
       {noAr && faixaDoAudioDaTela && <SomSaindo faixa={faixaDoAudioDaTela} />}
+
+      {/* Quem compartilha quer saber se alguém está vendo: o número na barra, os nomes no
+          passar do mouse e no toque (no celular não há hover). */}
+      {noAr && (
+        <Botao
+          rotulo={fraseDeQuemAssiste}
+          legenda="Assistindo"
+          expandido={listaAberta}
+          referencia={botaoDeQuemAssiste}
+          aoClicar={() => setListaAberta((aberta) => !aberta)}
+        >
+          <IconeAssistindo tamanho={22} />
+          {assistindo > 0 && (
+            <span className={estilos.contador} aria-hidden="true">
+              {assistindo}
+            </span>
+          )}
+        </Botao>
+      )}
+
+      <Suspenso
+        ancora={botaoDeQuemAssiste}
+        aberto={noAr && listaAberta}
+        aoFechar={() => setListaAberta(false)}
+        rotulo="Quem está assistindo"
+        papel="group"
+      >
+        {assistindo === 0 ? (
+          <p className={estilos.ninguem}>Ninguém assistindo ainda.</p>
+        ) : (
+          <ul className={estilos.quemAssiste}>
+            {quemAssiste.map((nome) => (
+              <li key={nome}>{nome}</li>
+            ))}
+          </ul>
+        )}
+      </Suspenso>
 
       <MenuDaTela
         ancora={botaoDaTela}

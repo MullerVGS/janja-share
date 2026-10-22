@@ -41,6 +41,8 @@ export interface Peca {
   pausada?: boolean
   /** A conexão do dono da peça, como o SFU a mede. */
   qualidade?: ConnectionQuality
+  /** Esta pessoa escolheu não ver esta Tela: está desassinada, e volta com um clique. */
+  naoVejo?: boolean
   /**
    * A Tela saiu do ar enquanto estava em destaque. A peça fica no palco, sem imagem, até alguém
    * fechar o cartão ou a mesma pessoa voltar a compartilhar — quem desenha é que a cria.
@@ -81,7 +83,11 @@ export function chavesDasTelasPublicadas(sala: Room | null): string[] {
     .map((participante) => chaveDaTela(participante.identity))
 }
 
-export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, EstadoDaRecepcao>): Palco {
+export function montarPalco(
+  sala: Room | null,
+  recepcao?: ReadonlyMap<string, EstadoDaRecepcao>,
+  naoVejo?: ReadonlySet<string>,
+): Palco {
   if (!sala) return PALCO_VAZIO
 
   const telas: Peca[] = []
@@ -124,6 +130,7 @@ export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, Es
         recepcao: proprio ? undefined : recepcao?.get(participante.identity),
         pausada: tela.isMuted,
         qualidade: participante.connectionQuality,
+        naoVejo: !proprio && Boolean(naoVejo?.has(participante.identity)),
       })
     }
   }
@@ -135,13 +142,15 @@ export function montarPalco(sala: Room | null, recepcao?: ReadonlyMap<string, Es
  * O que o quadro está dizendo a quem olha para ele, além da imagem.
  *
  * A ordem é a do que explica mais: a própria conexão caída explica tudo o que não chega; uma
- * Tela que terminou não tem mais o que pausar; a conexão do dono caída explica a imagem parada
+ * Tela que terminou não tem mais o que pausar; a que a pessoa escolheu não ver não chega porque
+ * ela pediu; a conexão do dono caída explica a imagem parada
  * dele; pausada é a imagem parada de propósito; e só então vem o que o cão de guarda viu.
  */
 export type EstadoDoQuadro =
   | 'aoVivo'
   | 'voceReconectando'
   | 'terminou'
+  | 'naoVejo'
   | 'donoReconectando'
   | 'pausada'
   | 'chegando'
@@ -151,6 +160,7 @@ export type EstadoDoQuadro =
 export function estadoDoQuadro(peca: Peca, minhaConexao: ConnectionState): EstadoDoQuadro {
   if (minhaConexao !== ConnectionState.Connected) return 'voceReconectando'
   if (peca.encerrada) return 'terminou'
+  if (peca.naoVejo) return 'naoVejo'
   if (!peca.proprio && peca.qualidade === ConnectionQuality.Lost) return 'donoReconectando'
   if (peca.pausada) return 'pausada'
   switch (peca.recepcao) {
@@ -174,6 +184,7 @@ export function pecaEncerrada(peca: Peca): Peca {
     temAudio: false,
     recepcao: undefined,
     pausada: false,
+    naoVejo: false,
     encerrada: true,
   }
 }

@@ -8,12 +8,14 @@ import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useFocoDeTeclado } from '../../sala/useFocoDeTeclado'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
+import { useDeixarDeVer } from '../../sala/useDeixarDeVer'
 import { useMedia } from '../../sala/useMedia'
 import { useSala } from '../../sala/useSala'
 import { useVolumes } from '../../sala/useVolumes'
 import { useZoom } from '../../sala/useZoom'
 import { useSessao } from '../../sessao/sessao'
 import { ultima } from '../../telemetria/historico'
+import { sumiu } from '../../telemetria/relato'
 import { useTelemetria } from '../../telemetria/useTelemetria'
 import { Aviso } from '../../ui/Aviso'
 import { Botao } from '../../ui/Botao'
@@ -59,6 +61,7 @@ export function Sala() {
   const { sala, conexao, erro, queda, versao, audioLiberado, liberarAudio } = useSala(credenciais)
   const telemetria = useTelemetria(sala)
   const compartilhamento = useCompartilhamento(sala, telemetria.emissor, telemetria.espectadores)
+  const { naoVejo, deixarDeVer, verDeNovo } = useDeixarDeVer(sala, versao)
 
   // O chat vive aqui, e não dentro de <Chat>: fechar o painel desmontava o componente, o hook
   // ia junto, o ouvinte de DataReceived era removido e a conversa inteira sumia — reabrir
@@ -92,7 +95,10 @@ export function Sala() {
 
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou. `telemetria.recepcao`
   // entra à parte: o cão de guarda anda no relógio da telemetria, não no dos eventos do `Room`.
-  const palco = useMemo(() => montarPalco(sala, telemetria.recepcao), [sala, versao, telemetria.recepcao])
+  const palco = useMemo(
+    () => montarPalco(sala, telemetria.recepcao, naoVejo),
+    [sala, versao, telemetria.recepcao, naoVejo],
+  )
   const telasPublicadas = useMemo(() => chavesDasTelasPublicadas(sala), [sala, versao])
   // A Tela alheia que sai do ar em destaque deixa o quadro dizendo que terminou, até alguém
   // fechar, olhar outra tela ou a mesma pessoa voltar a compartilhar. `visto` é a última Tela
@@ -129,6 +135,11 @@ export function Sala() {
   }, [destaqueVivo?.chave])
 
   const amostraDoEmissor = ultima(telemetria.emissor)
+  // Quem assiste a minha Tela agora: quem relatou nos últimos segundos. Quem deixou de ver para
+  // de relatar e sai da conta sozinho.
+  const quemAssiste = [...telemetria.espectadores.values()]
+    .filter((espectador) => !sumiu(espectador))
+    .map((espectador) => espectador.nome)
 
   // Nunca some com a gaveta aberta ou com o teclado dentro do palco: sumir é para quem largou o
   // mouse parado, não para quem está no meio de alguma coisa.
@@ -323,6 +334,8 @@ export function Sala() {
               aoTentarDeNovo={telemetria.rearmarRecepcao}
               minhaConexao={conexao}
               aoFecharEncerrada={() => setEncerrada(null)}
+              aoDeixarDeVer={deixarDeVer}
+              aoVerDeNovo={verDeNovo}
             />
 
             <div className={estilos.interface} data-interface={interfaceVisivel ? 'visivel' : 'oculta'}>
@@ -339,6 +352,7 @@ export function Sala() {
                 <Controles
                   sala={sala}
                   compartilhamento={compartilhamento}
+                  quemAssiste={quemAssiste}
                   chatAberto={chatVisivel}
                   naoLidasNoChat={naoLidasNoChat}
                   aoAlternarChat={() => alternarPainel('chat')}

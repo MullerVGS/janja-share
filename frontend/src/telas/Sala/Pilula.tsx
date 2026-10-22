@@ -2,7 +2,9 @@ import type { ReactNode } from 'react'
 import type { Peca } from '../../sala/palco'
 import type { ControleDeVolumes } from '../../sala/useVolumes'
 import {
+  IconeAssistindo,
   IconeCaber,
+  IconeDeixarDeVer,
   IconeJanelinha,
   IconePixelAPixel,
   IconeSairDaTelaCheia,
@@ -18,6 +20,8 @@ interface Props {
   zoom: { caber(): void; umPorUm(): void }
   telaCheia: { cheia: boolean; alternar(): void }
   pip: { emPiP: boolean; alternar(): void }
+  /** Deixar de ver a tela alheia (desassina) ou voltar a ver. */
+  aoAlternarVer(): void
 }
 
 function Acao({
@@ -60,7 +64,7 @@ function Acao({
  * pílula nenhuma desenhada para ela, e um botão que só existe às vezes não pode ser a única
  * porta pra ele.
  */
-export function Pilula({ peca, volumes, zoom, telaCheia, pip }: Props) {
+export function Pilula({ peca, volumes, zoom, telaCheia, pip, aoAlternarVer }: Props) {
   const alheia = !peca.proprio
   const comSom = alheia && peca.temAudio
   const comJanela = alheia && (temPiP() || temTelaCheia())
@@ -98,6 +102,19 @@ export function Pilula({ peca, volumes, zoom, telaCheia, pip }: Props) {
           aoClicar={telaCheia.alternar}
         >
           {telaCheia.cheia ? <IconeSairDaTelaCheia tamanho={16} /> : <IconeTelaCheia tamanho={16} />}
+        </Acao>
+      )}
+
+      {/* Por último e separado: é o único botão da pílula que muda o que chega, não só o jeito
+          de ver. */}
+      {alheia && <span className={estilos.separador} aria-hidden="true" />}
+      {alheia && (
+        <Acao
+          rotulo={peca.naoVejo ? `Ver de novo a tela de ${peca.nome}` : `Deixar de ver a tela de ${peca.nome}`}
+          dica={peca.naoVejo ? 'ver de novo' : 'deixar de ver sem sair da sala — poupa a sua banda'}
+          aoClicar={aoAlternarVer}
+        >
+          {peca.naoVejo ? <IconeAssistindo tamanho={16} /> : <IconeDeixarDeVer tamanho={16} />}
         </Acao>
       )}
     </div>
