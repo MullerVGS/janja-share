@@ -72,7 +72,7 @@
 .sozinho {
   position: absolute;
   left: 50%;
-  bottom: 96px;
+  bottom: 120px;
   z-index: 5;
   transform: translateX(-50%);
   width: min(360px, calc(100% - 32px));

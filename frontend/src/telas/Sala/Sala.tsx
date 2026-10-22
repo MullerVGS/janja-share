@@ -131,7 +131,7 @@ export function Sala() {
   const conectada = conexao === ConnectionState.Connected
 
   const microfone = useMicrofone(sala, setErroDeDispositivo)
-  const falandoMudo = useFalandoMudo(sala, versao)
+  const falandoMudo = useFalandoMudo(sala)
 
   // O palco é derivado do `Room`; `versao` é o que diz que ele mudou.
   // Antes de conectar, o próprio participante ainda não tem nome nem identidade no `Room`: o nome
@@ -196,7 +196,10 @@ export function Sala() {
   // Nunca some com a gaveta aberta ou com o teclado dentro da chamada.
   const focoDeTeclado = useFocoDeTeclado(areaDoPalco)
   // No celular a barra fica (como no app de bolso), menos na imersão.
-  const [interfaceVisivel, ocultarAMoldura] = useAutoOcultar(gaveta.aberta || focoDeTeclado || (celular && !imersao))
+  // O aviso de silenciado traz a barra de volta: ele mora junto do microfone.
+  const [interfaceVisivel, ocultarAMoldura] = useAutoOcultar(
+    gaveta.aberta || focoDeTeclado || (celular && !imersao) || falandoMudo !== null,
+  )
 
   const telasAntes = useRef<string[]>([])
   useEffect(() => {

@@ -5,11 +5,12 @@ import { Track, type Room } from 'livekit-client'
 export const DURACAO_DO_AVISO_MS = 2500
 /** …e não volta antes de 2 min. */
 export const INTERVALO_ENTRE_AVISOS_MS = 2 * 60 * 1000
-/** Nível (RMS de 0 a 1) a partir do qual conta como fala. */
-const LIMIAR_DE_FALA = 0.04
-/** Fala por este tempo seguido, para uma tosse não virar aviso. */
-const FALA_SEGUIDA_MS = 300
+/** Nível (RMS de 0 a 1, ~−36 dBFS) a partir do qual uma leitura conta como voz. */
+const LIMIAR_DE_FALA = 0.016
 const PASSO_MS = 100
+/** Fala é a maioria das últimas leituras acima do limiar: uma tosse ou um clique não bastam. */
+const JANELA_DE_LEITURAS = 6
+const LEITURAS_COM_VOZ = 4
 
 export const FRASE_SILENCIADO = 'Você está silenciado(a)!'
 
@@ -19,7 +20,7 @@ export const FRASE_SILENCIADO = 'Você está silenciado(a)!'
  * — ligado por conta própria, sem ir a lugar nenhum — é o que se escuta aqui. Quem nunca abriu
  * o microfone não é ouvido.
  */
-export function useFalandoMudo(sala: Room | null, versao: number): string | null {
+export function useFalandoMudo(sala: Room | null): string | null {
   const [aviso, setAviso] = useState(false)
   const ultimoAviso = useRef(0)
   const publicacao = sala?.localParticipant.getTrackPublication(Track.Source.Microphone)
@@ -36,6 +37,7 @@ export function useFalandoMudo(sala: Room | null, versao: number): string | null
       clone = faixa.clone()
       clone.enabled = true
       contexto = new Contexto()
+      void contexto.resume()
     } catch {
       return
     }
@@ -43,21 +45,18 @@ export function useFalandoMudo(sala: Room | null, versao: number): string | null
     analisador.fftSize = 512
     contexto.createMediaStreamSource(new MediaStream([clone])).connect(analisador)
     const amostras = new Float32Array(analisador.fftSize)
-    let falandoDesde: number | null = null
+    const ultimas: boolean[] = []
     let some: ReturnType<typeof setTimeout> | undefined
 
     const relogio = setInterval(() => {
       analisador.getFloatTimeDomainData(amostras)
       let soma = 0
       for (const valor of amostras) soma += valor * valor
-      const nivel = Math.sqrt(soma / amostras.length)
+      ultimas.push(Math.sqrt(soma / amostras.length) >= LIMIAR_DE_FALA)
+      if (ultimas.length > JANELA_DE_LEITURAS) ultimas.shift()
       const agora = Date.now()
-      if (nivel < LIMIAR_DE_FALA) {
-        falandoDesde = null
-        return
-      }
-      falandoDesde ??= agora
-      if (agora - falandoDesde < FALA_SEGUIDA_MS || agora - ultimoAviso.current < INTERVALO_ENTRE_AVISOS_MS) return
+      if (ultimas.filter(Boolean).length < LEITURAS_COM_VOZ) return
+      if (agora - ultimoAviso.current < INTERVALO_ENTRE_AVISOS_MS) return
       ultimoAviso.current = agora
       setAviso(true)
       clearTimeout(some)
@@ -71,7 +70,9 @@ export function useFalandoMudo(sala: Room | null, versao: number): string | null
       void contexto.close()
       setAviso(false)
     }
-  }, [faixa, mudo, versao])
+    // Quem chama re-renderiza a cada evento da Sala e relê a publicação; o relógio é da faixa e
+    // do mudo, não de cada render.
+  }, [faixa, mudo])
 
   return aviso && mudo ? FRASE_SILENCIADO : null
 }
