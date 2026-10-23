@@ -26,10 +26,10 @@ O janja-share permite compartilhar tela em salas que a turma reabre pelo mesmo l
 
 **Tela** — conteúdo visual publicado por uma Pessoa durante um Compartilhamento.
 
-**Palco** — a área principal de uma Sala, onde a chamada é mostrada: a grade, ou um Quadro em foco com a faixa.
+**Palco** — a área principal de uma Sala, onde a chamada é mostrada: a grade, ou um Quadro em foco com a pilha.
 
-**Quadro** — o espaço do Palco ocupado por uma Tela ou por uma Pessoa (o avatar dela). A Sala não tem câmera.
+**Quadro** — o espaço do Palco ocupado por uma Tela ou por uma Pessoa (o avatar dela). A Pessoa só é Quadro enquanto não há Tela no ar. A Sala não tem câmera.
 
-**Grade** e **foco** — os dois jeitos do Palco: na grade, todos os Quadros do mesmo tamanho; em foco, um Quadro grande e os outros na **faixa** embaixo. Voltar à grade é uma escolha que fica até o próximo clique num Quadro ou até a própria Tela entrar no ar.
+**Grade** e **foco** — os dois jeitos do Palco: na grade, todos os Quadros do mesmo tamanho; em foco, um Quadro com o Palco inteiro e os outros na **pilha**, pequenos, no canto de cima, que some com o ponteiro parado. Voltar à grade é uma escolha que fica até o próximo clique num Quadro ou até a própria Tela entrar no ar.
 
 **Casca** — a moldura comum ao saguão e à Sala: barra de título, **trilho** (o saguão e Suas salas), **coluna de salas** (as Salas no ar com quem está dentro) e os painéis de voz e da pessoa no rodapé.
