@@ -267,8 +267,7 @@ describe('sala: o palco', () => {
     expect(screen.getByRole('button', { name: 'Pôr a tela de Bia no palco' })).toBeInTheDocument()
   })
 
-  it('sem Tela no ar, a chamada é a grade de quem está na sala — e o botão do alto esconde as pessoas', async () => {
-    const usuario = userEvent.setup()
+  it('sem Tela no ar, a chamada é a grade de quem está na sala', () => {
     const bia = participanteFalso('bia-x1y2', 'Bia')
     falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [bia])
     const { container } = montarSala()
@@ -277,10 +276,26 @@ describe('sala: o palco', () => {
     const grade = screen.getByLabelText('Grade da chamada')
     expect(within(grade).getByRole('button', { name: 'Pôr você no palco' })).toBeInTheDocument()
     expect(within(grade).getByRole('button', { name: 'Pôr Bia no palco' })).toBeInTheDocument()
+  })
 
-    await usuario.click(screen.getByRole('button', { name: 'Mostrar quem não compartilha' }))
-    expect(palcoDe(container)).toHaveAttribute('data-modo', 'vazio')
-    expect(screen.getByText('Nada no ar ainda.')).toBeInTheDocument()
+  it('com uma Tela no ar, as Pessoas saem do palco — e quem estava em foco cede à Tela', async () => {
+    const usuario = userEvent.setup()
+    const daBia: ReturnType<typeof publicacaoFalsa>[] = []
+    falso.sala = salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [participanteFalso('bia-x1y2', 'Bia', daBia)])
+    const { container } = montarSala()
+
+    await usuario.click(screen.getByRole('button', { name: 'Pôr Bia no palco' }))
+    expect(palcoDe(container)).toHaveAttribute('data-modo', 'destaque')
+    // Em foco, os outros quadros vão para a pilha do canto.
+    expect(within(screen.getByLabelText('Outros quadros da chamada')).getByRole('button', { name: 'Pôr você no palco' })).toBeInTheDocument()
+
+    daBia.push(publicacaoFalsa(Track.Source.ScreenShare))
+    await usuario.click(screen.getByRole('button', { name: 'mexer no palco' }))
+
+    expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
+    expect(screen.queryByRole('button', { name: 'Pôr Bia no palco' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Pôr você no palco' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mostrar quem não compartilha' })).not.toBeInTheDocument()
   })
 
   it('a coluna acende a Sala atual com quem está dentro', () => {
@@ -311,7 +326,7 @@ describe('sala: o palco', () => {
     expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
   })
 
-  it('um clique na imagem entra na imersão: somem a casca e a faixa', async () => {
+  it('um clique na imagem entra na imersão: somem a casca e a pilha', async () => {
     const usuario = userEvent.setup()
     comDuasTelas()
     const { container } = montarSala()
@@ -388,17 +403,6 @@ describe('sala: o palco', () => {
     await usuario.click(screen.getByRole('button', { name: 'Pôr a tela de Bia no palco' }))
 
     expect(palcoDe(container)).toHaveTextContent('Tela de Bia')
-  })
-
-  it('uma pessoa da faixa também vai ao foco, grande', async () => {
-    const usuario = userEvent.setup()
-    comDuasTelas()
-    const { container } = montarSala()
-
-    await usuario.click(screen.getByRole('button', { name: 'Pôr Bia no palco' }))
-
-    expect(palcoDe(container)).toHaveAttribute('data-modo', 'destaque')
-    expect(screen.getByRole('button', { name: 'Pôr a tela de Bia no palco' })).toBeInTheDocument()
   })
 
   it('mutar e desmutar a própria tela não arranca o destaque de quem escolheu assistir outra', async () => {

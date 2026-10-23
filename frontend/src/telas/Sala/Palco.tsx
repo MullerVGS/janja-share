@@ -10,7 +10,7 @@ import { useGestosDoZoom, type ControleDeZoom } from '../../sala/useZoom'
 import type { Gesto, Medidas, Zoom } from '../../sala/zoom'
 import { Botao } from '../../ui/Botao'
 import { IconePessoas, IconeTelaNoAr } from '../../ui/Icone'
-import { Faixa, Grade, SeloAoVivo } from './Quadros'
+import { Grade, Pilha, SeloAoVivo } from './Quadros'
 import { usePiP, useTelaCheia } from './assistir'
 import { Video } from './Midia'
 import { Pilula } from './Pilula'
@@ -19,7 +19,7 @@ import estilos from './Palco.module.css'
 interface Props {
   /** Todos os quadros da chamada, Telas e Pessoas, na ordem em que a grade os mostra. */
   quadros: Peca[]
-  /** O quadro em foco (grande, com a faixa embaixo); `null` é a grade. */
+  /** O quadro em foco (o palco inteiro, com a pilha no canto); `null` é a grade. */
   emFoco: Peca | null
   aoFocar(chave: string): void
   /** O clique único na imagem: entra e sai da imersão. */
@@ -28,7 +28,7 @@ interface Props {
   /** Se a interface flutuante está à mostra — `Sala.tsx` calcula com `useAutoOcultar`; pílulas
    * e miniaturas seguem o mesmo relógio, não o hover. */
   interfaceVisivel: boolean
-  /** Na imersão o quadro fica com a janela toda: sem o respiro que a faixa de avatares e a barra
+  /** Na imersão o quadro fica com a janela toda: sem o respiro que o cabeçalho e a barra
    * ocupam no modo normal, e sem moldura — o CSS lê a marca que isto vira. */
   imersao: boolean
   zoom: ControleDeZoom
@@ -292,8 +292,12 @@ function Destaque({
 }
 
 /**
- * O palco da chamada: a grade com todos os quadros — Telas e Pessoas, do mesmo tamanho — ou um
- * quadro em foco, grande, com os outros numa faixa embaixo (ADR 0016).
+ * O palco da chamada: a grade com todos os quadros, do mesmo tamanho, ou um quadro em foco com o
+ * palco inteiro e os outros numa pilha no canto de cima (ADRs 0016 e 0021). Quais quadros
+ * existem — só Telas, havendo alguma no ar — é `palcoEmCena` quem diz.
+ *
+ * A pilha segue a interface flutuante também na imersão: o ponteiro que mexe traz o cabeçalho e
+ * a barra, e com eles as outras Telas, que é o que se procura ao mexer.
  *
  * Quem decide o foco é `foco.ts`; aqui só se desenha. A Tela em foco é o `Destaque`, com zoom,
  * cartão de estado e as pílulas; a Pessoa em foco é o quadro dela, grande.
@@ -315,7 +319,7 @@ export function Palco({
   aoVerDeNovo,
 }: Props) {
   const modo = emFoco ? 'destaque' : quadros.length > 0 ? 'grade' : 'vazio'
-  const outros = emFoco && !imersao ? quadros.filter((quadro) => quadro.chave !== emFoco.chave) : []
+  const outros = emFoco ? quadros.filter((quadro) => quadro.chave !== emFoco.chave) : []
 
   return (
     <div className={estilos.palco} data-modo={modo} data-imersao={imersao || undefined}>
@@ -349,7 +353,7 @@ export function Palco({
         </div>
       )}
 
-      <Faixa pecas={outros} aoEscolher={aoFocar} volumes={volumes} minhaConexao={minhaConexao} visivel={interfaceVisivel} />
+      <Pilha pecas={outros} aoEscolher={aoFocar} volumes={volumes} minhaConexao={minhaConexao} visivel={interfaceVisivel} />
     </div>
   )
 }

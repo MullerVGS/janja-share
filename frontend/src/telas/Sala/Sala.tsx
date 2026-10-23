@@ -6,7 +6,14 @@ import { trocarNaSala, type TipoDeDispositivo } from '../../sala/dispositivos'
 import { estadoDaConexao, PRESO_SEM_ROTA_MS } from '../../sala/estadoDaConexao'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
-import { chavesDasTelasPublicadas, comProblemaDeConexao, montarPalco, pecaEncerrada, type Peca } from '../../sala/palco'
+import {
+  chavesDasTelasPublicadas,
+  comProblemaDeConexao,
+  montarPalco,
+  palcoEmCena,
+  pecaEncerrada,
+  type Peca,
+} from '../../sala/palco'
 import { useAindaAi } from '../../sala/useAindaAi'
 import { useAutoOcultar } from '../../sala/useAutoOcultar'
 import { useCelularAssistindo } from '../../sala/useCelularAssistindo'
@@ -122,7 +129,6 @@ export function Sala() {
   const [imersao, setImersao] = useState(false)
   const [pagina, setPagina] = useState<'chamada' | 'saguao'>('chamada')
   const [vista, setVista] = useState<'lista' | 'pagina'>('pagina')
-  const [mostrandoPessoas, setMostrandoPessoas] = useState(true)
   const [surdo, setSurdo] = useState(false)
   const [linkCopiado, setLinkCopiado] = useState(false)
   const areaDoPalco = useRef<HTMLElement>(null)
@@ -159,14 +165,11 @@ export function Sala() {
   }
   const palcoDoFoco = useMemo(() => {
     const pendente = encerrada && !palco.telas.some((tela) => tela.identidade === encerrada.identidade)
-    return pendente ? { ...palco, telas: [...palco.telas, encerrada] } : palco
+    return palcoEmCena(pendente ? { ...palco, telas: [...palco.telas, encerrada] } : palco)
   }, [palco, encerrada])
 
-  // A grade mostra as Telas e, se a pessoa não escondeu, quem está na Sala.
-  const quadros = useMemo(
-    () => [...palcoDoFoco.telas, ...(mostrandoPessoas ? palcoDoFoco.pessoas : [])],
-    [palcoDoFoco, mostrandoPessoas],
-  )
+  // Com Tela no ar, só as Telas; sem nenhuma, quem está na Sala (ADR 0021).
+  const quadros = useMemo(() => [...palcoDoFoco.telas, ...palcoDoFoco.pessoas], [palcoDoFoco])
   const zoom = useZoom(palcoDoFoco.telas)
 
   // O foco é a escolha da pessoa; sem escolha (ou com ela fora do ar), é a primeira Tela — e,
@@ -509,8 +512,6 @@ export function Sala() {
                 chatAberto={chatVisivel}
                 naoLidasNoChat={naoLidasNoChat}
                 aoAlternarChat={() => alternarPainel('chat')}
-                mostrandoPessoas={mostrandoPessoas}
-                aoAlternarPessoas={() => setMostrandoPessoas((valor) => !valor)}
               />
             </div>
 

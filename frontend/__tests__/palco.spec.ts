@@ -1,6 +1,13 @@
 import { ConnectionQuality, ConnectionState, Track } from 'livekit-client'
 import { describe, expect, it } from 'vitest'
-import { chavesDasTelasPublicadas, estadoDoQuadro, montarPalco, pecaEncerrada, type Peca } from '../src/sala/palco'
+import {
+  chavesDasTelasPublicadas,
+  estadoDoQuadro,
+  montarPalco,
+  palcoEmCena,
+  pecaEncerrada,
+  type Peca,
+} from '../src/sala/palco'
 import { participanteFalso, publicacaoFalsa, salaFalsa } from './apoio/salaFalsa'
 
 describe('chavesDasTelasPublicadas', () => {
@@ -126,5 +133,19 @@ describe('estadoDoQuadro', () => {
 
   it('a própria tela não mostra a conexão do dono como alheia', () => {
     expect(estadoDoQuadro(tela({ proprio: true, qualidade: ConnectionQuality.Lost }), CONECTADA)).toBe('aoVivo')
+  })
+})
+
+describe('palcoEmCena', () => {
+  it('sem Tela no ar, quem está na Sala é quadro', () => {
+    const palco = montarPalco(salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [participanteFalso('bia-x1y2', 'Bia')]))
+    expect(palcoEmCena(palco).pessoas.map((peca) => peca.nome)).toEqual(['Ana', 'Bia'])
+  })
+
+  it('com uma Tela no ar, o palco é só das Telas', () => {
+    const bia = participanteFalso('bia-x1y2', 'Bia', [publicacaoFalsa(Track.Source.ScreenShare)])
+    const palco = palcoEmCena(montarPalco(salaFalsa(participanteFalso('ana-a1b2c3', 'Ana'), [bia])))
+    expect(palco.telas.map((peca) => peca.chave)).toEqual(['tela:bia-x1y2'])
+    expect(palco.pessoas).toEqual([])
   })
 })

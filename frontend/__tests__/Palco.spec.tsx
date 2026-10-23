@@ -11,7 +11,7 @@ import { peca, volumesFalsos } from './apoio/pecas'
 interface Cenario {
   /** O quadro em foco; `null` (com outros quadros) é a grade. */
   emDestaque?: Peca | null
-  /** Os outros quadros: a faixa sob o foco, ou a grade inteira. */
+  /** Os outros quadros: a pilha do foco, ou a grade inteira. */
   miniaturas?: Peca[]
   aoFocar?: (chave: string) => void
   aoAlternarImersao?: () => void
@@ -138,7 +138,16 @@ describe('palco: as miniaturas', () => {
     expect(aoFocar).toHaveBeenCalledExactlyOnceWith('tela:Caio')
   })
 
-  it('sem ninguém fora do destaque, não há coluna de miniaturas', () => {
+  it('a pilha segue a interface flutuante, também na imersão', () => {
+    const cenario = { emDestaque: peca('Bia', { ehTela: true }), miniaturas: [peca('Caio', { ehTela: true })], imersao: true }
+    const { rerender } = render(<Palquinho {...cenario} interfaceVisivel={false} />)
+    expect(screen.queryByRole('button', { name: 'Pôr a tela de Caio no palco' })).not.toBeInTheDocument()
+
+    rerender(<Palquinho {...cenario} interfaceVisivel />)
+    expect(screen.getByRole('button', { name: 'Pôr a tela de Caio no palco' })).toBeInTheDocument()
+  })
+
+  it('sem ninguém fora do destaque, não há pilha', () => {
     montarPalco({ emDestaque: peca('Bia', { ehTela: true }) })
     expect(screen.queryByRole('button', { name: /^Pôr /})).not.toBeInTheDocument()
   })

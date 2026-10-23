@@ -54,7 +54,7 @@ interface PropsDoQuadro {
   volumes: ControleDeVolumes
   minhaConexao: ConnectionState
   estilo?: CSSProperties
-  /** Na faixa do foco: menor, sem volume e com o nome mais curto. */
+  /** Na pilha do foco: menor, sem volume e com o nome mais curto. */
   pequeno?: boolean
 }
 
@@ -174,15 +174,25 @@ export function Grade({ pecas, aoEscolher, volumes, minhaConexao }: PropsDaGrade
   )
 }
 
-interface PropsDaFaixa extends PropsDaGrade {
+interface PropsDaPilha extends PropsDaGrade {
   visivel: boolean
 }
 
-/** A faixa sob o quadro em foco: os outros quadros, pequenos, numa fileira. */
-export function Faixa({ pecas, aoEscolher, volumes, minhaConexao, visivel }: PropsDaFaixa) {
+/**
+ * A pilha do foco: os outros quadros, pequenos, empilhados no canto de cima por cima da imagem —
+ * a Tela em foco fica com o palco inteiro. Segue a interface flutuante: some com o ponteiro
+ * parado e, escondida, sai da ordem do teclado e da leitura de tela.
+ */
+export function Pilha({ pecas, aoEscolher, volumes, minhaConexao, visivel }: PropsDaPilha) {
   if (pecas.length === 0) return null
   return (
-    <div className={estilos.faixa} data-visivel={visivel || undefined} aria-label="Outros quadros da chamada">
+    <div
+      className={estilos.pilha}
+      data-visivel={visivel || undefined}
+      aria-label="Outros quadros da chamada"
+      aria-hidden={!visivel || undefined}
+      inert={!visivel}
+    >
       {pecas.map((peca) => (
         <Quadro
           key={peca.chave}

@@ -148,6 +148,17 @@ export function montarPalco(
 }
 
 /**
+ * O que vira quadro: com alguma Tela no ar o palco é só das Telas, e quem não compartilha fica
+ * na coluna de salas (ADR 0021). Sem Tela, a chamada é a grade de quem está na Sala.
+ *
+ * É este palco, e não o montado, que `decidirFoco` recebe: uma Pessoa fora de cena não pode
+ * segurar o foco, senão a primeira Tela assumiria só no desenho e trocaria a cada Tela nova.
+ */
+export function palcoEmCena(palco: Palco): Palco {
+  return palco.telas.length > 0 ? { ...palco, pessoas: [] } : palco
+}
+
+/**
  * O que o quadro está dizendo a quem olha para ele, além da imagem.
  *
  * A ordem é a do que explica mais: a própria conexão caída explica tudo o que não chega; uma

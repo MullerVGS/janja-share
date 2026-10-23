@@ -1,5 +1,5 @@
 import { fraseDaGuarda } from '../../salas/link'
-import { IconeChat, IconeConvite, IconePessoas, IconeSalaDeVoz, IconeVoltar } from '../../ui/Icone'
+import { IconeChat, IconeConvite, IconeSalaDeVoz, IconeVoltar } from '../../ui/Icone'
 import estilos from './CabecalhoDaChamada.module.css'
 
 interface Props {
@@ -11,14 +11,11 @@ interface Props {
   chatAberto: boolean
   naoLidasNoChat: number
   aoAlternarChat(): void
-  /** A grade mostra também quem não compartilha (o padrão) ou só as Telas. */
-  mostrandoPessoas: boolean
-  aoAlternarPessoas(): void
 }
 
 /**
  * O cabeçalho da chamada, flutuando no alto da área preta: o alto-falante e o nome da Sala à
- * esquerda; convidar, mostrar quem não compartilha e o chat à direita.
+ * esquerda; convidar e o chat à direita.
  */
 export function CabecalhoDaChamada({
   nomeDaSala,
@@ -28,8 +25,6 @@ export function CabecalhoDaChamada({
   chatAberto,
   naoLidasNoChat,
   aoAlternarChat,
-  mostrandoPessoas,
-  aoAlternarPessoas,
 }: Props) {
   return (
     <header className={estilos.cabecalho}>
@@ -48,16 +43,6 @@ export function CabecalhoDaChamada({
 
       <button type="button" className={estilos.botao} aria-label="Convidar" title="Convidar" onClick={aoConvidar}>
         <IconeConvite tamanho={22} />
-      </button>
-      <button
-        type="button"
-        className={estilos.botao}
-        aria-pressed={mostrandoPessoas}
-        aria-label="Mostrar quem não compartilha"
-        title={mostrandoPessoas ? 'Esconder quem não compartilha' : 'Mostrar quem não compartilha'}
-        onClick={aoAlternarPessoas}
-      >
-        <IconePessoas tamanho={22} />
       </button>
       <button
         type="button"

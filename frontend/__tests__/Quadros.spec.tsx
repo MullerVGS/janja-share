@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConnectionQuality, ConnectionState } from 'livekit-client'
 import { describe, expect, it, vi } from 'vitest'
-import { Faixa, Grade } from '../src/telas/Sala/Quadros'
+import { Grade, Pilha } from '../src/telas/Sala/Quadros'
 import { peca, volumesFalsos } from './apoio/pecas'
 
 function grade(pecas = [peca('Bia', { ehTela: true }), peca('Bia'), peca('Caio', { microfoneLigado: false })]) {
@@ -54,24 +54,38 @@ describe('a grade da chamada', () => {
   })
 })
 
-describe('a faixa do foco', () => {
+describe('a pilha do foco', () => {
   it('mostra os outros quadros pequenos, sem volume', () => {
     render(
-      <Faixa
-        pecas={[peca('Bia'), peca('Caio', { ehTela: true })]}
+      <Pilha
+        pecas={[peca('Bia', { ehTela: true }), peca('Caio', { ehTela: true })]}
         aoEscolher={vi.fn()}
         volumes={volumesFalsos()}
         minhaConexao={ConnectionState.Connected}
         visivel
       />,
     )
-    const faixa = screen.getByLabelText('Outros quadros da chamada')
-    expect(within(faixa).getAllByRole('button')).toHaveLength(2)
-    expect(within(faixa).queryByRole('slider')).not.toBeInTheDocument()
+    const pilha = screen.getByLabelText('Outros quadros da chamada')
+    expect(within(pilha).getAllByRole('button')).toHaveLength(2)
+    expect(within(pilha).queryByRole('slider')).not.toBeInTheDocument()
   })
 
-  it('sem outros quadros, não há faixa', () => {
-    render(<Faixa pecas={[]} aoEscolher={vi.fn()} volumes={volumesFalsos()} minhaConexao={ConnectionState.Connected} visivel />)
+  it('com o ponteiro parado ela some, e some também para o teclado e para a leitura de tela', () => {
+    const { container } = render(
+      <Pilha
+        pecas={[peca('Bia', { ehTela: true })]}
+        aoEscolher={vi.fn()}
+        volumes={volumesFalsos()}
+        minhaConexao={ConnectionState.Connected}
+        visivel={false}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Pôr a tela de Bia no palco' })).not.toBeInTheDocument()
+    expect(container.querySelector('[inert]')).not.toBeNull()
+  })
+
+  it('sem outros quadros, não há pilha', () => {
+    render(<Pilha pecas={[]} aoEscolher={vi.fn()} volumes={volumesFalsos()} minhaConexao={ConnectionState.Connected} visivel />)
     expect(screen.queryByLabelText('Outros quadros da chamada')).not.toBeInTheDocument()
   })
 })

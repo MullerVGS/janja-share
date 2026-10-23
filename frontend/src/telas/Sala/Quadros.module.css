@@ -197,24 +197,47 @@
   width: min(100%, 480px);
 }
 
-/* A faixa do foco: quadros de 112 px de altura numa fileira centrada. */
-.faixa {
-  flex: none;
+/* A pilha do foco: quadros de 192 px empilhados no canto de cima, por cima da Tela em foco —
+   abaixo do cabeçalho, que flutua no mesmo canto. A sombra os descola de qualquer imagem. */
+.pilha {
+  position: absolute;
+  top: 56px;
+  right: var(--e4);
+  z-index: 2;
   display: flex;
-  justify-content: safe center;
+  flex-direction: column;
   gap: var(--e2);
-  overflow-x: auto;
-  padding-top: var(--e2);
+  max-height: calc(100% - 56px - 88px);
+  overflow-y: auto;
   scrollbar-width: none;
+  opacity: 0;
   transition: opacity 0.25s ease;
 }
 
-.faixa > .quadro {
-  height: 112px;
+.pilha[data-visivel] {
+  opacity: 1;
+}
+
+.pilha > .quadro {
+  flex: none;
+  width: 192px;
+  aspect-ratio: 16 / 9;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
 }
 
 @media (max-width: 720px) {
-  .faixa > .quadro {
-    height: 72px;
+  .pilha {
+    right: var(--e2);
+    max-height: calc(100% - 56px - 92px);
+  }
+
+  .pilha > .quadro {
+    width: 128px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pilha {
+    transition: none;
   }
 }
