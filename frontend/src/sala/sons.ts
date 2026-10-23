@@ -39,14 +39,32 @@ export function somDaMudanca(antes: FotoDaSala, depois: FotoDaSala): Som | null 
 
 let contexto: AudioContext | null = null
 
+/** O `setSinkId` do Web Audio (Chrome 110+) ainda não está nos tipos do DOM. */
+type ContextoComSaida = AudioContext & { setSinkId?: (id: string) => Promise<void> }
+
+/**
+ * Os sons da sala saem pelo mesmo aparelho que a Sala. Sem `setSinkId` no Web Audio (Firefox,
+ * Safari) eles ficam no padrão do sistema — são bipes curtos, não a conversa.
+ */
+export function aplicarSaidaAosSons(id: string): void {
+  const alvo = contexto as ContextoComSaida | null
+  if (!alvo?.setSinkId) return
+  alvo.setSinkId(id).catch(() => {
+    // O aparelho sumiu: o som segue onde estava.
+  })
+}
+
 /** Toca o som, se as preferências deixam. Silencioso onde não há Web Audio. */
 export function tocar(som: Som): void {
-  const { sons, volumeDosSons } = lerPreferencias()
+  const { sons, volumeDosSons, saidaDeSom } = lerPreferencias()
   if (!sons || volumeDosSons <= 0) return
   const Contexto = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!Contexto) return
   try {
-    contexto ??= new Contexto()
+    if (!contexto) {
+      contexto = new Contexto()
+      if (saidaDeSom) aplicarSaidaAosSons(saidaDeSom)
+    }
     if (contexto.state === 'suspended') void contexto.resume()
     const agora = contexto.currentTime
     const ganhoMaximo = 0.18 * (volumeDosSons / 100)

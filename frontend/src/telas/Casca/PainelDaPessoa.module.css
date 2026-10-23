@@ -202,3 +202,10 @@
   color: var(--texto-fraquissimo);
   font-size: var(--texto-xs);
 }
+
+/* Nome de fone costuma ser longo; o seletor corta em vez de alargar o suspenso. */
+.campo select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}

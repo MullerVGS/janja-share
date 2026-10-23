@@ -14,6 +14,8 @@ import {
   type TrackPublishOptions,
 } from 'livekit-client'
 import type { Credenciais } from '../api/salas'
+import { lerPreferencias } from '../preferencias'
+import { opcoesDeDispositivos } from './dispositivos'
 
 /**
  * Quanto o SDK insiste antes de desistir de uma conexão que caiu. De fábrica são dez
@@ -96,6 +98,7 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
   useEffect(() => {
     if (!credenciais) return
 
+    const preferencias = lerPreferencias()
     const nova = new Room({
       // adaptiveStream pausa o vídeo de aba em segundo plano (mata o PiP) e, sem simulcast, não
       // tem camada para escolher — não traz nada aqui.
@@ -110,6 +113,9 @@ export function useSala(credenciais: Credenciais | null): EstadoDaSala {
       // não consegue resumir parava a captura da tela junto — e voltar exigia o seletor de novo.
       // Sair da sala (`disconnect()`) continua parando tudo.
       stopLocalTrackOnUnpublish: false,
+      // O microfone e a saída que a pessoa escolheu nas preferências; trocar com a Sala no ar é
+      // `trocarNaSala`.
+      ...opcoesDeDispositivos(preferencias.microfone, preferencias.saidaDeSom),
     })
 
     const marcar = () => setVersao((v) => v + 1)

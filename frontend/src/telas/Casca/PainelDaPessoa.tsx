@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
 import { LIMITE_DO_NOME } from '../../api/salas'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
+import { escolheSaida, PADRAO_DO_SISTEMA, type Dispositivo, type TipoDeDispositivo } from '../../sala/dispositivos'
+import { aplicarSaidaAosSons } from '../../sala/sons'
+import { useDispositivos } from '../../sala/useDispositivos'
 import { Avatar } from '../../ui/Avatar'
 import { IconeFones, IconeMicrofone, IconeMicrofoneMudo, IconePreferencias } from '../../ui/Icone'
 import { Suspenso } from '../../ui/Suspenso'
@@ -28,29 +31,57 @@ interface Props {
   estado: string
   microfone: MicrofoneDoPainel | null
   surdo: SurdoDoPainel | null
+  /** Leva a troca de aparelho à Sala conectada; fora dela a escolha só fica guardada. */
+  aoTrocarDispositivo?(tipo: TipoDeDispositivo, id: string): void
+}
+
+/**
+ * As opções de um seletor de aparelho. O escolhido que não está na lista (o fone desligado) fica
+ * à vista como desconectado: sumir com ele trocaria a escolha em silêncio, e ela volta a valer
+ * quando o fone voltar.
+ */
+function opcoesDoSeletor(lista: Dispositivo[], escolhido: string): Dispositivo[] {
+  const opcoes = [{ id: PADRAO_DO_SISTEMA, nome: 'Padrão do sistema' }, ...lista]
+  if (!opcoes.some((opcao) => opcao.id === escolhido)) opcoes.push({ id: escolhido, nome: 'Aparelho desconectado' })
+  return opcoes
 }
 
 /**
  * O rodapé da coluna: quem você é e os três botões de sempre — microfone, ensurdecer e
- * preferências. As preferências moram num suspenso: o nome com que os outros te veem e os sons
- * curtos da sala (ligar, desligar e volume).
+ * preferências. As preferências moram num suspenso: o nome com que os outros te veem, o
+ * microfone e a saída de som, e os sons curtos da sala (ligar, desligar e volume).
  *
  * Fora de uma Sala o microfone e o ensurdecer ficam apagados, dizendo por quê: não há som a
  * calar nem a quem mandar a voz.
  */
-export function PainelDaPessoa({ nome, aoMudarNome, estado, microfone, surdo }: Props) {
+export function PainelDaPessoa({ nome, aoMudarNome, estado, microfone, surdo, aoTrocarDispositivo }: Props) {
   const [aberto, setAberto] = useState(false)
   const botaoDasPreferencias = useRef<HTMLButtonElement>(null)
   const [sons, setSons] = useState(() => {
     const { sons: ligados, volumeDosSons } = lerPreferencias()
     return { ligados, volume: volumeDosSons }
   })
+  const [escolhidos, setEscolhidos] = useState(() => {
+    const { microfone: entrada, saidaDeSom } = lerPreferencias()
+    return { microfone: entrada, saida: saidaDeSom }
+  })
+  const dispositivos = useDispositivos(aberto)
   const semNome = nome.trim() === ''
   const foraDaSala = 'Entre numa sala para usar'
 
   function mudarSons(novos: { ligados: boolean; volume: number }) {
     setSons(novos)
     gravarPreferencias({ sons: novos.ligados, volumeDosSons: novos.volume })
+  }
+
+  function trocarDispositivo(tipo: TipoDeDispositivo, id: string) {
+    setEscolhidos((atuais) => ({ ...atuais, [tipo]: id }))
+    if (tipo === 'microfone') gravarPreferencias({ microfone: id })
+    else {
+      gravarPreferencias({ saidaDeSom: id })
+      aplicarSaidaAosSons(id)
+    }
+    aoTrocarDispositivo?.(tipo, id)
   }
 
   return (
@@ -135,6 +166,39 @@ export function PainelDaPessoa({ nome, aoMudarNome, estado, microfone, surdo }: 
               onChange={(evento) => aoMudarNome(evento.target.value)}
             />
           </label>
+          <label className={estilos.campo}>
+            <span className={estilos.rotulo}>Microfone</span>
+            <select
+              className={estilos.entrada}
+              value={escolhidos.microfone}
+              onChange={(evento) => trocarDispositivo('microfone', evento.target.value)}
+            >
+              {opcoesDoSeletor(dispositivos.microfones, escolhidos.microfone).map((opcao) => (
+                <option key={opcao.id} value={opcao.id}>
+                  {opcao.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          {escolheSaida() && (
+            <label className={estilos.campo}>
+              <span className={estilos.rotulo}>Saída de som</span>
+              <select
+                className={estilos.entrada}
+                value={escolhidos.saida}
+                onChange={(evento) => trocarDispositivo('saida', evento.target.value)}
+              >
+                {opcoesDoSeletor(dispositivos.saidas, escolhidos.saida).map((opcao) => (
+                  <option key={opcao.id} value={opcao.id}>
+                    {opcao.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {dispositivos.semNomes && (
+            <p className={estilos.nota}>Abra o microfone uma vez para o navegador mostrar os aparelhos.</p>
+          )}
           <label className={estilos.alternar}>
             <input
               type="checkbox"

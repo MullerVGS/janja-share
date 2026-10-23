@@ -40,6 +40,10 @@ export interface Preferencias {
   sons: boolean
   /** O volume desses sons, de 0 a 100. */
   volumeDosSons: number
+  /** O id do microfone escolhido; vazio é o padrão do sistema. */
+  microfone: string
+  /** O id do aparelho por onde a Sala sai (fone, caixa); vazio é o padrão do sistema. */
+  saidaDeSom: string
 }
 
 export const PREFERENCIAS_PADRAO: Preferencias = {
@@ -53,6 +57,8 @@ export const PREFERENCIAS_PADRAO: Preferencias = {
   nome: '',
   sons: true,
   volumeDosSons: 60,
+  microfone: '',
+  saidaDeSom: '',
 }
 
 type Leitor<T> = (valor: unknown) => T | undefined
@@ -70,6 +76,8 @@ const LEITORES: { [C in keyof Preferencias]: Leitor<Preferencias[C]> } = {
   sons: (valor) => (typeof valor === 'boolean' ? valor : undefined),
   volumeDosSons: (valor) =>
     typeof valor === 'number' && Number.isFinite(valor) && valor >= 0 && valor <= 100 ? valor : undefined,
+  microfone: (valor) => (typeof valor === 'string' ? valor : undefined),
+  saidaDeSom: (valor) => (typeof valor === 'string' ? valor : undefined),
 }
 
 const CAMPOS = Object.keys(LEITORES) as (keyof Preferencias)[]

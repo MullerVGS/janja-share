@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ConnectionState } from 'livekit-client'
 import { gravarPreferencias, lerPreferencias } from '../../preferencias'
+import { trocarNaSala, type TipoDeDispositivo } from '../../sala/dispositivos'
 import { estadoDaConexao, PRESO_SEM_ROTA_MS } from '../../sala/estadoDaConexao'
 import { decidirFoco, FOCO_INICIAL, type EstadoDoFoco } from '../../sala/foco'
 import { alternarAba, type Aba, type EstadoDaLateral } from '../../sala/lateral'
@@ -17,7 +18,7 @@ import { AQUECIMENTO_MS, avisoParaQuemCompartilha } from '../../sala/avisoDeQual
 import { useAquecido } from '../../sala/useAquecido'
 import { useFalandoMudo } from '../../sala/useFalandoMudo'
 import { useMedia } from '../../sala/useMedia'
-import { useMicrofone } from '../../sala/useMicrofone'
+import { fraseDaFalhaDoMicrofone, useMicrofone } from '../../sala/useMicrofone'
 import { useSala } from '../../sala/useSala'
 import { useSonsDaSala } from '../../sala/useSonsDaSala'
 import { useVolumes, type ControleDeVolumes } from '../../sala/useVolumes'
@@ -348,6 +349,18 @@ export function Sala() {
     if (ensurdecer && microfone.ligado) void microfone.alternar(false)
   }
 
+  function trocarDispositivo(tipo: TipoDeDispositivo, id: string) {
+    if (!sala) return
+    setErroDeDispositivo(null)
+    trocarNaSala(sala, tipo, id).catch((falha: unknown) => {
+      setErroDeDispositivo(
+        tipo === 'microfone'
+          ? fraseDaFalhaDoMicrofone(falha)
+          : 'Não foi possível tocar a sala nesse aparelho. O som segue no anterior.',
+      )
+    })
+  }
+
   function definirNome(nome: string) {
     setMeuNome(nome)
     gravarPreferencias({ nome })
@@ -600,6 +613,7 @@ export function Sala() {
                 aviso: pagina === 'saguao' || celular ? falandoMudo : null,
               }}
               surdo={{ ligado: surdo, alternar: alternarSurdo }}
+              aoTrocarDispositivo={trocarDispositivo}
             />
           </>
         }
