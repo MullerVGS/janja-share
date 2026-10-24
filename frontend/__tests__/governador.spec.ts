@@ -557,6 +557,14 @@ describe('governador: o outro lado', () => {
     expect(sessao.degrau).toBeNull()
   })
 
+  it('quem pausou a Tela por estar fora de vista não segura a subida nem faz descer: o silêncio é combinado', () => {
+    const fora = [espectador({ fpsDecodificado: 0, kbps: 0, perda: 8, emPausa: true })]
+    const subindo = new Sessao(TEXTO).comEspectadores(fora).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })
+    expect(subindo.estado.tetoKbps).toBeGreaterThan(TEXTO.tetoKbps)
+    const semSvc = new Sessao(SEM_SVC).comEspectadores(fora).segundos(20, NO_AR)
+    expect(semSvc.degrau).toBeNull()
+  })
+
   it('relato sem medida nenhuma não é sofrimento: zero é medida, `null` é ausência dela', () => {
     const semLeitura = [espectador({})]
     const sessao = new Sessao(TEXTO).comEspectadores(semLeitura).segundos(60, { ...NO_AR, bandaDisponivelKbps: 20_000 })

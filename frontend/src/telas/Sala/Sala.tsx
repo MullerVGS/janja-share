@@ -20,7 +20,9 @@ import { useCelularAssistindo } from '../../sala/useCelularAssistindo'
 import { useFocoDeTeclado } from '../../sala/useFocoDeTeclado'
 import { useChat } from '../../sala/useChat'
 import { useCompartilhamento } from '../../sala/useCompartilhamento'
+import { useAbaEJanelinha } from '../../sala/useAbaEJanelinha'
 import { useDeixarDeVer } from '../../sala/useDeixarDeVer'
+import { useTelasAVista } from '../../sala/useTelasAVista'
 import { AQUECIMENTO_MS, avisoParaQuemCompartilha } from '../../sala/avisoDeQualidade'
 import { useAquecido } from '../../sala/useAquecido'
 import { useFalandoMudo } from '../../sala/useFalandoMudo'
@@ -204,6 +206,15 @@ export function Sala() {
   const [interfaceVisivel, ocultarAMoldura] = useAutoOcultar(
     gaveta.aberta || focoDeTeclado || (celular && !imersao) || falandoMudo !== null,
   )
+
+  // A Tela que ninguém está vendo não vem: a pilha escondida e a aba atrás pausam a assinatura.
+  const { abaVisivel, janelinha } = useAbaEJanelinha()
+  useTelasAVista(sala, versao, {
+    foco: emFoco?.identidade ?? null,
+    pilhaVisivel: interfaceVisivel,
+    abaVisivel,
+    janelinha,
+  })
 
   const telasAntes = useRef<string[]>([])
   useEffect(() => {

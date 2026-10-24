@@ -218,6 +218,17 @@ describe('aba Transmissão', () => {
     expect(linhas[1]).toHaveAttribute('data-sumiu')
   })
 
+  it('quem pausou a minha Tela por estar fora de vista aparece assim, e não como rede ruim', () => {
+    vi.useFakeTimers({ now: AGORA })
+    const fora = espectador()
+    const espectadores = new Map([['bia-1a2b3c', { ...fora, relato: { ...fora.relato, fpsDecodificado: 0, emPausa: true } }]])
+    montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: [emissor()], espectadores })
+
+    const linha = within(screen.getByRole('table', { name: 'Como chega' })).getAllByRole('row')[1]
+    expect(linha).toHaveTextContent('Bia · fora de vista')
+    expect(linha).not.toHaveAttribute('data-sumiu')
+  })
+
   it('transmitindo sem ninguém assistindo, a tabela diz isso', () => {
     montarTransmissao({ ...TELEMETRIA_VAZIA, emissor: [emissor()] })
     expect(screen.getByText(/Ninguém assistindo ainda/)).toBeInTheDocument()

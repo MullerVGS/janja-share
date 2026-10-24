@@ -184,8 +184,13 @@ function menor(...valores: (number | null)[]): number | null {
  * grudado ele faria o governador de H.264 descer até o chão com a sala inteira lisa.
  *
  * Quem sumiu não é levado em conta: relato velho descreve um problema que pode ter acabado — ou
- * uma pessoa que já saiu.
+ * uma pessoa que já saiu. Quem pausou a Tela porque ela não está à vista também não: o relato
+ * dele diz que nada chega, e isso é o combinado, não a rede.
  */
+
+function descreveARede(espectador: Espectador, agora: number): boolean {
+  return !sumiu(espectador, agora) && !espectador.relato.emPausa
+}
 
 /** Perda de pacote: o único sinal que só a rede explica. */
 function temPerda(relato: AmostraDoEspectador): boolean {
@@ -235,7 +240,7 @@ export function alguemSofrendo(
 ): boolean {
   return espectadores.some(
     (espectador) =>
-      !sumiu(espectador, agora) &&
+      descreveARede(espectador, agora) &&
       (temPerda(espectador.relato) ||
         irregular(espectador.relato) ||
         parado(espectador.relato) ||
@@ -252,7 +257,7 @@ export function alguemSofrendo(
  * assinatura, e de assinatura cuida o cão de guarda da recepção.
  */
 export function alguemPerdendo(espectadores: readonly Espectador[], agora: number): boolean {
-  return espectadores.some((espectador) => !sumiu(espectador, agora) && temPerda(espectador.relato))
+  return espectadores.some((espectador) => descreveARede(espectador, agora) && temPerda(espectador.relato))
 }
 
 /** O teto que a banda medida e a Sala permitem. Sem medida não há alvo — e sem alvo não se sobe. */

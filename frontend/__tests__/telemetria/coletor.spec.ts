@@ -2,7 +2,7 @@ import { RoomEvent, type Room } from 'livekit-client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { amostraVaziaDoEspectador } from '../../src/telemetria/amostra'
 import { criarColetor, TELEMETRIA_VAZIA, type Telemetria } from '../../src/telemetria/coletor'
-import { desempacotarPulso, empacotarPulso, empacotarRelato, TOPICO_DA_TELEMETRIA, TOPICO_DO_PULSO } from '../../src/telemetria/relato'
+import { desempacotarPulso, desempacotarRelato, empacotarPulso, empacotarRelato, TOPICO_DA_TELEMETRIA, TOPICO_DO_PULSO } from '../../src/telemetria/relato'
 
 type Ouvinte = (...argumentos: unknown[]) => void
 
@@ -475,6 +475,23 @@ describe('coletor de telemetria', () => {
 
       expect(atual().recepcao.get('bia-1a2b3c')).toBe('parada')
       expect(publicacao.setSubscribed).not.toHaveBeenCalled()
+    })
+
+    it('tela que eu pausei por estar fora de vista não reassina, e o relato sai marcado em pausa', async () => {
+      const sala = new SalaFalsa()
+      const parado = receiverParado() as unknown as ReturnType<typeof receiverFalso>
+      const publicacao = sala.entraAssistindo('bia-1a2b3c', 'Bia', parado) as unknown as {
+        isEnabled: boolean
+        setSubscribed: ReturnType<typeof vi.fn>
+      }
+      publicacao.isEnabled = false
+      arrancar(sala)
+
+      await passar(30)
+
+      expect(publicacao.setSubscribed).not.toHaveBeenCalled()
+      const relato = desempacotarRelato(sala.publicados.at(-1)!.dados)
+      expect(relato?.emPausa).toBe(true)
     })
 
     it('o "Tentar de novo" da tela congelada reassina na hora', async () => {

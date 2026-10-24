@@ -71,6 +71,11 @@ export interface AmostraDoEspectador {
   rtt: number | null
   redeMedida: boolean
   protocolo: Protocolo | null
+  /**
+   * Quem assiste pausou esta Tela porque ela não está à vista (`aVista.ts`): nada chegar é o
+   * combinado, e a amostra não descreve a rede de ninguém.
+   */
+  emPausa?: boolean
 }
 
 /** Contadores acumulados da leitura anterior — só o que vira taxa na próxima. */

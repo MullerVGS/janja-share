@@ -219,7 +219,12 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
       }
 
       const historico = estado.recebidas.get(identidade) ?? []
-      const pausada = publicacao.isMuted
+      // Pausada por quem compartilha (muda) ou por mim, porque não está à vista (`aVista.ts`):
+      // nas duas, nada chegar é o combinado. A minha pausa ainda vai marcada no relato, para o
+      // governador de quem compartilha não ler o silêncio como rede ruim.
+      const emPausa = remota.isEnabled === false
+      const pausada = publicacao.isMuted || emPausa
+      const marcar = (amostra: AmostraDoEspectador) => (emPausa ? { ...amostra, emPausa } : amostra)
       const receiver = (publicacao.track as RemoteTrack | undefined)?.receiver
 
       if (!receiver) {
@@ -227,7 +232,7 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
         // do `reassinar`. É o mesmo sintoma de "nada chegando" — alimentar com `null` em vez de
         // pular a rodada é o que evita a tela que nunca ganha faixa ficar com `recepcao:
         // undefined`, sem aviso e sem tentativa, para sempre.
-        const amostra = amostraVaziaDoEspectador(Date.now())
+        const amostra = marcar(amostraVaziaDoEspectador(Date.now()))
         recebidas.set(identidade, anotar(historico, amostra))
         avaliarEAgir(identidade, amostra, pausada)
         continue
@@ -239,12 +244,13 @@ export function criarColetor(sala: Room, aoMudar: (telemetria: Telemetria) => vo
           .then((relatorio) => {
             const leitura = lerAmostraDoEspectador(relatorio, basesRecebidas.get(identidade) ?? null)
             basesRecebidas.set(identidade, leitura.base)
-            recebidas.set(identidade, anotar(historico, leitura.amostra))
-            avaliarEAgir(identidade, leitura.amostra, pausada)
+            const amostra = marcar(leitura.amostra)
+            recebidas.set(identidade, anotar(historico, amostra))
+            avaliarEAgir(identidade, amostra, pausada)
           })
           .catch(() => {
             basesRecebidas.set(identidade, null)
-            const amostra = amostraVaziaDoEspectador(Date.now())
+            const amostra = marcar(amostraVaziaDoEspectador(Date.now()))
             recebidas.set(identidade, anotar(historico, amostra))
             avaliarEAgir(identidade, amostra, pausada)
           }),

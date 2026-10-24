@@ -38,6 +38,11 @@ describe('relato do espectador', () => {
     expect(desempacotarRelato(empacotarRelato(AMOSTRA))).toEqual(AMOSTRA)
   })
 
+  it('a pausa de quem assiste viaja; ausente, ou de tipo errado, a Tela não está em pausa', () => {
+    expect(desempacotarRelato(empacotarRelato({ ...AMOSTRA, emPausa: true }))?.emPausa).toBe(true)
+    expect(desempacotarRelato(bytes({ ...AMOSTRA, v: 1, emPausa: 'sim' }))?.emPausa).toBeUndefined()
+  })
+
   it('o tópico é próprio, para o chat e o relato não se confundirem', () => {
     expect(TOPICO_DA_TELEMETRIA).toBe('telemetria')
   })

@@ -89,6 +89,7 @@ export function desempacotarRelato(dados: Uint8Array): Relato | null {
     rtt: numero(campo.rtt),
     redeMedida: booleano(campo.redeMedida) ?? false,
     protocolo: protocolo(campo.protocolo),
+    ...(campo.emPausa === true ? { emPausa: true } : {}),
   }
 }
 

@@ -151,6 +151,7 @@ export function ComoChega({ espectadores }: { espectadores: ReadonlyMap<string, 
                 <td>
                   {espectador.nome}
                   {apagado && <span className={estilos.sumiu}> · sumiu</span>}
+                  {!apagado && relato.emPausa && <span className={estilos.sumiu}> · fora de vista</span>}
                 </td>
                 <td>{relato.fpsDecodificado === null ? '—' : `${relato.fpsDecodificado} fps`}</td>
                 <td>{freezes(relato.freezes)}</td>
